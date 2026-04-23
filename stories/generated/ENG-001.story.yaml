@@ -1,0 +1,47 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-001
+title: Bootstrap the deterministic engine-core API skeleton
+type: implementation
+area: engine
+priority: critical
+status: generated
+summary: >
+  Create the authoritative engine-core package with the canonical entry points, deterministic state hashing, and player-view filtering contracts.
+spec_refs:
+  - "15-implementation-kickoff.s006 (Step 2 - `@optcg/engine-core`)"
+  - 15-implementation-kickoff.s008 (First milestone scope)
+  - 15-implementation-kickoff.s011 (Definition of done for kickoff)
+  - "01-system-architecture.s005 (`@optcg/engine-core`)"
+  - 11-testing-quality.s008 (Invariant tests)
+scope:
+  - "create packages/engine-core with the canonical createInitialState, getLegalActions, applyAction, resumeDecision, computeView, filterStateForPlayer, and hashGameState exports"
+  - "establish a deterministic GameState skeleton with hidden zones, event journal, and state sequence handling"
+  - wire invariant assertions and state hashing into engine test mode
+  - preserve the server-only boundary for authoritative state handling
+non_scope:
+  - full non-vanilla effect runtime behavior
+  - websocket room management
+  - browser-safe presentation helpers
+dependencies:
+  - INF-001
+  - CON-001
+acceptance_criteria:
+  - packages/engine-core exports the canonical engine entry points named in the kickoff contract
+  - hashGameState is stable across repeated runs with the same seed and action log
+  - "filterStateForPlayer omits opponent hand, deck order, face-down life, rng state, and effect queue internals"
+  - "the engine package does not import browser, websocket, database, or live Poneglyph code"
+required_tests:
+  - invariant regression covering post-action and post-decision state checks
+  - state hash stability test for repeated seed and action-log playback
+  - hidden-information regression for filterStateForPlayer output
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

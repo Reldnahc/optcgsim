@@ -1,0 +1,44 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SEC-001
+title: Add hidden-information and replay-drift verification lanes
+type: verification
+area: security
+priority: high
+status: generated
+summary: >
+  Add the hidden-information and replay-drift checks that protect view filtering and deterministic playback while the engine foundation is still being built.
+spec_refs:
+  - 11-testing-quality.s011 (Hidden-information tests)
+  - 11-testing-quality.s012 (Replay drift tests)
+  - 15-implementation-kickoff.s010 (Required repo tooling before feature expansion)
+  - 22-v6-implementation-tightening.s002 (Implementation readiness verdict after this pass)
+scope:
+  - "add hidden-information fixtures covering opponent hand, deck order, face-down life, rng state, effect queue internals, and temporary reveal filtering"
+  - add replay drift checks comparing checkpoint hashes across known logs
+  - wire both lanes into repo verification and CI
+non_scope:
+  - new spectator product features
+  - public replay browser work
+  - match-server reconnect behavior
+dependencies:
+  - INF-001
+  - ENG-001
+acceptance_criteria:
+  - hidden-information regressions fail if filtered views expose protected data
+  - replay drift checks fail on unexpected checkpoint-hash changes
+  - intentional replay drift requires an explicit migration or version-pin note
+required_tests:
+  - hidden-information fixtures covering reveal and no-reveal scenarios
+  - golden replay regression with checkpoint hash comparison
+  - CI regression proving both verification lanes run from repo verification
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SEC-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

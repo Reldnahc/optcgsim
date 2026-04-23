@@ -29,7 +29,7 @@ A repo using this workflow should check in:
 - `AGENTS.md` at repo root,
 - approved story files validated by [`contracts/story.schema.json`](contracts/story.schema.json),
 - agent packets generated from approved stories,
-- the board sync tool `tools/spec_board_sync.py`,
+- the board sync tool `tools/spec_board_sync.ts`,
 - board sync metadata under `stories/.sync/`,
 - optional Codex skills under [`.agents/skills/`](.agents/skills/) for repeatable workflows.
 
@@ -66,7 +66,7 @@ Section Ref: `32-codex-agent-integration.s006`
 - that gameplay, visibility, replay, fairness, and persistence ambiguity must fail closed,
 - what verification commands to run before claiming completion,
 - how to format assumptions, blockers, and implementation notes,
-- that GitHub issue and board projection should run through `tools/spec_board_sync.py` and write metadata to `stories/.sync/`.
+- that GitHub issue and board projection should run through `tools/spec_board_sync.ts` and write metadata to `stories/.sync/`.
 
 ## Skill usage model
 <!-- SECTION_REF: 32-codex-agent-integration.s007 -->
@@ -87,7 +87,7 @@ Section Ref: `32-codex-agent-integration.s008`
 
 1. Approve a story.
 2. Generate an agent packet.
-3. Run `python3 tools/spec_board_sync.py --story <path> --dry-run --write-preview`, then perform live sync when ready.
+3. Run `node --experimental-strip-types tools/spec_board_sync.ts --story <path> --dry-run --write-preview`, then perform live sync when ready.
 4. Assign the packet to Codex CLI or Codex cloud.
 5. Have Codex implement the story in a branch or worktree.
 6. Require tests and a short assumptions/blockers note.
@@ -132,9 +132,9 @@ These modes should share the same story, packet, and `AGENTS.md` guidance so the
 Section Ref: `32-codex-agent-integration.s012`
 
 ```text
-Implement approved story SEC-005 from stories/approved/SEC-005.story.yaml.
+Implement approved story <STORY-ID> from stories/approved/<PATH>.story.yaml.
 Read AGENTS.md first.
-Use agent-packets/SEC-005.packet.md as the constrained execution packet.
+Use the corresponding packet under agent-packets/ as the constrained execution packet.
 Do not exceed story scope.
 Run the required tests and report exact files changed, tests run, and any ambiguity surfaced.
 ```

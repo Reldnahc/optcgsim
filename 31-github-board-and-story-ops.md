@@ -22,7 +22,7 @@ Section Ref: `31-github-board-and-story-ops.s002`
 
 The approved story file remains the authoritative delivery artifact below the specification. A GitHub issue or project card is a synchronized projection of that story, not a replacement authority.
 
-The reference repo workflow uses `tools/spec_board_sync.py` to produce or update that projection and stores sync metadata under `stories/.sync/`.
+The reference repo workflow uses `tools/spec_board_sync.ts` to produce or update that projection and stores sync metadata under `stories/.sync/`.
 
 If the board card, issue body, labels, or project fields drift from the approved story file, the approved story file wins and the board item must be corrected by rerunning sync or editing the story first.
 
@@ -181,7 +181,7 @@ Before creating or updating a GitHub issue from a story file, automation should:
 6. set project fields and labels,
 7. persist the created issue URL or issue number back onto the story file or adjacent metadata.
 
-The checked-in reference implementation for this contract is `python3 tools/spec_board_sync.py`. It reads approved stories, resolves `spec_refs`, renders the canonical issue body, syncs issues and project fields through GitHub CLI/GraphQL when configured, and writes per-story metadata to `stories/.sync/<STORY_ID>.github.json`.
+The checked-in reference implementation for this contract is `node --experimental-strip-types tools/spec_board_sync.ts`. It reads approved stories, resolves `spec_refs`, renders the canonical issue body, syncs issues and project fields through GitHub CLI/GraphQL when configured, and writes per-story metadata to `stories/.sync/<STORY_ID>.github.json`.
 
 ## Human approval boundary
 <!-- SECTION_REF: 31-github-board-and-story-ops.s011 -->

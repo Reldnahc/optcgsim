@@ -1,0 +1,44 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CON-001
+title: "Bootstrap @optcg/types from the canonical contract bundle"
+type: implementation
+area: contracts
+priority: critical
+status: generated
+summary: >
+  Create the shared types package from the canonical contract so IDs, DTOs, views, and action contracts have one compile-checked source of truth.
+spec_refs:
+  - 15-implementation-kickoff.s002 (v5 kickoff gates)
+  - "15-implementation-kickoff.s005 (Step 1 - `@optcg/types`)"
+  - 22-v6-implementation-tightening.s006 (2. TypeScript model)
+  - "01-system-architecture.s004 (`@optcg/types`)"
+scope:
+  - create packages/types seeded from contracts/canonical-types.ts
+  - "export branded ids, action and decision contracts, player and spectator views, and card metadata interfaces"
+  - "keep the package free of runtime dependencies on engine, database, websocket, or browser code"
+  - wire type-checking so contract drift is caught automatically
+non_scope:
+  - full engine behavior
+  - match-server transport handling
+  - browser view helpers
+dependencies:
+  - INF-001
+acceptance_criteria:
+  - "packages/types exports the shared ids, DTOs, and view contracts required by the kickoff spec"
+  - the canonical contract compiles through the repo toolchain without undefined symbols
+  - the package has no runtime dependency on app or infrastructure packages
+required_tests:
+  - contract compile check covering contracts/canonical-types.ts through the repo toolchain
+  - import-boundary regression proving app packages are not pulled into packages/types
+  - API-surface regression covering the initial shared exports
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/CON-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

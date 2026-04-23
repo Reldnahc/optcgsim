@@ -18,7 +18,7 @@
     "githubBoardGuide": "31-github-board-and-story-ops.md",
     "codexIntegrationGuide": "32-codex-agent-integration.md",
     "agentsMd": "AGENTS.md",
-    "githubBoardSyncTool": "tools/spec_board_sync.py",
+    "githubBoardSyncTool": "tools/spec_board_sync.ts",
     "githubBoardSyncConfigExample": "tools/github-board.config.example.json"
   },
   "documents": [
@@ -81,7 +81,7 @@
     ".github/ISSUE_TEMPLATE/spec-ambiguity.yml",
     ".agents/skills/spec-story-implementation/agents/openai.yaml",
     ".agents/skills/spec-story-review/agents/openai.yaml",
-    "tools/spec_board_sync.py",
+    "tools/spec_board_sync.ts",
     "tools/github-board.config.example.json",
     ".agents/skills/spec-story-board-sync/agents/openai.yaml",
     "stories/.sync/.gitkeep"

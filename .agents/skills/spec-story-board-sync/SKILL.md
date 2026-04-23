@@ -16,8 +16,8 @@ Steps:
 
 1. Read `AGENTS.md`.
 2. Read the approved story file.
-3. Validate the story against `contracts/story.schema.json` conceptually or by using `tools/spec_board_sync.py` in `--dry-run` mode.
-4. Use `tools/spec_board_sync.py` to render or sync the issue projection.
+3. Validate the story against `contracts/story.schema.json` conceptually or by using `tools/spec_board_sync.ts` in `--dry-run` mode.
+4. Use `tools/spec_board_sync.ts` to render or sync the issue projection.
 5. Preserve the approved story as the authority and write sync state into `stories/.sync/`.
 6. If a GitHub Project is configured, set fields from the story instead of inventing project-only values.
 

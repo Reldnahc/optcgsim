@@ -1,0 +1,11 @@
+{
+  "name": "optcgsim",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "stories:generate": "node --experimental-strip-types tools/generate-stories.ts",
+    "stories:normalize": "node --experimental-strip-types tools/normalize-stories.ts",
+    "packets:build": "node --experimental-strip-types tools/build-agent-packet.ts",
+    "stories:sync": "node --experimental-strip-types tools/spec_board_sync.ts"
+  }
+}

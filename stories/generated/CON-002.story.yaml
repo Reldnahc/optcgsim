@@ -1,0 +1,43 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CON-002
+title: Validate effect-definition fixtures against the canonical DSL schema
+type: tooling
+area: contracts
+priority: high
+status: generated
+summary: >
+  Add the schema-validation path that gates broad effect and card automation until DSL fixtures are checked against the canonical contract.
+spec_refs:
+  - 15-implementation-kickoff.s002 (v5 kickoff gates)
+  - 22-v6-implementation-tightening.s002 (Implementation readiness verdict after this pass)
+  - 22-v6-implementation-tightening.s007 (3. DSL schema)
+  - 23-repo-tooling-and-enforcement.s022 (Required implementation sequence for tooling)
+scope:
+  - add a repeatable schema-validation command for effect-definition fixtures
+  - wire the validation lane into repo verification and CI
+  - define the initial positive and negative fixture coverage needed to prove the lane works
+non_scope:
+  - implementing the effect runtime itself
+  - broad card handler automation
+  - browser-side effect authoring workflows
+dependencies:
+  - INF-001
+acceptance_criteria:
+  - a schema-validation command exists for effect-definition fixtures
+  - invalid DSL fixtures fail verification
+  - repo verification and CI both execute the DSL schema lane
+required_tests:
+  - positive schema fixture test
+  - negative schema fixture test
+  - CI regression proving the schema lane runs as part of repo verification
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/CON-002.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,47 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: INF-001
+title: Bootstrap the root monorepo workspace and verification baseline
+type: tooling
+area: infra
+priority: critical
+status: generated
+summary: >
+  Establish the root monorepo workspace, verification command, and CI enforcement baseline required before package work scales.
+spec_refs:
+  - 00-project-overview.s019 (Repository shape)
+  - 15-implementation-kickoff.s010 (Required repo tooling before feature expansion)
+  - 23-repo-tooling-and-enforcement.s004 (Required root files)
+  - 23-repo-tooling-and-enforcement.s022 (Required implementation sequence for tooling)
+  - 23-repo-tooling-and-enforcement.s023 (Definition of done for repo tooling)
+scope:
+  - add the root workspace files needed for the monorepo and shared toolchain baseline
+  - "define a root pnpm verify command that runs lint, tests, schema validation, and boundary checks"
+  - add CI workflow steps that mirror the main local verification path
+  - wire package-boundary enforcement and contract/schema validation into repo verification
+non_scope:
+  - "implementing runtime behavior inside engine, server, or client packages"
+  - building browser UI or match server features
+  - broad non-vanilla card automation
+dependencies:
+  - contracts/canonical-types.ts
+  - contracts/effect-dsl.schema.json
+acceptance_criteria:
+  - root workspace files exist and support one documented bootstrap path
+  - "pnpm verify exists and fails on real lint, schema, or boundary violations"
+  - CI runs the verification baseline on pull requests
+  - package-boundary enforcement and hidden-information regression lanes are part of repo verification
+required_tests:
+  - verification smoke test proving pnpm verify runs in CI
+  - negative schema fixture proving the contract validation lane fails invalid inputs
+  - illegal cross-package import regression proving boundary rules reject forbidden dependencies
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/INF-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

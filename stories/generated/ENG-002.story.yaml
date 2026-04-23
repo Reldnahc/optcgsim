@@ -1,0 +1,46 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-002
+title: Build the terminal CLI runner for two-sided vanilla matches
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Create the terminal runner that lets one developer play both sides and inspect state sequence, legal actions, and state hash after every move.
+spec_refs:
+  - 15-implementation-kickoff.s007 (Step 3 - CLI runner)
+  - 15-implementation-kickoff.s008 (First milestone scope)
+  - 18-acceptance-tests.s003 (Milestone 1 - terminal engine)
+  - 22-v6-implementation-tightening.s002 (Implementation readiness verdict after this pass)
+scope:
+  - "create a CLI runner with the canonical show, hand, play, attach-don, attack, counter, pass, respond, concede, and hash commands"
+  - "print state sequence, current phase, pending decision, legal actions, and state hash after every action"
+  - support two-sided local vanilla play for the kickoff milestone
+non_scope:
+  - browser UI
+  - matchmaking or Redis-backed sessions
+  - ranked queue or spectator support
+dependencies:
+  - INF-001
+  - CON-001
+  - ENG-001
+  - CAR-001
+acceptance_criteria:
+  - the CLI supports the canonical command set needed for local two-sided play
+  - "state sequence, phase, pending decision, legal actions, and state hash are visible after every action"
+  - "a local vanilla match can end by damage, deck-out, or concession"
+required_tests:
+  - terminal integration test covering a local concession flow
+  - terminal integration test covering damage or deck-out completion
+  - output regression covering state sequence and state-hash reporting
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-002.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

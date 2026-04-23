@@ -163,7 +163,7 @@ A recommended structure is:
 /tools/generate-stories.ts
 /tools/normalize-stories.ts
 /tools/build-agent-packet.ts
-/tools/spec_board_sync.py
+/tools/spec_board_sync.ts
 /tools/github-board.config.example.json
 /tools/trace-spec-impact.ts
 ```
@@ -182,7 +182,7 @@ Section Ref: `27-spec-driven-story-generation-workflow.s012`
 2. review and approve them,
 3. build packets automatically,
 4. assign packets to agents,
-5. export approved stories to GitHub issues or draft issues as needed using `tools/spec_board_sync.py`,
+5. export approved stories to GitHub issues or draft issues as needed using `tools/spec_board_sync.ts`,
 6. assign packets to agents,
 7. validate the resulting patch against the story and spec.
 

@@ -52,7 +52,7 @@ v6 keeps the gameplay/runtime content from v5 but adds a missing delivery layer:
 
 - canonical machine-readable story validation via [`contracts/story.schema.json`](contracts/story.schema.json),
 - a GitHub board and issue mapping in [`31-github-board-and-story-ops.md`](31-github-board-and-story-ops.md),
-- a checked-in board sync tool at [`tools/spec_board_sync.py`](tools/spec_board_sync.py) with example config at [`tools/github-board.config.example.json`](tools/github-board.config.example.json),
+- a checked-in board sync tool at [`tools/spec_board_sync.ts`](tools/spec_board_sync.ts) with example config at [`tools/github-board.config.example.json`](tools/github-board.config.example.json),
 - Codex-oriented repo instructions in [`AGENTS.md`](AGENTS.md) and [`.agents/skills/`](.agents/skills/),
 - adjacent sync metadata under [`stories/.sync/`](stories/.sync/),
 - GitHub issue-form examples under [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/),
@@ -128,7 +128,7 @@ Section Ref: `README.s006`
 | [`contracts/effect-dsl.schema.json`](contracts/effect-dsl.schema.json) | Canonical JSON Schema for effect definition fixtures |
 | [`contracts/database-schema-v6.sql`](contracts/database-schema-v6.sql) | Corrected production-oriented DDL contract |
 | [`contracts/story.schema.json`](contracts/story.schema.json) | Machine-readable validation contract for approved story files |
-| [`tools/spec_board_sync.py`](tools/spec_board_sync.py) | Reference tool for projecting approved stories into GitHub issues and project fields |
+| [`tools/spec_board_sync.ts`](tools/spec_board_sync.ts) | Reference tool for projecting approved stories into GitHub issues and project fields |
 | [`tools/github-board.config.example.json`](tools/github-board.config.example.json) | Example GitHub repo/project mapping for the board sync tool |
 | [`stories/.sync/`](stories/.sync/) | Adjacent metadata written by the board sync tool for synced issue state |
 | [`fixtures/poneglyph/`](fixtures/poneglyph/) | OpenAPI and card payload fixtures used by adapter/effect tests |

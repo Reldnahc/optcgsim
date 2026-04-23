@@ -1,0 +1,46 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CAR-001
+title: "Add a fixture-backed @optcg/cards adapter for Poneglyph-shaped records"
+type: implementation
+area: cards
+priority: high
+status: generated
+summary: >
+  Build the early cards adapter around checked-in Poneglyph fixtures so the engine can consume normalized card records before live HTTP exists.
+spec_refs:
+  - 15-implementation-kickoff.s009 (Hardcoded card metadata policy)
+  - 15-implementation-kickoff.s013 (v3 fixture-first card-data step)
+  - "01-system-architecture.s008 (`@optcg/cards`)"
+  - 19-poneglyph-api-contract.s003 (Source fixtures in this package)
+  - 19-poneglyph-api-contract.s007 (Normalized card shape)
+scope:
+  - "create packages/cards fixture loading, validation, normalization, and variant-key helpers"
+  - use the checked-in Poneglyph fixtures for contract tests and early local card loading
+  - preserve source payloads for audit while exposing normalized engine-safe records
+  - keep the adapter separate from live HTTP calls during the fixture-first phase
+non_scope:
+  - live Poneglyph HTTP integration
+  - deck builder UI work
+  - unsupported-card full policy automation
+dependencies:
+  - INF-001
+  - CON-001
+acceptance_criteria:
+  - packages/cards can load the provided fixture card ids through a typed adapter
+  - normalized card records expose canonical engine-facing fields without handing the raw payload directly to the engine
+  - fixture-based loading works without live network dependencies
+required_tests:
+  - fixture contract test covering the provided sample Poneglyph card payloads
+  - normalization regression covering representative leader and character fields
+  - invalid fixture regression proving the adapter fails closed on malformed card input
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/CAR-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

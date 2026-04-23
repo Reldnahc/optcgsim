@@ -38,7 +38,7 @@ Section Ref: `AGENTS.s003`
 - For gameplay, visibility, replay, fairness, timer, and persistence ambiguity, fail closed and escalate.
 - Add or update tests required by the story.
 - Keep deterministic engine behavior and hidden-information safety intact.
-- When projecting approved stories to GitHub issues or boards, use `python3 tools/spec_board_sync.py` instead of hand-editing canonical issue sections.
+- When projecting approved stories to GitHub issues or boards, use `node --experimental-strip-types tools/spec_board_sync.ts` instead of hand-editing canonical issue sections.
 
 ## Where to look first
 <!-- SECTION_REF: AGENTS.s004 -->
@@ -49,7 +49,7 @@ Section Ref: `AGENTS.s004`
 - packets: `agent-packets/`
 - story schema contract: `contracts/story.schema.json`
 - section lookup: `section-index.json`
-- board sync tool: `tools/spec_board_sync.py`
+- board sync tool: `tools/spec_board_sync.ts`
 - board sync config example: `tools/github-board.config.example.json`
 - board sync metadata: `stories/.sync/`
 
