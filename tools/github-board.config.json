@@ -1,5 +1,5 @@
 {
-  "repo": "OWNER/REPO",
+  "repo": "Reldnahc/optcgsim",
   "labels": {
     "ensure": true,
     "include_status": false,
@@ -8,7 +8,7 @@
     ]
   },
   "project": {
-    "owner": "OWNER_OR_ORG",
+    "owner": "Reldnahc",
     "number": 1,
     "field_mapping": {
       "Status": {
