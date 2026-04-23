@@ -1,0 +1,50 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SEC-005
+title: Add delayed spectator projection for ranked public matches
+type: implementation
+area: server
+priority: high
+status: approved
+summary: >
+  Implement the default delayed-filtered spectator projection for ranked public
+  matches so spectators do not receive current-turn hidden information.
+spec_refs:
+  - 06-visibility-security.s008 (Spectator modes)
+  - 07-match-server-protocol.s017 (Spectator subscriptions)
+  - 08-replay-rollback-recovery.s036 (Full-information replay policy)
+scope:
+  - add delayed spectator projection selection for ranked public games
+  - apply the default 3-turn delay unless a stricter server policy exists
+  - preserve full-information replay generation outside live spectator views
+non_scope:
+  - private-game custom delay UI
+  - replay viewer presentation changes
+  - moderation tooling
+dependencies:
+  - SRV-002
+  - RPY-001
+acceptance_criteria:
+  - ranked public spectators do not receive live current-turn hidden information
+  - default delay is 3 turns unless superseded by stricter server configuration
+  - full-information replay generation remains unaffected
+required_tests:
+  - integration test for ranked spectator stream delay
+  - regression test ensuring no opponent hand or deck-order leakage
+  - replay test confirming live spectator filtering does not alter stored replay data
+repo_rules:
+  - must pass pnpm verify
+  - must not import hidden-state helpers into client bundles
+  - must preserve visibility policy contracts
+ambiguity_policy: fail_and_escalate
+board:
+  project: OPTCG Delivery Board
+  labels:
+    - type:implementation
+    - area:server
+    - priority:high
+agent:
+  packet_path: agent-packets/examples/SEC-005.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

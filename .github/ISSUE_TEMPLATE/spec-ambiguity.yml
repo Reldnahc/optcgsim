@@ -1,0 +1,40 @@
+name: Spec ambiguity
+description: Capture an ambiguity that blocks safe implementation or review
+title: "[Ambiguity] "
+labels:
+  - ambiguity
+body:
+  - type: input
+    id: area
+    attributes:
+      label: Area
+      placeholder: engine
+    validations:
+      required: true
+  - type: textarea
+    id: blocking_question
+    attributes:
+      label: Blocking question
+      description: What is undecided or conflicting?
+    validations:
+      required: true
+  - type: textarea
+    id: cited_refs
+    attributes:
+      label: Cited spec refs
+      description: One `doc_id.sNNN (Heading)` per line
+    validations:
+      required: true
+  - type: textarea
+    id: observed_conflict
+    attributes:
+      label: Observed conflict or gap
+    validations:
+      required: true
+  - type: textarea
+    id: safe_narrow_stop
+    attributes:
+      label: Narrowest safe stopping point
+      description: Describe what can be implemented safely now without guessing
+    validations:
+      required: true

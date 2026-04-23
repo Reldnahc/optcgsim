@@ -1,0 +1,48 @@
+{
+  "repo": "OWNER/REPO",
+  "labels": {
+    "ensure": true,
+    "include_status": false,
+    "defaults": [
+      "story"
+    ]
+  },
+  "project": {
+    "owner": "OWNER_OR_ORG",
+    "number": 1,
+    "field_mapping": {
+      "Status": {
+        "source": "status",
+        "option_map": {
+          "generated": "Backlog",
+          "approved": "Todo",
+          "in_progress": "In Progress",
+          "blocked": "Blocked",
+          "done": "Done",
+          "replaced": "Canceled"
+        }
+      },
+      "Priority": {
+        "source": "priority"
+      },
+      "Area": {
+        "source": "area"
+      },
+      "Type": {
+        "source": "type"
+      },
+      "Spec Version": {
+        "source": "spec_version"
+      },
+      "Story ID": {
+        "source": "id"
+      },
+      "Estimate": {
+        "source": "board.estimate"
+      },
+      "Iteration": {
+        "source": "board.iteration"
+      }
+    }
+  }
+}

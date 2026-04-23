@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optcg-sim.local/schemas/story.v6.schema.json",
+  "title": "OPTCG Story Schema v6",
+  "type": "object",
+  "required": [
+    "spec_version",
+    "spec_package_name",
+    "story_schema_version",
+    "id",
+    "title",
+    "type",
+    "area",
+    "priority",
+    "status",
+    "summary",
+    "spec_refs",
+    "scope",
+    "non_scope",
+    "dependencies",
+    "acceptance_criteria",
+    "required_tests",
+    "repo_rules",
+    "ambiguity_policy"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "spec_version": {
+      "const": "v6"
+    },
+    "spec_package_name": {
+      "const": "optcg-md-specs-v6"
+    },
+    "story_schema_version": {
+      "const": "1.0.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z]{2,}-\\d{3,}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "enum": [
+        "design",
+        "implementation",
+        "verification",
+        "refactor",
+        "tooling",
+        "ambiguity"
+      ]
+    },
+    "area": {
+      "enum": [
+        "contracts",
+        "engine",
+        "cards",
+        "server",
+        "client",
+        "replay",
+        "database",
+        "infra",
+        "docs",
+        "security"
+      ]
+    },
+    "priority": {
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "status": {
+      "enum": [
+        "generated",
+        "approved",
+        "in_progress",
+        "blocked",
+        "done",
+        "replaced"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "spec_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]+\\.s\\d{3}( \\(.+\\))?$"
+      }
+    },
+    "scope": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "non_scope": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required_tests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "repo_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "ambiguity_policy": {
+      "enum": [
+        "fail_and_escalate",
+        "implement_if_clearly_implied"
+      ]
+    },
+    "board": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "parent_issue": {
+          "type": "string"
+        },
+        "iteration": {
+          "type": "string"
+        },
+        "estimate": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "packet_path": {
+          "type": "string"
+        },
+        "implementation_skill": {
+          "type": "string"
+        },
+        "review_skill": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

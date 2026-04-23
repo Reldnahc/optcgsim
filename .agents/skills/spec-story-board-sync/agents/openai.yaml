@@ -1,0 +1,5 @@
+interface:
+  display_name: "Spec story board sync"
+  short_description: "Project approved OPTCG stories onto GitHub issues and board fields"
+policy:
+  allow_implicit_invocation: false

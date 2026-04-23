@@ -1,0 +1,121 @@
+name: Spec story
+description: Create a spec-derived implementation story that can be normalized into the approved backlog
+title: "[Story] "
+labels:
+  - story
+body:
+  - type: input
+    id: story_id
+    attributes:
+      label: Story ID
+      description: Stable story identifier
+      placeholder: ENG-012
+    validations:
+      required: true
+  - type: input
+    id: story_title
+    attributes:
+      label: Story title
+      placeholder: Implement mulligan waiting-state clock behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - design
+        - implementation
+        - verification
+        - refactor
+        - tooling
+        - ambiguity
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - contracts
+        - engine
+        - cards
+        - server
+        - client
+        - replay
+        - database
+        - infra
+        - docs
+        - security
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - critical
+        - high
+        - medium
+        - low
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Why this story exists and what outcome it should accomplish
+    validations:
+      required: true
+  - type: textarea
+    id: spec_refs
+    attributes:
+      label: Authoritative spec refs
+      description: One `doc_id.sNNN (Heading)` per line
+      placeholder: |
+        07-match-server-protocol.s010 (Timers)
+        11-testing-quality.s013 (Protocol tests)
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: One bullet per line
+    validations:
+      required: true
+  - type: textarea
+    id: non_scope
+    attributes:
+      label: Out of scope
+      description: One bullet per line
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: One story ID or prerequisite per line
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: One reviewable criterion per line
+    validations:
+      required: true
+  - type: textarea
+    id: required_tests
+    attributes:
+      label: Required tests
+      description: One test expectation per line
+    validations:
+      required: true
+  - type: dropdown
+    id: ambiguity_policy
+    attributes:
+      label: Ambiguity policy
+      options:
+        - fail_and_escalate
+        - implement_if_clearly_implied
+    validations:
+      required: true

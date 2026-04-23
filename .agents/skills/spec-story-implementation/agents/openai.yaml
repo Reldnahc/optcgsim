@@ -1,0 +1,5 @@
+interface:
+  display_name: "Spec story implementation"
+  short_description: "Implement one approved OPTCG story without scope creep"
+policy:
+  allow_implicit_invocation: false

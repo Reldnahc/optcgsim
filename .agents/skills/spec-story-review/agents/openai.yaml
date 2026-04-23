@@ -1,0 +1,5 @@
+interface:
+  display_name: "Spec story review"
+  short_description: "Review one patch against one approved OPTCG story"
+policy:
+  allow_implicit_invocation: false

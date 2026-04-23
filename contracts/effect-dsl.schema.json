@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optcg-sim.local/schemas/effect-dsl.v6.schema.json",
+  "title": "OPTCG Effect DSL v6",
+  "description": "Canonical JSON Schema for review-time validation of card effect definitions. TypeScript remains the implementation contract; this schema is used for repository fixtures and CI validation.",
+  "type": "object",
+  "required": ["cardId", "implementationStatus", "effects", "metadata"],
+  "additionalProperties": false,
+  "properties": {
+    "cardId": { "$ref": "#/$defs/cardId" },
+    "implementationStatus": { "$ref": "#/$defs/cardSupportStatus" },
+    "effects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/effectBlock" }
+    },
+    "metadata": { "$ref": "#/$defs/effectDefinitionMetadata" }
+  },
+  "$defs": {
+    "cardId": { "type": "string", "pattern": "^[A-Z0-9-]+$" },
+    "effectId": { "type": "string", "minLength": 1 },
+    "sha256": { "type": "string", "pattern": "^sha256:[a-fA-F0-9]{64}$" },
+    "playerRef": { "enum": ["self", "opponent", "turnPlayer", "nonTurnPlayer", "owner", "controller"] },
+    "comparator": { "enum": ["eq", "neq", "gt", "gte", "lt", "lte"] },
+    "zone": { "enum": ["deck", "donDeck", "hand", "trash", "leaderArea", "characterArea", "stageArea", "costArea", "life", "attached", "noZone"] },
+    "visibility": { "enum": ["bothPlayers", "chooserOnly", "ownerOnly", "controllerOnly", "hidden", "replayOnly"] },
+    "cardCategory": { "enum": ["leader", "character", "event", "stage", "don"] },
+    "color": { "enum": ["red", "green", "blue", "purple", "black", "yellow"] },
+    "attribute": { "enum": ["slash", "strike", "ranged", "special", "wisdom"] },
+    "keyword": { "enum": ["rush", "blocker", "doubleAttack", "banish", "counter", "trigger", "donX", "cannotBeKOd", "cannotAttack", "custom"] },
+    "cardSupportStatus": { "enum": ["vanilla-confirmed", "implemented-dsl", "implemented-custom", "unsupported", "banned-in-simulator"] },
+    "effectCategory": { "enum": ["auto", "activate", "permanent", "replacement"] },
+    "failurePolicy": { "enum": ["doAsMuchAsPossible", "requiresAll", "skipIfNoLegalTarget", "optionalIfPossible"] },
+    "sourcePresencePolicy": { "enum": ["mustRemainInSameZone", "resolveFromDestinationZone", "resolveFromLastKnownInformation", "noSourceRequired"] },
+    "numericFilter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "op": { "$ref": "#/$defs/comparator" },
+        "value": { "type": "number" },
+        "min": { "type": "number" },
+        "max": { "type": "number" }
+      },
+      "anyOf": [
+        { "required": ["op", "value"] },
+        { "required": ["min"] },
+        { "required": ["max"] }
+      ]
+    },
+    "cardFilter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cardIds": { "type": "array", "items": { "$ref": "#/$defs/cardId" }, "uniqueItems": true },
+        "names": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "nameContains": { "type": "string" },
+        "nameNot": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "categories": { "type": "array", "items": { "$ref": "#/$defs/cardCategory" }, "uniqueItems": true },
+        "colorsAny": { "type": "array", "items": { "$ref": "#/$defs/color" }, "uniqueItems": true },
+        "colorsAll": { "type": "array", "items": { "$ref": "#/$defs/color" }, "uniqueItems": true },
+        "typesAny": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "typesAll": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "attributesAny": { "type": "array", "items": { "$ref": "#/$defs/attribute" }, "uniqueItems": true },
+        "attributesAll": { "type": "array", "items": { "$ref": "#/$defs/attribute" }, "uniqueItems": true },
+        "cost": { "$ref": "#/$defs/numericFilter" },
+        "power": { "$ref": "#/$defs/numericFilter" },
+        "counter": { "$ref": "#/$defs/numericFilter" },
+        "hasKeywords": { "type": "array", "items": { "$ref": "#/$defs/keyword" }, "uniqueItems": true },
+        "lacksKeywords": { "type": "array", "items": { "$ref": "#/$defs/keyword" }, "uniqueItems": true },
+        "state": { "enum": ["active", "rested", "attached"] },
+        "owner": { "$ref": "#/$defs/playerRef" },
+        "controller": { "$ref": "#/$defs/playerRef" },
+        "excludeSelf": { "type": "boolean" },
+        "custom": { "type": "string" }
+      }
+    },
+    "target": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "self" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "myLeader" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "opponentLeader" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "attacker" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "attackTarget" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "blocker" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "triggerCard" } } },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "zone", "player"],
+          "properties": {
+            "type": { "const": "all" },
+            "zone": { "$ref": "#/$defs/zone" },
+            "player": { "$ref": "#/$defs/playerRef" },
+            "filter": { "$ref": "#/$defs/cardFilter" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "request"],
+          "properties": {
+            "type": { "const": "choose" },
+            "request": { "$ref": "#/$defs/targetRequest" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "selectionId"],
+          "properties": {
+            "type": { "const": "selection" },
+            "selectionId": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "targetRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timing", "chooser", "zone", "player", "min", "max", "allowFewerIfUnavailable"],
+      "properties": {
+        "timing": { "enum": ["onActivation", "onResolution"] },
+        "chooser": { "$ref": "#/$defs/playerRef" },
+        "zone": { "$ref": "#/$defs/zone" },
+        "player": { "$ref": "#/$defs/playerRef" },
+        "filter": { "$ref": "#/$defs/cardFilter" },
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 0 },
+        "allowFewerIfUnavailable": { "type": "boolean" },
+        "visibility": { "enum": ["public", "privateToChooser"] }
+      }
+    },
+    "replacementTrigger": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["type", "target"], "properties": { "type": { "const": "wouldBeKOd" }, "target": { "$ref": "#/$defs/target" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "target"], "properties": { "type": { "const": "wouldTakeDamage" }, "target": { "$ref": "#/$defs/target" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "target"], "properties": { "type": { "const": "wouldBeTrashed" }, "target": { "$ref": "#/$defs/target" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "player"], "properties": { "type": { "const": "wouldDraw" }, "player": { "$ref": "#/$defs/playerRef" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "target"], "properties": { "type": { "const": "wouldMoveZone" }, "from": { "$ref": "#/$defs/zone" }, "to": { "$ref": "#/$defs/zone" }, "target": { "$ref": "#/$defs/target" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "event"], "properties": { "type": { "const": "custom" }, "event": { "type": "string" } } }
+      ]
+    },
+    "trigger": {
+      "oneOf": [
+        { "type": "object", "required": ["type"], "additionalProperties": false, "properties": { "type": { "enum": ["onPlay", "whenAttacking", "onOpponentAttack", "onBlock", "onKO", "endOfYourTurn", "endOfOpponentTurn", "trigger", "activateMain", "main", "counter", "permanent", "startOfGame", "startOfYourTurn", "startOfMainPhase", "endOfBattle"] } } },
+        { "type": "object", "required": ["type", "count"], "additionalProperties": false, "properties": { "type": { "const": "donAttach" }, "count": { "type": "integer", "minimum": 1 } } },
+        { "type": "object", "required": ["type", "replacement"], "additionalProperties": false, "properties": { "type": { "const": "replacement" }, "replacement": { "$ref": "#/$defs/replacementTrigger" } } },
+        { "type": "object", "required": ["type", "event"], "additionalProperties": false, "properties": { "type": { "const": "custom" }, "event": { "type": "string" } } }
+      ]
+    },
+    "condition": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["type", "target", "op", "value"], "properties": { "type": { "const": "attachedDonCount" }, "target": { "$ref": "#/$defs/target" }, "op": { "$ref": "#/$defs/comparator" }, "value": { "type": "integer", "minimum": 0 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "min"], "properties": { "type": { "const": "donCount" }, "target": { "$ref": "#/$defs/target" }, "min": { "type": "integer", "minimum": 0 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "enum": ["yourTurn", "opponentTurn", "sourceStillInZone"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "player", "op", "value"], "properties": { "type": { "enum": ["lifeCount", "handCount"] }, "player": { "$ref": "#/$defs/playerRef" }, "op": { "$ref": "#/$defs/comparator" }, "value": { "type": "integer" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "conditions"], "properties": { "type": { "const": "and" }, "conditions": { "type": "array", "items": { "$ref": "#/$defs/condition" }, "minItems": 1 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "conditions"], "properties": { "type": { "const": "or" }, "conditions": { "type": "array", "items": { "$ref": "#/$defs/condition" }, "minItems": 1 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "condition"], "properties": { "type": { "const": "not" }, "condition": { "$ref": "#/$defs/condition" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "check"], "properties": { "type": { "const": "custom" }, "check": { "type": "string" } } }
+      ]
+    },
+    "cost": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["type", "count"], "properties": { "type": { "enum": ["restDon", "returnDon"] }, "count": { "type": "integer", "minimum": 1 }, "chooser": { "$ref": "#/$defs/playerRef" }, "sources": { "type": "array", "items": { "enum": ["costArea", "attachedToLeader", "attachedToCharacters"] }, "uniqueItems": true } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "enum": ["restSelf", "trashSelf"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "count", "chooser"], "properties": { "type": { "enum": ["trashFromHand", "trashFromField", "discard"] }, "count": { "type": "integer", "minimum": 1 }, "filter": { "$ref": "#/$defs/cardFilter" }, "chooser": { "$ref": "#/$defs/playerRef" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "costs"], "properties": { "type": { "const": "sequence" }, "costs": { "type": "array", "items": { "$ref": "#/$defs/cost" }, "minItems": 1 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "options"], "properties": { "type": { "const": "chooseOne" }, "options": { "type": "array", "items": { "$ref": "#/$defs/cost" }, "minItems": 1 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "action"], "properties": { "type": { "const": "custom" }, "action": { "type": "string" } } }
+      ]
+    },
+    "duration": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "enum": ["thisAction", "thisBattle", "thisTurn", "whileSourceOnField", "permanent"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "untilEndOfTurn" }, "whoseTurn": { "enum": ["current", "sourceController", "targetController"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "player"], "properties": { "type": { "const": "untilStartOfNextTurn" }, "player": { "$ref": "#/$defs/playerRef" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "condition"], "properties": { "type": { "const": "whileConditionTrue" }, "condition": { "$ref": "#/$defs/condition" } } }
+      ]
+    },
+    "cardSelectionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chooser", "min", "max", "allowFewerIfUnavailable", "visibility"],
+      "properties": {
+        "chooser": { "$ref": "#/$defs/playerRef" },
+        "zone": { "$ref": "#/$defs/zone" },
+        "player": { "$ref": "#/$defs/playerRef" },
+        "setId": { "type": "string" },
+        "filter": { "$ref": "#/$defs/cardFilter" },
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 0 },
+        "allowFewerIfUnavailable": { "type": "boolean" },
+        "visibility": { "enum": ["public", "privateToChooser", "replayOnly"] },
+        "saveAs": { "type": "string" }
+      }
+    },
+    "effectOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "effect"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "effect": { "$ref": "#/$defs/effect" },
+        "availability": { "enum": ["available", "unavailable"] }
+      }
+    },
+    "sequencedEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effect", "connector"],
+      "properties": {
+        "id": { "type": "string" },
+        "effect": { "$ref": "#/$defs/effect" },
+        "connector": { "enum": ["always", "then", "ifPreviousSucceeded", "ifYouDo", "ifPossible"] },
+        "saveResultAs": { "type": "string" }
+      }
+    },
+    "searchRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["zone", "player", "filter", "min", "max", "destination", "revealTo"],
+      "properties": {
+        "zone": { "enum": ["deck", "trash", "life"] },
+        "player": { "$ref": "#/$defs/playerRef" },
+        "lookCount": { "type": "integer", "minimum": 1 },
+        "filter": { "$ref": "#/$defs/cardFilter" },
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 0 },
+        "destination": { "$ref": "#/$defs/zone" },
+        "revealTo": { "$ref": "#/$defs/visibility" },
+        "remainingCards": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["destination", "position", "order"],
+          "properties": {
+            "destination": { "$ref": "#/$defs/zone" },
+            "position": { "enum": ["top", "bottom"] },
+            "order": { "enum": ["ownerChoice", "random", "original"] }
+          }
+        },
+        "shuffleAfter": { "type": "boolean" }
+      }
+    },
+    "effect": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["type", "count", "player"], "properties": { "type": { "enum": ["draw", "drawUpTo", "addDon", "attachDon", "returnDon"] }, "count": { "type": "integer", "minimum": 0 }, "player": { "$ref": "#/$defs/playerRef" }, "target": { "$ref": "#/$defs/target" }, "sources": { "type": "array", "items": { "enum": ["costArea", "attachedToLeader", "attachedToCharacters"] }, "uniqueItems": true } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "request"], "properties": { "type": { "const": "search" }, "request": { "$ref": "#/$defs/searchRequest" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "player", "count"], "properties": { "type": { "const": "lookAtTop" }, "player": { "$ref": "#/$defs/playerRef" }, "count": { "type": "integer", "minimum": 1 }, "saveAs": { "type": "string" }, "visibility": { "$ref": "#/$defs/visibility" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "player", "count", "saveAs", "visibility"], "properties": { "type": { "const": "revealTop" }, "player": { "$ref": "#/$defs/playerRef" }, "count": { "type": "integer", "minimum": 1 }, "saveAs": { "type": "string" }, "visibility": { "$ref": "#/$defs/visibility" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "request"], "properties": { "type": { "const": "selectCards" }, "request": { "$ref": "#/$defs/cardSelectionRequest" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "set", "chooser", "min", "max", "saveAs"], "properties": { "type": { "const": "selectFromSet" }, "set": { "type": "string" }, "chooser": { "$ref": "#/$defs/playerRef" }, "min": { "type": "integer", "minimum": 0 }, "max": { "type": "integer", "minimum": 0 }, "filter": { "$ref": "#/$defs/cardFilter" }, "saveAs": { "type": "string" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "selection", "from", "to"], "properties": { "type": { "const": "moveSelected" }, "selection": { "type": "string" }, "from": { "anyOf": [ { "$ref": "#/$defs/zone" }, { "type": "string" } ] }, "to": { "$ref": "#/$defs/zone" }, "position": { "enum": ["top", "bottom"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "set", "player", "position", "order", "faceDown"], "properties": { "type": { "const": "returnUnselectedToDeck" }, "set": { "type": "string" }, "player": { "$ref": "#/$defs/playerRef" }, "position": { "enum": ["top", "bottom"] }, "order": { "enum": ["original", "ownerChoice", "random"] }, "faceDown": { "type": "boolean" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "target"], "properties": { "type": { "enum": ["trash", "ko", "rest", "activate"] }, "target": { "$ref": "#/$defs/target" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "source", "player", "filter"], "properties": { "type": { "const": "play" }, "source": { "$ref": "#/$defs/zone" }, "player": { "$ref": "#/$defs/playerRef" }, "filter": { "$ref": "#/$defs/cardFilter" }, "costModifier": { "type": "integer" }, "enterRested": { "type": "boolean" }, "ignoreCost": { "type": "boolean" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "selection"], "properties": { "type": { "const": "playSelected" }, "selection": { "type": "string" }, "enterRested": { "type": "boolean" }, "ignoreCost": { "type": "boolean" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "target", "value", "duration"], "properties": { "type": { "enum": ["modifyPower", "setBasePower", "modifyCost", "setBaseCost"] }, "target": { "$ref": "#/$defs/target" }, "filter": { "$ref": "#/$defs/cardFilter" }, "value": { "type": "integer" }, "duration": { "$ref": "#/$defs/duration" }, "player": { "$ref": "#/$defs/playerRef" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "target", "keyword", "duration"], "properties": { "type": { "enum": ["giveKeyword", "removeKeyword"] }, "target": { "$ref": "#/$defs/target" }, "keyword": { "$ref": "#/$defs/keyword" }, "duration": { "$ref": "#/$defs/duration" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "count", "player", "source"], "properties": { "type": { "const": "addLife" }, "count": { "type": "integer", "minimum": 1 }, "player": { "$ref": "#/$defs/playerRef" }, "source": { "enum": ["deck", "hand", "trash"] }, "faceUp": { "type": "boolean" }, "position": { "enum": ["top", "bottom"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "target", "player", "count"], "properties": { "type": { "const": "damage" }, "target": { "const": "leader" }, "player": { "$ref": "#/$defs/playerRef" }, "count": { "type": "integer", "minimum": 1 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "effects"], "properties": { "type": { "const": "sequence" }, "effects": { "type": "array", "items": { "$ref": "#/$defs/sequencedEffect" }, "minItems": 1 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "chooser", "options", "min", "max"], "properties": { "type": { "const": "choice" }, "chooser": { "$ref": "#/$defs/playerRef" }, "options": { "type": "array", "items": { "$ref": "#/$defs/effectOption" }, "minItems": 1 }, "min": { "type": "integer", "minimum": 0 }, "max": { "type": "integer", "minimum": 0 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "if", "then"], "properties": { "type": { "const": "conditional" }, "if": { "$ref": "#/$defs/condition" }, "then": { "$ref": "#/$defs/effect" }, "else": { "$ref": "#/$defs/effect" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "handler"], "properties": { "type": { "const": "custom" }, "handler": { "type": "string" }, "payload": { "type": "object" } } }
+      ]
+    },
+    "effectBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "trigger", "effect"],
+      "properties": {
+        "id": { "$ref": "#/$defs/effectId" },
+        "category": { "$ref": "#/$defs/effectCategory" },
+        "trigger": { "$ref": "#/$defs/trigger" },
+        "condition": { "$ref": "#/$defs/condition" },
+        "conditionTiming": { "enum": ["activation", "resolution", "both"] },
+        "cost": { "$ref": "#/$defs/cost" },
+        "optional": { "type": "boolean" },
+        "oncePerTurn": { "type": "boolean" },
+        "failurePolicy": { "$ref": "#/$defs/failurePolicy" },
+        "sourcePresencePolicy": { "$ref": "#/$defs/sourcePresencePolicy" },
+        "effect": { "$ref": "#/$defs/effect" }
+      }
+    },
+    "effectDefinitionMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceTextHash", "behaviorHash", "rulesVersion", "effectDefinitionsVersion", "tested"],
+      "properties": {
+        "sourceTextHash": { "$ref": "#/$defs/sha256" },
+        "behaviorHash": { "$ref": "#/$defs/sha256" },
+        "rulesVersion": { "type": "string" },
+        "effectDefinitionsVersion": { "type": "string" },
+        "customHandlerVersion": { "type": "string" },
+        "generatedBy": { "enum": ["manual", "rule-parser", "llm-assisted"] },
+        "reviewedBy": { "type": "string" },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "tested": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}
