@@ -871,6 +871,15 @@ def get_issue_node_id(repo: str, issue_number: int) -> str:
 
 
 
+def resolve_github_owner_type(owner: str) -> str:
+    payload = gh_api_json(["api", f"users/{owner}"])
+    owner_type = str(payload.get("type", "")).strip().lower()
+    if owner_type not in {"user", "organization"}:
+        raise GitHubSyncError(f"Could not resolve GitHub owner type for {owner!r}")
+    return owner_type
+
+
+
 def resolve_project(repo_config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     project_config = repo_config.get("project") or {}
     owner = project_config.get("owner")
@@ -878,85 +887,49 @@ def resolve_project(repo_config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if not owner or number is None:
         return None
 
-    graphql_query = """
-    query($owner: String!, $number: Int!) {
-      organization(login: $owner) {
-        projectV2(number: $number) {
+    owner_type = resolve_github_owner_type(str(owner))
+    owner_field = "organization" if owner_type == "organization" else "user"
+    graphql_query = f"""
+    query($owner: String!, $number: Int!) {{
+      {owner_field}(login: $owner) {{
+        projectV2(number: $number) {{
           id
           title
-          fields(first: 100) {
-            nodes {
+          fields(first: 100) {{
+            nodes {{
               __typename
-              ... on ProjectV2FieldCommon {
+              ... on ProjectV2FieldCommon {{
                 id
                 name
                 dataType
-              }
-              ... on ProjectV2SingleSelectField {
+              }}
+              ... on ProjectV2SingleSelectField {{
                 id
                 name
                 dataType
-                options {
+                options {{
                   id
                   name
-                }
-              }
-              ... on ProjectV2IterationField {
+                }}
+              }}
+              ... on ProjectV2IterationField {{
                 id
                 name
                 dataType
-                configuration {
-                  iterations {
+                configuration {{
+                  iterations {{
                     id
                     title
                     startDate
                     duration
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      user(login: $owner) {
-        projectV2(number: $number) {
-          id
-          title
-          fields(first: 100) {
-            nodes {
-              __typename
-              ... on ProjectV2FieldCommon {
-                id
-                name
-                dataType
-              }
-              ... on ProjectV2SingleSelectField {
-                id
-                name
-                dataType
-                options {
-                  id
-                  name
-                }
-              }
-              ... on ProjectV2IterationField {
-                id
-                name
-                dataType
-                configuration {
-                  iterations {
-                    id
-                    title
-                    startDate
-                    duration
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+                  }}
+                }}
+              }}
+            }}
+          }}
+        }}
+      }}
+    }}
     """.strip()
     payload = gh_api_json(
         [
@@ -971,14 +944,8 @@ def resolve_project(repo_config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         ]
     )
     data = payload.get("data") or {}
-    project = None
-    owner_type = None
-    if data.get("organization") and data["organization"].get("projectV2"):
-        project = data["organization"]["projectV2"]
-        owner_type = "organization"
-    elif data.get("user") and data["user"].get("projectV2"):
-        project = data["user"]["projectV2"]
-        owner_type = "user"
+    project_owner_payload = data.get(owner_field) or {}
+    project = project_owner_payload.get("projectV2")
     if project is None:
         raise GitHubSyncError(f"Could not resolve project owner={owner!r} number={number!r}")
     project["owner"] = owner
