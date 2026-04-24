@@ -146,22 +146,6 @@ function runCommand(args: string[]): {
   stdout: string;
   stderr: string;
 } {
-  if (process.platform === "win32" && args[0] === "git") {
-    const result = spawnSync(
-      process.env["ComSpec"] ?? "cmd.exe",
-      ["/d", "/s", "/c", `git ${args.slice(1).join(" ")}`],
-      {
-        cwd: ROOT,
-        encoding: "utf8"
-      }
-    );
-    return {
-      status: result.status ?? 1,
-      stdout: result.stdout ?? "",
-      stderr: result.stderr ?? ""
-    };
-  }
-
   const executable = resolveCommand(args[0]);
   const result = spawnSync(executable, args.slice(1), {
     cwd: ROOT,
