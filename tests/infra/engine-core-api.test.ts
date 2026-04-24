@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   applyAction,
+  computeView,
   createInitialState,
   filterStateForPlayer,
   getLegalActions,
@@ -56,7 +57,7 @@ function runNpmScript(cwd: string, script: string): void {
   });
 }
 
-function concedeAction(playerId: string): Action & { playerId: PlayerId } {
+function concedeAction(playerId: string): Action {
   return {
     type: "concede",
     playerId: asId(playerId)
@@ -618,12 +619,32 @@ describe("engine-core API skeleton", () => {
     const opponentView = filterStateForPlayer(state, asId("p2"));
 
     expect(chooserView.pendingDecision?.type).toBe("confirmTriggerFromLife");
+    expect(
+      chooserView.pendingDecision?.type === "confirmTriggerFromLife"
+        ? chooserView.pendingDecision.card.cardId
+        : undefined
+    ).toBe(asId("life-1"));
     expect(opponentView.pendingDecision).toBeUndefined();
     expect(
       opponentView.pendingDecision?.type === "confirmTriggerFromLife"
         ? opponentView.pendingDecision.card.cardId
         : undefined
     ).toBeUndefined();
+  });
+
+  it("limits computeView combat capability to in-play cards", () => {
+    const state = createInitialState(makeInput());
+    const view = computeView(state);
+    const inPlayId = asId<CardInstance["instanceId"]>("p1-char-1");
+    const handId = asId<CardInstance["instanceId"]>("p1-hand-1");
+    const deckId = asId<CardInstance["instanceId"]>("p1-deck-1");
+
+    expect(view.cards[inPlayId]?.canAttack).toBe(true);
+    expect(view.cards[inPlayId]?.canBlock).toBe(true);
+    expect(view.cards[handId]?.canAttack).toBe(false);
+    expect(view.cards[handId]?.canBlock).toBe(false);
+    expect(view.cards[deckId]?.canAttack).toBe(false);
+    expect(view.cards[deckId]?.canBlock).toBe(false);
   });
 
   it("redacts hidden public decision candidates for non-choosers", () => {
@@ -767,7 +788,8 @@ describe("engine-core API skeleton", () => {
     const legal = getLegalActions(state, asId("p1"));
     expect(legal).toEqual([
       {
-        type: "concede"
+        type: "concede",
+        playerId: asId("p1")
       },
       {
         type: "respondToDecision",
@@ -914,7 +936,8 @@ describe("engine-core API skeleton", () => {
     expect(legal).toEqual(
       expect.arrayContaining([
         {
-          type: "concede"
+          type: "concede",
+          playerId: asId("p1")
         },
         {
           type: "respondToDecision",
@@ -1227,7 +1250,8 @@ describe("engine-core API skeleton", () => {
 
     expect(getLegalActions(state, asId("p1"))).toEqual([
       {
-        type: "concede"
+        type: "concede",
+        playerId: asId("p1")
       },
       {
         type: "respondToDecision",

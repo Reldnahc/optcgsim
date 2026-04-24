@@ -1028,7 +1028,7 @@ export type Action =
       response: DecisionResponse;
     }
   | { type: "endMainPhase" }
-  | { type: "concede" };
+  | { type: "concede"; playerId: PlayerId };
 
 export interface ClientActionEnvelope {
   protocolVersion: string;
@@ -1263,7 +1263,7 @@ export type PublicLegalAction =
     }
   | { type: "respondToDecision"; decisionId: DecisionId }
   | { type: "endMainPhase" }
-  | { type: "concede" };
+  | { type: "concede"; playerId: PlayerId };
 
 export type RevealReason =
   | "play"

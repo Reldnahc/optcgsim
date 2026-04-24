@@ -635,7 +635,10 @@ function toPublicDecision(
       return withOptionalBaseFields({
         ...base,
         type: "confirmTriggerFromLife",
-        card: toPublicDecisionCardRef(pendingDecision.card, viewerId),
+        card:
+          viewerId === pendingDecision.playerId
+            ? toPublicCardRef(pendingDecision.card)
+            : toPublicDecisionCardRef(pendingDecision.card, viewerId),
         options: ["activateTrigger", "addToHand"]
       }) as PublicDecision;
     case "chooseReplacement":
@@ -795,7 +798,7 @@ function toPublicLegalAction(action: Action): PublicLegalAction {
     case "endMainPhase":
       return { type: "endMainPhase" };
     case "concede":
-      return { type: "concede" };
+      return { type: "concede", playerId: action.playerId };
     default:
       throw new Error(
         `Unsupported action projection: ${(action as Action).type}`
@@ -1698,7 +1701,7 @@ export function getLegalActions(
     return [];
   }
 
-  const legal: Action[] = [{ type: "concede" }];
+  const legal: Action[] = [{ type: "concede", playerId }];
 
   if (state.pendingDecision) {
     if (state.pendingDecision.playerId !== playerId) {
@@ -1727,10 +1730,9 @@ export function applyAction(state: GameState, action: Action): EngineResult {
   }
 
   if (action.type === "concede") {
-    const concedingPlayerId = (action as Action & { playerId?: PlayerId })
-      .playerId;
-    if (!concedingPlayerId || !(concedingPlayerId in state.players)) {
-      throw new Error("Concede requires the caller playerId context");
+    const concedingPlayerId = action.playerId;
+    if (!(concedingPlayerId in state.players)) {
+      throw new Error("Concede references unknown player");
     }
     const nextState = cloneStateForMutation(state);
     nextState.status = "completed";
@@ -1861,12 +1863,16 @@ export function computeView(state: GameState): ComputedGameView {
   const cards = Object.fromEntries(
     collectAllCards(state).map((card) => {
       const metadata = resolveCardMetadata(state, card);
+      const inPlay =
+        card.zone.zone === "leaderArea" || card.zone.zone === "characterArea";
       const computed: ComputedCardView = {
         instanceId: card.instanceId,
         cardId: card.cardId,
         keywords: [...metadata.keywords],
-        canAttack: card.state === "active",
-        canBlock: metadata.keywords.includes("blocker"),
+        canAttack: inPlay && card.state === "active",
+        canBlock:
+          card.zone.zone === "characterArea" &&
+          metadata.keywords.includes("blocker"),
         cannotBeAttacked: false,
         protectedFrom: []
       };
