@@ -1,0 +1,14 @@
+{
+  "name": "@optcg/client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "corepack pnpm exec tsc -p tsconfig.json --noEmit false --outDir dist",
+    "typecheck": "corepack pnpm exec tsc -p tsconfig.json",
+    "lint": "corepack pnpm exec eslint src",
+    "test": "corepack pnpm exec vitest run --passWithNoTests",
+    "test:watch": "corepack pnpm exec vitest --passWithNoTests",
+    "coverage": "corepack pnpm exec vitest run --coverage --passWithNoTests"
+  }
+}

@@ -4,13 +4,33 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
-    "noEmit": true,
+    "noImplicitAny": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "useUnknownInCatchVariables": true,
+    "noEmitOnError": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "verbatimModuleSyntax": true
-  },
-  "include": [
-    "tools/**/*.ts",
-    "contracts/**/*.ts"
-  ]
+    "verbatimModuleSyntax": true,
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "@optcg/types": ["packages/types/src/index.ts"],
+      "@optcg/engine-core": ["packages/engine-core/src/index.ts"],
+      "@optcg/view-engine": ["packages/view-engine/src/index.ts"],
+      "@optcg/effects": ["packages/effects/src/index.ts"],
+      "@optcg/cards": ["packages/cards/src/index.ts"],
+      "@optcg/match-server": ["packages/match-server/src/index.ts"],
+      "@optcg/api": ["packages/api/src/index.ts"],
+      "@optcg/client": ["packages/client/src/index.ts"],
+      "@optcg/bot": ["packages/bot/src/index.ts"],
+      "@optcg/testing": ["packages/testing/src/index.ts"],
+      "@optcg/testing/hidden-state": [
+        "packages/testing/src/hidden-state/index.ts"
+      ]
+    }
+  }
 }

@@ -1,0 +1,12 @@
+{
+  "cardId": "OP01-001",
+  "implementationStatus": "vanilla-confirmed",
+  "effects": [],
+  "metadata": {
+    "sourceTextHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "behaviorHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "rulesVersion": "v6",
+    "effectDefinitionsVersion": "v6",
+    "tested": false
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": [
+    "contracts/**/*.ts",
+    "packages/**/*.ts",
+    "tests/**/*.ts",
+    "fixtures/**/*.ts",
+    "vitest.config.ts",
+    "tools/check-contract-and-schema.ts",
+    "tools/check-hidden-info-boundaries.ts",
+    "tools/check-package-boundaries.ts"
+  ]
+}

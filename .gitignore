@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.pnpm-store/
+.turbo/
+.DS_Store
+stories/review/bridge.stdout.log
+stories/review/bridge.stderr.log

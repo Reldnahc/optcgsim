@@ -1,0 +1,143 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT = path.resolve(__dirname, "..");
+
+interface BoundaryViolation {
+  file: string;
+  importTarget: string;
+  message: string;
+}
+
+interface BoundaryCheckResult {
+  productionViolations: BoundaryViolation[];
+  negativeFixtureViolations: BoundaryViolation[];
+}
+
+function printJson(payload: unknown): void {
+  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+}
+
+const IMPORT_RE = /from\s+["']([^"']+)["']|import\s+["']([^"']+)["']/g;
+
+function scanFiles(rootDir: string): string[] {
+  const absoluteRoot = path.resolve(ROOT, rootDir);
+  if (!fs.existsSync(absoluteRoot)) {
+    return [];
+  }
+  const results: string[] = [];
+  const walk = (currentDir: string): void => {
+    for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
+      const absolutePath = path.join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        walk(absolutePath);
+        continue;
+      }
+      if (entry.isFile() && absolutePath.endsWith(".ts")) {
+        results.push(absolutePath);
+      }
+    }
+  };
+  walk(absoluteRoot);
+  return results.sort();
+}
+
+function collectImports(filePath: string): string[] {
+  const text = fs.readFileSync(filePath, "utf8");
+  const imports: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = IMPORT_RE.exec(text)) !== null) {
+    const target = match[1] ?? match[2];
+    if (target) {
+      imports.push(target);
+    }
+  }
+  return imports;
+}
+
+function relative(filePath: string): string {
+  return path.relative(ROOT, filePath).replace(/\\/g, "/");
+}
+
+function boundaryViolationsForFile(filePath: string): BoundaryViolation[] {
+  const rel = relative(filePath);
+  const imports = collectImports(filePath);
+  const violations: BoundaryViolation[] = [];
+  for (const importTarget of imports) {
+    if (rel.startsWith("packages/engine-core/src/")) {
+      if (
+        [
+          "react",
+          "react-dom",
+          "ws",
+          "redis",
+          "ioredis",
+          "pg",
+          "postgres",
+          "axios",
+          "node-fetch",
+          "undici",
+          "@optcg/client",
+          "@optcg/api",
+          "@optcg/match-server"
+        ].includes(importTarget)
+      ) {
+        violations.push({
+          file: rel,
+          importTarget,
+          message:
+            "engine-core may not import browser, transport, database, or server/client packages"
+        });
+      }
+    }
+    if (
+      rel.startsWith("packages/view-engine/src/") ||
+      rel.startsWith("packages/client/src/")
+    ) {
+      if (["@optcg/api", "@optcg/match-server"].includes(importTarget)) {
+        violations.push({
+          file: rel,
+          importTarget,
+          message:
+            "client/view-engine may not import server-only workspace packages"
+        });
+      }
+    }
+    if (rel.startsWith("fixtures/regressions/boundaries/")) {
+      if (["@optcg/api", "@optcg/match-server"].includes(importTarget)) {
+        violations.push({
+          file: rel,
+          importTarget,
+          message:
+            "negative boundary fixture correctly violates package boundaries"
+        });
+      }
+    }
+  }
+  return violations;
+}
+
+export function checkPackageBoundaries(): BoundaryCheckResult {
+  const productionFiles = scanFiles("packages");
+  const fixtureFiles = scanFiles("fixtures/regressions/boundaries");
+  return {
+    productionViolations: productionFiles.flatMap(boundaryViolationsForFile),
+    negativeFixtureViolations: fixtureFiles.flatMap(boundaryViolationsForFile)
+  };
+}
+
+function main(): void {
+  const result = checkPackageBoundaries();
+  const ok =
+    result.productionViolations.length === 0 &&
+    result.negativeFixtureViolations.length > 0;
+  printJson({ ok, ...result });
+  process.exit(ok ? 0 : 1);
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main();
+}

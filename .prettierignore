@@ -1,0 +1,17 @@
+node_modules
+dist
+coverage
+.pnpm-store
+agent-packets/
+specs/
+stories/.sync/
+stories/audits/
+stories/review/
+stories/tranches/
+stories/generated-review.json
+section-index.json
+spec-manifest.json
+pnpm-lock.yaml
+fixtures/poneglyph/
+stories/review/bridge.stdout.log
+stories/review/bridge.stderr.log
