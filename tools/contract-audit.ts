@@ -67,13 +67,10 @@ function runCommand(
   stdout: string;
   stderr: string;
 } {
-  if (
-    process.platform === "win32" &&
-    (command === "git" || command === "npm" || command === "npm.cmd")
-  ) {
+  if (process.platform === "win32" && command === "git") {
     const result = spawnSync(
       process.env["ComSpec"] ?? "cmd.exe",
-      ["/d", "/s", "/c", `${command} ${args.join(" ")}`],
+      ["/d", "/s", "/c", `git ${args.join(" ")}`],
       {
         cwd: ROOT,
         encoding: "utf8"
