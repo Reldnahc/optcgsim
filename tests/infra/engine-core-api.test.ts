@@ -11,6 +11,7 @@ import {
   resumeDecision
 } from "../../packages/engine-core/src/index.ts";
 import type {
+  Action,
   CardCategory,
   CardColor,
   CardInstance,
@@ -53,6 +54,13 @@ function runNpmScript(cwd: string, script: string): void {
     cwd,
     stdio: "pipe"
   });
+}
+
+function concedeAction(playerId: string): Action & { playerId: PlayerId } {
+  return {
+    type: "concede",
+    playerId: asId(playerId)
+  };
 }
 
 function makeResolvedCard(
@@ -374,9 +382,17 @@ describe("engine-core API skeleton", () => {
       getLegalActions(state, asId("p2")).map((action) => action.type)
     ).toContain("concede");
 
-    const result = applyAction(state, { type: "concede" });
+    const result = applyAction(state, concedeAction("p1"));
     expect(result.state.status).toBe("completed");
     expect(result.state.winner).toBe(asId("p2"));
+  });
+
+  it("awards the win to the non-conceding player when the non-active player concedes", () => {
+    const state = createInitialState(makeInput());
+
+    const result = applyAction(state, concedeAction("p2"));
+    expect(result.state.status).toBe("completed");
+    expect(result.state.winner).toBe(asId("p1"));
   });
 
   it("rejects actions while the match is frozen", () => {
@@ -387,7 +403,7 @@ describe("engine-core API skeleton", () => {
     );
 
     expect(getLegalActions(state, asId("p1"))).toEqual([]);
-    expect(() => applyAction(state, { type: "concede" })).toThrow(/frozen/);
+    expect(() => applyAction(state, concedeAction("p1"))).toThrow(/frozen/);
   });
 
   it("rejects actions once the match is completed", () => {
@@ -610,6 +626,57 @@ describe("engine-core API skeleton", () => {
     ).toBeUndefined();
   });
 
+  it("redacts hidden public decision candidates for non-choosers", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-hidden-public-candidates"),
+          type: "selectCards",
+          playerId: asId("p1"),
+          visibility: { type: "public" },
+          request: {
+            chooser: "opponent",
+            zone: "hand",
+            player: "self",
+            min: 1,
+            max: 1,
+            allowFewerIfUnavailable: false,
+            visibility: "public"
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-hand-1"),
+              cardId: asId("event-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "hand",
+                playerId: asId("p1"),
+                index: 0
+              }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    const opponentView = filterStateForPlayer(state, asId("p2"));
+
+    expect(chooserView.pendingDecision?.type).toBe("selectCards");
+    expect(
+      chooserView.pendingDecision?.type === "selectCards"
+        ? chooserView.pendingDecision.candidates[0]?.card.instanceId
+        : undefined
+    ).toBe(asId("p1-hand-1"));
+    expect(opponentView.pendingDecision?.type).toBe("selectCards");
+    expect(
+      opponentView.pendingDecision?.type === "selectCards"
+        ? opponentView.pendingDecision.candidates
+        : []
+    ).toEqual([]);
+  });
+
   it("runs invariant checks after actions in test mode", () => {
     const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
     process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
@@ -620,7 +687,7 @@ describe("engine-core API skeleton", () => {
 
     try {
       const state = createInitialState(input);
-      expect(() => applyAction(state, { type: "concede" })).toThrow(
+      expect(() => applyAction(state, concedeAction("p1"))).toThrow(
         /multiple locations/
       );
     } finally {
@@ -672,7 +739,7 @@ describe("engine-core API skeleton", () => {
 
     try {
       const state = createInitialState(input);
-      expect(() => applyAction(state, { type: "concede" })).toThrow(
+      expect(() => applyAction(state, concedeAction("p1"))).toThrow(
         /Cost-area card .* inconsistent zone metadata/
       );
     } finally {

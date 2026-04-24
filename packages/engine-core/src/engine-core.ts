@@ -312,6 +312,16 @@ function toPublicDecisionCardRef(
   return base;
 }
 
+function shouldExposeDecisionCandidateToViewer(
+  ref: CardRef,
+  viewerId: PlayerId
+): boolean {
+  return (
+    isZoneIdentityVisible(ref.zone, viewerId) ||
+    isSnapshotVisible(ref.snapshot, viewerId)
+  );
+}
+
 function toPublicPaymentCardRef(ref: CardRef): PublicPaymentCardRef {
   const zone = ref.zone ?? ref.snapshot?.zone;
   if (!zone) {
@@ -581,9 +591,11 @@ function toPublicDecision(
           pendingDecision,
           viewerId
         )
-          ? pendingDecision.candidates.map((candidate) => ({
-              card: toPublicDecisionCardRef(candidate, viewerId)
-            }))
+          ? pendingDecision.candidates.flatMap((candidate) =>
+              shouldExposeDecisionCandidateToViewer(candidate, viewerId)
+                ? [{ card: toPublicDecisionCardRef(candidate, viewerId) }]
+                : []
+            )
           : []
       }) as PublicDecision;
     case "selectCards":
@@ -595,9 +607,11 @@ function toPublicDecision(
           pendingDecision,
           viewerId
         )
-          ? pendingDecision.candidates.map((candidate) => ({
-              card: toPublicDecisionCardRef(candidate, viewerId)
-            }))
+          ? pendingDecision.candidates.flatMap((candidate) =>
+              shouldExposeDecisionCandidateToViewer(candidate, viewerId)
+                ? [{ card: toPublicDecisionCardRef(candidate, viewerId) }]
+                : []
+            )
           : []
       }) as PublicDecision;
     case "chooseEffectOption":
@@ -1713,11 +1727,12 @@ export function applyAction(state: GameState, action: Action): EngineResult {
   }
 
   if (action.type === "concede") {
+    const concedingPlayerId = (action as Action & { playerId?: PlayerId })
+      .playerId;
+    if (!concedingPlayerId || !(concedingPlayerId in state.players)) {
+      throw new Error("Concede requires the caller playerId context");
+    }
     const nextState = cloneStateForMutation(state);
-    const concedingPlayerId =
-      (action as Action & { playerId?: PlayerId }).playerId ??
-      state.pendingDecision?.playerId ??
-      state.turn.activePlayer;
     nextState.status = "completed";
     nextState.winner = getOpponentId(state, concedingPlayerId);
     return finalizeResult(state, nextState, [
