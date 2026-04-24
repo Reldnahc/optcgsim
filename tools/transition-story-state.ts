@@ -73,10 +73,6 @@ function allowsMissingPrForTransition(
 }
 
 function resolveCommand(command: string): string {
-  if (command === "git" && process.platform === "win32") {
-    return "git.exe";
-  }
-
   if (command !== "gh") {
     return command;
   }

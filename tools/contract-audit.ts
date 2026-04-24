@@ -67,9 +67,7 @@ function runCommand(
   stdout: string;
   stderr: string;
 } {
-  const executable =
-    process.platform === "win32" && command === "git" ? "git.exe" : command;
-  const result = spawnSync(executable, args, {
+  const result = spawnSync(command, args, {
     cwd: ROOT,
     encoding: "utf8"
   });
