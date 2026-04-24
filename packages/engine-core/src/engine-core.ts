@@ -439,6 +439,16 @@ function toPublicDefaultResponse(
   }
 }
 
+function shouldExposePaymentCardRefToViewer(
+  ref: CardRef,
+  viewerId: PlayerId
+): boolean {
+  return (
+    isZoneIdentityVisible(ref.zone, viewerId) ||
+    isSnapshotVisible(ref.snapshot, viewerId)
+  );
+}
+
 function minSelectionsRequired(
   min: number,
   candidateCount: number,
@@ -533,14 +543,24 @@ function toPublicDecision(
             max: option.max
           };
           if (option.selectableCards !== undefined) {
-            publicOption.selectableCards = option.selectableCards.map(
-              toPublicPaymentCardRef
-            );
+            const visibleSelectableCards = option.selectableCards
+              .filter((card) =>
+                shouldExposePaymentCardRefToViewer(card, viewerId)
+              )
+              .map(toPublicPaymentCardRef);
+            if (visibleSelectableCards.length > 0) {
+              publicOption.selectableCards = visibleSelectableCards;
+            }
           }
           if (option.selectableDon !== undefined) {
-            publicOption.selectableDon = option.selectableDon.map(
-              toPublicPaymentCardRef
-            );
+            const visibleSelectableDon = option.selectableDon
+              .filter((card) =>
+                shouldExposePaymentCardRefToViewer(card, viewerId)
+              )
+              .map(toPublicPaymentCardRef);
+            if (visibleSelectableDon.length > 0) {
+              publicOption.selectableDon = visibleSelectableDon;
+            }
           }
           return publicOption;
         })
@@ -1650,6 +1670,7 @@ export function getLegalActions(
 ): Action[] {
   if (
     !(playerId in state.players) ||
+    state.status === "frozen" ||
     state.status === "completed" ||
     state.status === "errored"
   ) {
@@ -1675,6 +1696,10 @@ export function getLegalActions(
 }
 
 export function applyAction(state: GameState, action: Action): EngineResult {
+  if (state.status === "frozen") {
+    throw new Error("Actions are not allowed while the match is frozen");
+  }
+
   if (action.type === "respondToDecision") {
     if (
       !state.pendingDecision ||
@@ -1744,6 +1769,10 @@ export function resumeDecision(
   state: GameState,
   response: DecisionResponse
 ): EngineResult {
+  if (state.status === "frozen") {
+    throw new Error("Decisions may not resolve while the match is frozen");
+  }
+
   if (!state.pendingDecision) {
     throw new Error("resumeDecision requires an active pending decision");
   }

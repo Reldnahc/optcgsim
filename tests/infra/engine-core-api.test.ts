@@ -356,6 +356,17 @@ describe("engine-core API skeleton", () => {
     expect(result.state.winner).toBe(asId("p2"));
   });
 
+  it("rejects actions while the match is frozen", () => {
+    const state = createInitialState(
+      makeInput({
+        status: "frozen"
+      })
+    );
+
+    expect(getLegalActions(state, asId("p1"))).toEqual([]);
+    expect(() => applyAction(state, { type: "concede" })).toThrow(/frozen/);
+  });
+
   it("filters hidden information out of PlayerView", () => {
     const state = createInitialState(makeInput());
     const view = filterStateForPlayer(state, asId("p1"));
@@ -474,6 +485,57 @@ describe("engine-core API skeleton", () => {
       selected: [{ instanceId: asId("p1-hand-1") }]
     });
     expect(opponentView.pendingDecision?.defaultResponse).toBeUndefined();
+  });
+
+  it("does not expose hidden hand cards in public pay-cost decisions", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-hidden-pay-cost"),
+          type: "payCost",
+          playerId: asId("p1"),
+          visibility: { type: "public" },
+          cost: { type: "trashFromHand", count: 1, chooser: "self" },
+          options: [
+            {
+              id: "pay-option-hidden",
+              cost: { type: "trashFromHand", count: 1, chooser: "self" },
+              selectableCards: [
+                {
+                  instanceId: asId("p1-hand-1"),
+                  cardId: asId("event-1"),
+                  owner: asId("p1"),
+                  controller: asId("p1"),
+                  zone: {
+                    zone: "hand",
+                    playerId: asId("p1"),
+                    index: 0
+                  }
+                }
+              ],
+              min: 1,
+              max: 1
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    const opponentView = filterStateForPlayer(state, asId("p2"));
+
+    expect(chooserView.pendingDecision?.type).toBe("payCost");
+    expect(
+      chooserView.pendingDecision?.type === "payCost"
+        ? chooserView.pendingDecision.options[0]?.selectableCards
+        : undefined
+    ).toHaveLength(1);
+    expect(opponentView.pendingDecision?.type).toBe("payCost");
+    expect(
+      opponentView.pendingDecision?.type === "payCost"
+        ? opponentView.pendingDecision.options[0]?.selectableCards
+        : undefined
+    ).toBeUndefined();
   });
 
   it("runs invariant checks after actions in test mode", () => {
@@ -1016,6 +1078,15 @@ describe("engine-core API skeleton", () => {
 
       expect(existsSync(resolve(distDir, "index.js"))).toBe(true);
       expect(existsSync(resolve(distDir, "index.d.ts"))).toBe(true);
+
+      execFileSync(
+        process.env["ComSpec"] ?? "cmd.exe",
+        ["/c", "npm.cmd", "run", "typecheck"],
+        {
+          cwd: packageDir,
+          stdio: "pipe"
+        }
+      );
     } finally {
       rmSync(distDir, { recursive: true, force: true });
       rmSync(distTestDir, { recursive: true, force: true });

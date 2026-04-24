@@ -7,6 +7,8 @@ export default [
     ignores: [
       "node_modules/**",
       "dist/**",
+      "**/dist/**",
+      "**/dist_test/**",
       "coverage/**",
       "specs/source-original-pdfs/**",
       "specs/source-official-rules/**",

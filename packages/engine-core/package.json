@@ -13,7 +13,7 @@
   },
   "scripts": {
     "build": "corepack pnpm --filter @optcg/types run build && corepack pnpm exec tsc -p tsconfig.build.json",
-    "typecheck": "corepack pnpm exec tsc -p tsconfig.json",
+    "typecheck": "corepack pnpm --filter @optcg/types run build && corepack pnpm exec tsc -p tsconfig.json",
     "lint": "corepack pnpm exec eslint src",
     "test": "corepack pnpm exec vitest run --passWithNoTests",
     "test:watch": "corepack pnpm exec vitest --passWithNoTests",
