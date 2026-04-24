@@ -378,8 +378,6 @@ describe("@optcg/types API surface", () => {
           type: "cardSelection",
           selected: [
             {
-              controller: playerId,
-              owner: playerId,
               instanceId: asBrand("deck-card-1")
             }
           ]
@@ -463,7 +461,7 @@ describe("@optcg/types API surface", () => {
         }>;
       };
       hiddenCardSelectionResponse: {
-        selected: Array<{ instanceId: string; cardId?: string }>;
+        selected: Array<{ instanceId: string }>;
       };
       lifeTriggerDecision: {
         options: string[];
@@ -496,6 +494,9 @@ describe("@optcg/types API surface", () => {
     expect(payload.message.view.pendingDecision.visibility).toEqual({
       type: "public"
     });
+    expect(["serverOnly", "replayOnly"]).not.toContain(
+      payload.message.view.pendingDecision.visibility.type
+    );
     expect(payload.message.view.pendingDecision.triggers[0]?.label).toBe(
       "Leader trigger"
     );
@@ -524,6 +525,9 @@ describe("@optcg/types API surface", () => {
       type: "private",
       playerIds: ["player-1"]
     });
+    expect(["serverOnly", "replayOnly"]).not.toContain(
+      payload.optionalActivationDecision.visibility.type
+    );
     expect(payload.optionalActivationDecision.timeoutMs).toBe(15000);
     expect(payload.optionalActivationDecision.defaultResponse).toEqual({
       type: "optionalActivationChoice",
@@ -571,8 +575,8 @@ describe("@optcg/types API surface", () => {
       "deck-card-1"
     );
     expect(
-      payload.hiddenCardSelectionResponse.selected[0]?.cardId
-    ).toBeUndefined();
+      Object.keys(payload.hiddenCardSelectionResponse.selected[0] ?? {})
+    ).toEqual(["instanceId"]);
     expect(payload.lifeTriggerDecision.options).toEqual([
       "activateTrigger",
       "addToHand"

@@ -1053,15 +1053,15 @@ export type DecisionResponse =
   | { type: "optionalActivationChoice"; choice: "activate" | "decline" }
   | { type: "lifeTriggerChoice"; choice: "activateTrigger" | "addToHand" }
   | { type: "payment"; selection: CostPaymentSelection }
-  | { type: "targetSelection"; selected: PublicDecisionCardRef[] }
+  | { type: "targetSelection"; selected: PublicDecisionResponseCardRef[] }
   | {
       type: "cardSelection";
-      selected: PublicDecisionCardRef[];
+      selected: PublicDecisionResponseCardRef[];
       saveAs?: SelectionId;
     }
   | { type: "effectOptionSelection"; optionIds: string[] }
   | { type: "replacementChoice"; replacementId: EffectId | null }
-  | { type: "orderCards"; ordered: PublicDecisionCardRef[] }
+  | { type: "orderCards"; ordered: PublicDecisionResponseCardRef[] }
   | { type: "chooseCharacterToTrash"; instanceId: InstanceId }
   | { type: "pass" };
 
@@ -1133,7 +1133,7 @@ export interface PublicDecisionBase {
   prompt?: string;
   timeoutMs?: number;
   defaultResponse?: DecisionResponse;
-  visibility: EventVisibility;
+  visibility: PublicDecisionVisibility;
 }
 
 export interface TargetCandidate {
@@ -1164,6 +1164,14 @@ export interface PublicDecisionCardRef {
   controller: PlayerId;
   cardId?: CardId;
 }
+
+export interface PublicDecisionResponseCardRef {
+  instanceId: InstanceId;
+}
+
+export type PublicDecisionVisibility =
+  | { type: "public" }
+  | { type: "private"; playerIds: PlayerId[] };
 
 export interface PublicPaymentCardRef extends PublicCardRef {
   zone: ZoneRef;
