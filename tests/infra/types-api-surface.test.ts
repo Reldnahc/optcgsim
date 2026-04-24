@@ -60,6 +60,47 @@ describe("@optcg/types API surface", () => {
       ]
     };
 
+    const optionalActivationDecision: PublicDecision = {
+      id: asBrand<DecisionId>("decision-4"),
+      type: "chooseOptionalActivation",
+      playerId,
+      effectId: asBrand("effect-3"),
+      source: {
+        cardId: asBrand<CardId>("OP01-004"),
+        controller: playerId,
+        owner: playerId,
+        instanceId: asBrand("instance-5")
+      },
+      options: ["activate", "decline"]
+    };
+
+    const targetDecision: PublicDecision = {
+      id: asBrand<DecisionId>("decision-5"),
+      type: "selectTargets",
+      playerId,
+      request: {
+        timing: "onResolution",
+        chooser: "self",
+        zone: "characterArea",
+        player: "opponent",
+        min: 1,
+        max: 1,
+        allowFewerIfUnavailable: false,
+        visibility: "public"
+      },
+      candidates: [
+        {
+          card: {
+            cardId: asBrand<CardId>("OP01-020"),
+            controller: asBrand<PlayerId>("player-2"),
+            owner: asBrand<PlayerId>("player-2"),
+            instanceId: asBrand("instance-6")
+          },
+          label: "Opposing character"
+        }
+      ]
+    };
+
     const replacementDecision: PublicDecision = {
       id: replacementDecisionId,
       type: "chooseReplacement",
@@ -226,6 +267,12 @@ describe("@optcg/types API surface", () => {
         message,
         replacementDecision,
         lifeTriggerDecision,
+        optionalActivationDecision,
+        optionalActivationResponse: {
+          type: "optionalActivationChoice",
+          choice: "activate"
+        } satisfies DecisionResponse,
+        targetDecision,
         lifeTriggerResponse: {
           type: "lifeTriggerChoice",
           choice: "addToHand"
@@ -256,6 +303,17 @@ describe("@optcg/types API surface", () => {
       };
       replacementDecision: {
         replacements: Array<{ label: string }>;
+      };
+      optionalActivationDecision: {
+        options: string[];
+      };
+      optionalActivationResponse: {
+        type: string;
+        choice: string;
+      };
+      targetDecision: {
+        request: { chooser: string; zone: string; player: string };
+        candidates: Array<{ label: string }>;
       };
       lifeTriggerDecision: {
         options: string[];
@@ -289,6 +347,27 @@ describe("@optcg/types API surface", () => {
     expect(payload.message.view.revealedCards[0]?.reason).toBe("trigger");
     expect(payload.replacementDecision.replacements[0]?.label).toBe(
       "Use replacement shield"
+    );
+    expect(payload.optionalActivationDecision.options).toEqual([
+      "activate",
+      "decline"
+    ]);
+    expect(payload.optionalActivationResponse).toEqual({
+      type: "optionalActivationChoice",
+      choice: "activate"
+    });
+    expect(payload.targetDecision.request).toEqual({
+      timing: "onResolution",
+      chooser: "self",
+      zone: "characterArea",
+      player: "opponent",
+      min: 1,
+      max: 1,
+      allowFewerIfUnavailable: false,
+      visibility: "public"
+    });
+    expect(payload.targetDecision.candidates[0]?.label).toBe(
+      "Opposing character"
     );
     expect(payload.lifeTriggerDecision.options).toEqual([
       "activateTrigger",

@@ -1051,6 +1051,7 @@ export type DecisionResponse =
   | { type: "mulligan" }
   | { type: "orderedIds"; ids: string[] }
   | { type: "yesNo"; accept: boolean }
+  | { type: "optionalActivationChoice"; choice: "activate" | "decline" }
   | { type: "lifeTriggerChoice"; choice: "activateTrigger" | "addToHand" }
   | { type: "payment"; selection: CostPaymentSelection }
   | { type: "targetSelection"; selected: CardRef[] }
@@ -1175,6 +1176,17 @@ export interface PublicCardSelectionRequest {
   visibility: "public" | "privateToChooser";
 }
 
+export interface PublicTargetRequest {
+  timing: "onActivation" | "onResolution";
+  chooser: PlayerRef;
+  zone: ZoneName;
+  player: PlayerRef;
+  min: number;
+  max: number;
+  allowFewerIfUnavailable: boolean;
+  visibility?: "public" | "privateToChooser";
+}
+
 export interface PublicEffectOption {
   id: string;
   label: string;
@@ -1266,7 +1278,7 @@ export type PublicDecision =
     })
   | (PublicDecisionBase & {
       type: "selectTargets";
-      request: TargetRequest;
+      request: PublicTargetRequest;
       candidates: TargetCandidate[];
     })
   | (PublicDecisionBase & {
