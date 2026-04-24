@@ -6,12 +6,9 @@ title: "Add public protocol and deck-validation DTOs to @optcg/types"
 type: implementation
 area: contracts
 priority: critical
-status: generated
+status: approved
 summary: >
-  Complete the shared protocol and deck-validation contract surface in
-  @optcg/types so match-server, API, and client work use one source of truth
-  for client envelopes, server messages, filtered PublicDecision payloads, and
-  deck-validation I/O.
+  Complete the shared protocol and deck-validation contract surface in @optcg/types so match-server, API, and client work use one source of truth for client envelopes, server messages, filtered PublicDecision payloads, and deck-validation I/O.
 spec_refs:
   - "15-implementation-kickoff.s005 (Step 1 - `@optcg/types`)"
   - "01-system-architecture.s004 (`@optcg/types`)"
@@ -25,9 +22,9 @@ spec_refs:
   - 09-card-data-and-support-policy.s012 (Deck validation)
 scope:
   - "define and export the public protocol DTOs that are concretely specified for player-facing transport, including ClientActionEnvelope, ServerActionResult, rejection reasons, PublicTimerState, MatchResult, and player-safe ServerMessage variants"
-  - "define and export a filtered PublicDecision contract suitable for decisionRequired and PlayerView.pendingDecision without leaking hidden information"
+  - define and export a filtered PublicDecision contract suitable for decisionRequired and PlayerView.pendingDecision without leaking hidden information
   - "define and export deck-validation input/output DTOs and related error, warning, and resolved-card shapes"
-  - extend API-surface and contract regression tests so these DTOs remain stable in @optcg/types
+  - "extend API-surface and contract regression tests so these DTOs remain stable in @optcg/types"
 non_scope:
   - concrete SpectatorView DTOs or spectator-specific stateSync payloads
   - implementing match-server transport behavior
@@ -36,11 +33,11 @@ dependencies:
   - CON-001
 acceptance_criteria:
   - "@optcg/types exports the player-facing protocol and deck-validation DTOs required by the kickoff and architecture docs"
-  - "decisionRequired and PlayerView.pendingDecision carry enough filtered data for a client to render choices and send respondToDecision without an out-of-band contract"
+  - decisionRequired and PlayerView.pendingDecision carry enough filtered data for a client to render choices and send respondToDecision without an out-of-band contract
   - the exported DTO surface remains hidden-information safe for player-facing recipients
 required_tests:
   - API-surface regression covering protocol and deck-validation exports
-  - contract test fixtures for ClientActionEnvelope, ServerMessage, and DeckValidationResult serialization
+  - "contract test fixtures for ClientActionEnvelope, ServerMessage, and DeckValidationResult serialization"
   - regression test proving filtered PublicDecision payloads do not require unsafe casts or out-of-band fields
 repo_rules:
   - must pass pnpm verify
@@ -48,6 +45,6 @@ repo_rules:
   - must not introduce hidden-information leakage
 ambiguity_policy: fail_and_escalate
 agent:
-  packet_path: agent-packets/generated/CON-003.packet.md
+  packet_path: agent-packets/approved/CON-003.packet.md
   implementation_skill: spec-story-implementation
   review_skill: spec-story-review
