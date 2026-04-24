@@ -67,7 +67,8 @@ function runCommand(
   stdout: string;
   stderr: string;
 } {
-  const executable = resolveCommand(command);
+  const executable =
+    process.platform === "win32" && command === "git" ? "git.exe" : command;
   const result = spawnSync(executable, args, {
     cwd: ROOT,
     encoding: "utf8"
@@ -77,46 +78,6 @@ function runCommand(
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? ""
   };
-}
-
-function resolveCommand(command: string): string {
-  if (command !== "git") {
-    return command;
-  }
-
-  const candidates =
-    process.platform === "win32"
-      ? [
-          "git",
-          "git.exe",
-          path.join(process.env["ProgramFiles"] ?? "", "Git", "cmd", "git.exe"),
-          path.join(process.env["ProgramFiles"] ?? "", "Git", "bin", "git.exe"),
-          path.join(
-            process.env["ProgramFiles(x86)"] ?? "",
-            "Git",
-            "cmd",
-            "git.exe"
-          ),
-          path.join(
-            process.env["ProgramFiles(x86)"] ?? "",
-            "Git",
-            "bin",
-            "git.exe"
-          )
-        ].filter(Boolean)
-      : ["git"];
-
-  for (const candidate of candidates) {
-    const probe = spawnSync(candidate, ["--version"], {
-      cwd: ROOT,
-      encoding: "utf8"
-    });
-    if ((probe.status ?? 1) === 0) {
-      return candidate;
-    }
-  }
-
-  return command;
 }
 
 function getGitHead(): string {
