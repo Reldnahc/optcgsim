@@ -8,7 +8,9 @@ area: contracts
 priority: critical
 status: approved
 summary: >
-  Create the shared types package from the canonical contract so IDs, DTOs, views, and action contracts have one compile-checked source of truth.
+  Create the initial shared types package from the canonical contract so the
+  unambiguous foundation contracts have one compile-checked, boundary-enforced
+  source of truth without freezing unresolved spectator or protocol shapes.
 spec_refs:
   - 15-implementation-kickoff.s002 (v5 kickoff gates)
   - "15-implementation-kickoff.s005 (Step 1 - `@optcg/types`)"
@@ -16,28 +18,33 @@ spec_refs:
   - "01-system-architecture.s004 (`@optcg/types`)"
 scope:
   - create packages/types seeded from contracts/canonical-types.ts
-  - "export branded ids, action and decision contracts, player and spectator views, and card metadata interfaces"
-  - "keep the package free of runtime dependencies on engine, database, websocket, or browser code"
-  - wire type-checking so contract drift is caught automatically
+  - "export the canonical foundation contracts that are already concretely specified in the current contract/spec set, including branded ids, Action, PendingDecision, PlayerView, replay/card-manifest types, and card metadata interfaces"
+  - "make @optcg/types a real built workspace package with a package-local entrypoint and declaration surface"
+  - "keep the package free of runtime dependencies on engine, database, websocket, browser, or sibling workspace code"
+  - "wire contract drift, build-layout, and package-boundary checks into repo verification"
 non_scope:
+  - "finalizing public protocol DTOs such as ClientActionEnvelope, ServerMessage, or filtered PublicDecision payloads"
+  - defining or freezing SpectatorView shape or spectator-mode-specific payloads
+  - finalizing deck-validation input/output DTOs
   - full engine behavior
   - match-server transport handling
   - browser view helpers
 dependencies:
   - INF-001
 acceptance_criteria:
-  - "packages/types exports the shared ids, DTOs, and view contracts required by the kickoff spec"
+  - "packages/types builds as a consumable workspace package with a package-local JS and declaration entrypoint"
+  - "packages/types exports the foundation contract surface required to start downstream work without inventing unresolved spectator or protocol DTOs"
   - the canonical contract compiles through the repo toolchain without undefined symbols
-  - the package has no runtime dependency on app or infrastructure packages
+  - contract drift, stale build output, and package-boundary regressions fail verification
 required_tests:
-  - contract compile check covering contracts/canonical-types.ts through the repo toolchain
-  - import-boundary regression proving app packages are not pulled into packages/types
-  - API-surface regression covering the initial shared exports
+  - "contract compile and package-build check covering contracts/canonical-types.ts and packages/types through the repo toolchain"
+  - import-boundary regression proving sibling package and app imports are not pulled into packages/types
+  - API-surface regression covering the narrowed foundation exports only
 repo_rules:
   - must pass pnpm verify
   - must preserve package boundary enforcement
   - must not introduce hidden-information leakage
-ambiguity_policy: implement_if_clearly_implied
+ambiguity_policy: fail_and_escalate
 agent:
   packet_path: agent-packets/approved/CON-001.packet.md
   implementation_skill: spec-story-implementation
