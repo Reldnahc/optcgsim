@@ -745,8 +745,8 @@ export interface PaymentOption {
 
 export interface CostPaymentSelection {
   optionId: string;
-  selectedCards?: CardRef[];
-  selectedDon?: CardRef[];
+  selectedCards?: PublicPaymentCardRef[];
+  selectedDon?: PublicPaymentCardRef[];
 }
 
 export interface EffectOption {
@@ -1163,6 +1163,10 @@ export interface PublicCardRef {
   controller: PlayerId;
 }
 
+export interface PublicPaymentCardRef extends PublicCardRef {
+  zone: ZoneRef;
+}
+
 export interface PublicEffectEvent {
   id: string;
   sourceCardId: CardId;
@@ -1207,8 +1211,8 @@ export interface PublicEffectOption {
 export interface PublicPaymentOption {
   id: string;
   cost: Cost;
-  selectableCards?: PublicCardRef[];
-  selectableDon?: PublicCardRef[];
+  selectableCards?: PublicPaymentCardRef[];
+  selectableDon?: PublicPaymentCardRef[];
   min: number;
   max: number;
 }
@@ -1274,6 +1278,10 @@ export interface PublicRevealRecord {
   reason: RevealReason;
   visibleTo: "both" | PlayerId[] | "replayOnly";
   expires: RevealExpiration;
+}
+
+export interface LivePublicRevealRecord extends PublicRevealRecord {
+  visibleTo: "both" | PlayerId[];
 }
 
 export type PublicDecision =
@@ -1457,7 +1465,7 @@ export interface PlayerView {
   battle?: PublicBattleState;
   pendingDecision?: PublicDecision;
   legalActions: PublicLegalAction[];
-  revealedCards: PublicRevealRecord[];
+  revealedCards: LivePublicRevealRecord[];
   effectEvents: LivePublicEffectEvent[];
   timers: PublicTimerState;
 }

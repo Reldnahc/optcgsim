@@ -75,6 +75,43 @@ describe("@optcg/types API surface", () => {
       options: ["activate", "decline"]
     };
 
+    const payCostDecision: PublicDecision = {
+      id: asBrand<DecisionId>("decision-6"),
+      type: "payCost",
+      playerId,
+      cost: { type: "trashFromField", count: 1, chooser: "self" },
+      options: [
+        {
+          id: "payment-1",
+          cost: { type: "trashFromField", count: 1, chooser: "self" },
+          selectableCards: [
+            {
+              cardId: asBrand<CardId>("OP01-012"),
+              controller: playerId,
+              owner: playerId,
+              instanceId: asBrand("instance-7"),
+              zone: { zone: "characterArea", playerId: playerId }
+            }
+          ],
+          selectableDon: [
+            {
+              cardId: asBrand<CardId>("DON-001"),
+              controller: playerId,
+              owner: playerId,
+              instanceId: asBrand("don-1"),
+              zone: {
+                zone: "attached",
+                playerId: playerId,
+                hostInstanceId: asBrand("instance-7")
+              }
+            }
+          ],
+          min: 1,
+          max: 1
+        }
+      ]
+    };
+
     const targetDecision: PublicDecision = {
       id: asBrand<DecisionId>("decision-5"),
       type: "selectTargets",
@@ -271,6 +308,26 @@ describe("@optcg/types API surface", () => {
         replacementDecision,
         lifeTriggerDecision,
         optionalActivationDecision,
+        payCostDecision,
+        payCostResponse: {
+          type: "payment",
+          selection: {
+            optionId: "payment-1",
+            selectedDon: [
+              {
+                cardId: asBrand<CardId>("DON-001"),
+                controller: playerId,
+                owner: playerId,
+                instanceId: asBrand("don-1"),
+                zone: {
+                  zone: "attached",
+                  playerId: playerId,
+                  hostInstanceId: asBrand("instance-7")
+                }
+              }
+            ]
+          }
+        } satisfies DecisionResponse,
         optionalActivationResponse: {
           type: "optionalActivationChoice",
           choice: "activate"
@@ -300,7 +357,7 @@ describe("@optcg/types API surface", () => {
           };
           pendingDecision: { type: string; triggers: Array<{ label: string }> };
           legalActions: Array<{ type: string; decisionId?: string }>;
-          revealedCards: Array<{ reason: string }>;
+          revealedCards: Array<{ reason: string; visibleTo: string }>;
           timers: { players: Record<string, { remainingMs: number }> };
         };
       };
@@ -309,6 +366,20 @@ describe("@optcg/types API surface", () => {
       };
       optionalActivationDecision: {
         options: string[];
+      };
+      payCostDecision: {
+        options: Array<{
+          selectableDon?: Array<{
+            zone: { zone: string; playerId: string; hostInstanceId?: string };
+          }>;
+        }>;
+      };
+      payCostResponse: {
+        selection: {
+          selectedDon?: Array<{
+            zone: { zone: string; playerId: string; hostInstanceId?: string };
+          }>;
+        };
       };
       optionalActivationResponse: {
         type: string;
@@ -348,6 +419,7 @@ describe("@optcg/types API surface", () => {
     expect(payload.message.view.legalActions[0]?.type).toBe("playCard");
     expect(payload.message.view.legalActions[1]?.decisionId).toBe("decision-1");
     expect(payload.message.view.revealedCards[0]?.reason).toBe("trigger");
+    expect(payload.message.view.revealedCards[0]?.visibleTo).toBe("both");
     expect(payload.replacementDecision.replacements[0]?.label).toBe(
       "Use replacement shield"
     );
@@ -355,6 +427,16 @@ describe("@optcg/types API surface", () => {
       "activate",
       "decline"
     ]);
+    expect(
+      payload.payCostDecision.options[0]?.selectableDon?.[0]?.zone
+    ).toEqual({
+      zone: "attached",
+      playerId: "player-1",
+      hostInstanceId: "instance-7"
+    });
+    expect(
+      payload.payCostResponse.selection.selectedDon?.[0]?.zone.hostInstanceId
+    ).toBe("instance-7");
     expect(payload.optionalActivationResponse).toEqual({
       type: "optionalActivationChoice",
       choice: "activate"
