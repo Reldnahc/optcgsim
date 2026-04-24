@@ -1161,7 +1161,7 @@ export interface PublicEffectEvent {
   effectId?: EffectId;
   description: string;
   choices?: PublicChoiceSummary;
-  visibleTo: "both" | PlayerId[];
+  visibleTo: "both" | PlayerId[] | "replayOnly";
 }
 
 export interface PublicCardSelectionRequest {
@@ -1260,7 +1260,7 @@ export type PublicDecision =
   | (PublicDecisionBase & {
       type: "confirmTriggerFromLife";
       card: CardRef;
-      options: Array<"activate" | "decline">;
+      options: Array<"activateTrigger" | "addToHand">;
     })
   | (PublicDecisionBase & {
       type: "chooseReplacement";

@@ -78,6 +78,19 @@ describe("@optcg/types API surface", () => {
       ]
     };
 
+    const lifeTriggerDecision: PublicDecision = {
+      id: asBrand<DecisionId>("decision-3"),
+      type: "confirmTriggerFromLife",
+      playerId,
+      card: {
+        cardId: asBrand<CardId>("OP01-003"),
+        controller: playerId,
+        owner: playerId,
+        instanceId: asBrand("instance-4")
+      },
+      options: ["activateTrigger", "addToHand"]
+    };
+
     const publicEvents: PublicEffectEvent[] = [
       {
         id: "event-1",
@@ -85,7 +98,7 @@ describe("@optcg/types API surface", () => {
         sourceInstanceId: asBrand("instance-1"),
         effectId: asBrand("effect-1"),
         description: "Played a card",
-        visibleTo: "both"
+        visibleTo: "replayOnly"
       }
     ];
 
@@ -199,6 +212,7 @@ describe("@optcg/types API surface", () => {
         actionResult,
         message,
         replacementDecision,
+        lifeTriggerDecision,
         timers,
         result
       })
@@ -220,13 +234,16 @@ describe("@optcg/types API surface", () => {
       replacementDecision: {
         replacements: Array<{ label: string }>;
       };
+      lifeTriggerDecision: {
+        options: string[];
+      };
       timers: { players: Record<string, { remainingMs: number }> };
       result: { reason: string };
     };
 
     expect(payload.envelope.protocolVersion).toBe("v1");
     expect(payload.envelope.expectedDecisionId).toBe("decision-1");
-    expect(payload.actionResult.events[0]?.visibleTo).toBe("both");
+    expect(payload.actionResult.events[0]?.visibleTo).toBe("replayOnly");
     expect(payload.message.type).toBe("stateSync");
     expect(payload.message.view.playerId).toBe("player-1");
     expect(payload.message.view.pendingDecision.type).toBe(
@@ -240,6 +257,10 @@ describe("@optcg/types API surface", () => {
     expect(payload.replacementDecision.replacements[0]?.label).toBe(
       "Use replacement shield"
     );
+    expect(payload.lifeTriggerDecision.options).toEqual([
+      "activateTrigger",
+      "addToHand"
+    ]);
     expect(payload.message.view.timers.players["player-1"]?.remainingMs).toBe(
       120000
     );
