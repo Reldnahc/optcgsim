@@ -50,6 +50,21 @@ interface TransitionOptions {
   dryRun?: boolean;
 }
 
+interface ContractAuditRecord {
+  version: 1;
+  story_id: string;
+  story_path: string;
+  area: Story["area"];
+  packet_path?: string;
+  git_head: string;
+  reviewed_at: string;
+  verify_command: string;
+  verify_ok: boolean;
+  worktree_clean: boolean;
+  checklist: Array<{ id: string; label: string; status: "pass" }>;
+  notes?: string;
+}
+
 function allowsMissingPrForTransition(
   storyId: string,
   action: TransitionAction
@@ -99,6 +114,29 @@ function runCommand(args: string[]): {
   };
 }
 
+function gitHead(): string {
+  const result = runCommand(["git", "rev-parse", "HEAD"]);
+  if (result.status !== 0) {
+    throw new Error(
+      `Failed to resolve git HEAD.\n${result.stdout}\n${result.stderr}`.trim()
+    );
+  }
+  return result.stdout.trim();
+}
+
+function gitDirtyEntries(): string[] {
+  const result = runCommand(["git", "status", "--porcelain"]);
+  if (result.status !== 0) {
+    throw new Error(
+      `Failed to inspect git worktree.\n${result.stdout}\n${result.stderr}`.trim()
+    );
+  }
+  return result.stdout
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter(Boolean);
+}
+
 function findStoryById(storyId: string): StoryLocation {
   const candidates: Array<{ path: string; bucket: StoryLocation["bucket"] }> = [
     { path: `stories/approved/${storyId}.story.yaml`, bucket: "approved" },
@@ -121,6 +159,55 @@ function findStoryById(storyId: string): StoryLocation {
   throw new Error(
     `Could not locate story ${storyId} in generated/approved/blocked/done.`
   );
+}
+
+function loadContractAudit(storyId: string): ContractAuditRecord | null {
+  const relativePath = `stories/.review/${storyId}.contract-audit.json`;
+  const absolutePath = path.resolve(ROOT, relativePath);
+  if (!fs.existsSync(absolutePath)) {
+    return null;
+  }
+  return JSON.parse(
+    fs.readFileSync(absolutePath, "utf8")
+  ) as ContractAuditRecord;
+}
+
+function assertContractAuditReady(location: StoryLocation): void {
+  if (location.story.area !== "contracts") {
+    return;
+  }
+
+  const audit = loadContractAudit(location.story.id);
+  if (!audit) {
+    throw new Error(
+      `Story ${location.story.id} requires a passing contract audit before request-review. Run "npm run stories:contract-audit -- --id ${location.story.id}".`
+    );
+  }
+
+  if (audit.story_id !== location.story.id || audit.area !== "contracts") {
+    throw new Error(
+      `Contract audit for ${location.story.id} is invalid. Re-run "npm run stories:contract-audit -- --id ${location.story.id}".`
+    );
+  }
+
+  if (!audit.verify_ok || !audit.worktree_clean) {
+    throw new Error(
+      `Contract audit for ${location.story.id} is not passing. Re-run "npm run stories:contract-audit -- --id ${location.story.id}".`
+    );
+  }
+
+  if (audit.git_head !== gitHead()) {
+    throw new Error(
+      `Contract audit for ${location.story.id} is stale for the current commit. Re-run "npm run stories:contract-audit -- --id ${location.story.id}".`
+    );
+  }
+
+  const dirty = gitDirtyEntries();
+  if (dirty.length > 0) {
+    throw new Error(
+      `Story ${location.story.id} requires a clean worktree before request-review. Dirty entries:\n${dirty.join("\n")}`
+    );
+  }
 }
 
 function transitionComment(plan: TransitionPlan, story: Story): string {
@@ -450,6 +537,10 @@ export function transitionStory(options: TransitionOptions): {
   const plan = transitionPlan(location, options.action);
   const sectionLookup = buildSectionLookup(loadSectionIndex());
   const syncMeta = loadSyncMetadata(plan.storyId);
+
+  if (!options.dryRun && plan.action === "request-review") {
+    assertContractAuditReady(location);
+  }
 
   if (
     !options.dryRun &&

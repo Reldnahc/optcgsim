@@ -54,10 +54,12 @@ Section Ref: `AGENTS.s003`
   - `npm run stories:start -- --id STORY-ID`
   - implement on the story branch
   - `npm run stories:verify`
+  - for `area: contracts`, run `npm run stories:contract-audit -- --id STORY-ID` on a clean worktree after the implementation commit that is intended for review
   - `npm run stories:pr -- --id STORY-ID --push`
   - `npm run stories:request-review -- --id STORY-ID`
   - Codex review on the PR diff
   - `npm run stories:changes-requested -- --id STORY-ID` or `npm run stories:complete -- --id STORY-ID`
+- Contract stories must not move to `in_review` until the contract audit artifact exists for the current `HEAD`, `stories:verify` passed during that audit, and the worktree is clean. This is a hard gate, not a convention.
 - When a story is approved through the workflow, the expected automation path is: promote story -> build approved packet -> sync issue/project. Do not treat local story approval as complete until packet and board state are also updated.
 - Before moving a story to `in_review` or `done`, ensure the story has PR metadata in `stories/.sync/<STORY-ID>.github.json`.
 - One narrow exception exists: `INF-001` may complete without PR metadata because it established the repo baseline on `main` before the branch/PR workflow existed. Do not generalize that exception to later stories.
