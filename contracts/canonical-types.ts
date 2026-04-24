@@ -1054,11 +1054,11 @@ export type DecisionResponse =
   | { type: "optionalActivationChoice"; choice: "activate" | "decline" }
   | { type: "lifeTriggerChoice"; choice: "activateTrigger" | "addToHand" }
   | { type: "payment"; selection: CostPaymentSelection }
-  | { type: "targetSelection"; selected: CardRef[] }
-  | { type: "cardSelection"; selected: CardRef[]; saveAs?: SelectionId }
+  | { type: "targetSelection"; selected: PublicCardRef[] }
+  | { type: "cardSelection"; selected: PublicCardRef[]; saveAs?: SelectionId }
   | { type: "effectOptionSelection"; optionIds: string[] }
   | { type: "replacementChoice"; replacementId: EffectId | null }
-  | { type: "orderCards"; ordered: CardRef[] }
+  | { type: "orderCards"; ordered: PublicCardRef[] }
   | { type: "chooseCharacterToTrash"; instanceId: InstanceId }
   | { type: "pass" };
 
@@ -1142,12 +1142,12 @@ export interface PublicDecisionBase {
 }
 
 export interface TargetCandidate {
-  card: CardRef;
+  card: PublicCardRef;
   label?: string;
 }
 
 export interface CardSelectionCandidate {
-  card: CardRef;
+  card: PublicCardRef;
   label?: string;
 }
 
@@ -1156,13 +1156,24 @@ export interface PublicChoiceSummary {
   count?: number;
 }
 
+export interface PublicCardRef {
+  instanceId?: InstanceId;
+  cardId: CardId;
+  owner: PlayerId;
+  controller: PlayerId;
+}
+
 export interface PublicEffectEvent {
   id: string;
-  sourceCardId?: CardId;
+  sourceCardId: CardId;
   sourceInstanceId?: InstanceId;
-  effectId?: EffectId;
+  effectId: EffectId;
   description: string;
   choices?: PublicChoiceSummary;
+  visibleTo: "both" | PlayerId[] | "replayOnly";
+}
+
+export interface LivePublicEffectEvent extends PublicEffectEvent {
   visibleTo: "both" | PlayerId[];
 }
 
@@ -1191,6 +1202,15 @@ export interface PublicEffectOption {
   id: string;
   label: string;
   availability?: "available" | "unavailable";
+}
+
+export interface PublicPaymentOption {
+  id: string;
+  cost: Cost;
+  selectableCards?: PublicCardRef[];
+  selectableDon?: PublicCardRef[];
+  min: number;
+  max: number;
 }
 
 export interface PublicTriggerOrderOption {
@@ -1249,7 +1269,7 @@ export type RevealExpiration =
 
 export interface PublicRevealRecord {
   id: string;
-  card: CardRef;
+  card: PublicCardRef;
   sourceZone: ZoneName;
   reason: RevealReason;
   visibleTo: "both" | PlayerId[] | "replayOnly";
@@ -1268,13 +1288,13 @@ export type PublicDecision =
   | (PublicDecisionBase & {
       type: "chooseOptionalActivation";
       effectId: EffectId;
-      source: CardRef;
+      source: PublicCardRef;
       options: Array<"activate" | "decline">;
     })
   | (PublicDecisionBase & {
       type: "payCost";
       cost: Cost;
-      options: PaymentOption[];
+      options: PublicPaymentOption[];
     })
   | (PublicDecisionBase & {
       type: "selectTargets";
@@ -1294,7 +1314,7 @@ export type PublicDecision =
     })
   | (PublicDecisionBase & {
       type: "confirmTriggerFromLife";
-      card: CardRef;
+      card: PublicCardRef;
       options: Array<"activateTrigger" | "addToHand">;
     })
   | (PublicDecisionBase & {
@@ -1305,12 +1325,12 @@ export type PublicDecision =
     })
   | (PublicDecisionBase & {
       type: "orderCards";
-      cards: CardRef[];
+      cards: PublicCardRef[];
       destination: ZoneName;
     })
   | (PublicDecisionBase & {
       type: "chooseCharacterToTrashForOverflow";
-      candidates: CardRef[];
+      candidates: PublicCardRef[];
     });
 
 export interface PublicPlayerGameTimer {
@@ -1366,7 +1386,7 @@ export interface ServerActionResult {
   actionSeq: ActionSeq;
   reason?: RejectionReason;
   view?: PlayerView;
-  events?: PublicEffectEvent[];
+  events?: LivePublicEffectEvent[];
 }
 
 export interface EngineResult {
@@ -1438,7 +1458,7 @@ export interface PlayerView {
   pendingDecision?: PublicDecision;
   legalActions: PublicLegalAction[];
   revealedCards: PublicRevealRecord[];
-  effectEvents: PublicEffectEvent[];
+  effectEvents: LivePublicEffectEvent[];
   timers: PublicTimerState;
 }
 

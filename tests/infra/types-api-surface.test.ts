@@ -11,8 +11,9 @@ import type {
   MatchId,
   MatchResult,
   PlayerId,
+  PublicCardRef,
   PublicDecision,
-  PublicEffectEvent,
+  LivePublicEffectEvent,
   PublicTimerState,
   ServerActionResult,
   ServerMessage,
@@ -131,7 +132,7 @@ describe("@optcg/types API surface", () => {
       options: ["activateTrigger", "addToHand"]
     };
 
-    const publicEvents: PublicEffectEvent[] = [
+    const publicEvents: LivePublicEffectEvent[] = [
       {
         id: "event-1",
         sourceCardId: asBrand<CardId>("OP01-001"),
@@ -141,6 +142,13 @@ describe("@optcg/types API surface", () => {
         visibleTo: "both"
       }
     ];
+
+    const publicCardRef: PublicCardRef = {
+      cardId: asBrand<CardId>("OP01-010"),
+      controller: playerId,
+      owner: playerId,
+      instanceId: asBrand("instance-3")
+    };
 
     const timers: PublicTimerState = {
       drainingPlayerId: playerId,
@@ -243,12 +251,7 @@ describe("@optcg/types API surface", () => {
         revealedCards: [
           {
             id: "reveal-1",
-            card: {
-              cardId: asBrand<CardId>("OP01-010"),
-              controller: playerId,
-              owner: playerId,
-              instanceId: asBrand("instance-3")
-            },
+            card: publicCardRef,
             sourceZone: "life",
             reason: "trigger",
             visibleTo: "both",
