@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type {
-  Action,
   CardId,
   ClientActionEnvelope,
+  DecisionResponse,
   DecisionId,
   DeckValidationInput,
   DeckValidationResult,
@@ -31,7 +31,6 @@ describe("@optcg/types API surface", () => {
     const decisionId = asBrand<DecisionId>("decision-1");
     const replacementDecisionId = asBrand<DecisionId>("decision-2");
 
-    const action: Action = { type: "endMainPhase" };
     const envelope: ClientActionEnvelope = {
       protocolVersion: "v1",
       matchId,
@@ -41,7 +40,7 @@ describe("@optcg/types API surface", () => {
       expectedDecisionId: decisionId,
       actionHash: asBrand("hash-1"),
       sentAtClientTime: "2026-04-24T08:00:00.000Z",
-      action,
+      action: { type: "endMainPhase" },
       signature: "sig"
     };
 
@@ -98,7 +97,7 @@ describe("@optcg/types API surface", () => {
         sourceInstanceId: asBrand("instance-1"),
         effectId: asBrand("effect-1"),
         description: "Played a card",
-        visibleTo: "replayOnly"
+        visibleTo: "both"
       }
     ];
 
@@ -122,6 +121,7 @@ describe("@optcg/types API surface", () => {
     const actionResult: ServerActionResult = {
       type: "actionResult",
       matchId,
+      serverSeq: asBrand(4),
       clientActionId: "client-action-1",
       accepted: true,
       stateSeq,
@@ -226,12 +226,17 @@ describe("@optcg/types API surface", () => {
         message,
         replacementDecision,
         lifeTriggerDecision,
+        lifeTriggerResponse: {
+          type: "lifeTriggerChoice",
+          choice: "addToHand"
+        } satisfies DecisionResponse,
         timers,
         result
       })
     ) as {
       envelope: { protocolVersion: string; expectedDecisionId: string };
       actionResult: {
+        serverSeq: number;
         events: Array<{ visibleTo: string }>;
       };
       message: {
@@ -255,13 +260,18 @@ describe("@optcg/types API surface", () => {
       lifeTriggerDecision: {
         options: string[];
       };
+      lifeTriggerResponse: {
+        type: string;
+        choice: string;
+      };
       timers: { players: Record<string, { remainingMs: number }> };
       result: { reason: string };
     };
 
     expect(payload.envelope.protocolVersion).toBe("v1");
     expect(payload.envelope.expectedDecisionId).toBe("decision-1");
-    expect(payload.actionResult.events[0]?.visibleTo).toBe("replayOnly");
+    expect(payload.actionResult.serverSeq).toBe(4);
+    expect(payload.actionResult.events[0]?.visibleTo).toBe("both");
     expect(payload.message.type).toBe("stateSync");
     expect(payload.message.view.playerId).toBe("player-1");
     expect(payload.message.view.self.hand[0]?.instanceId).toBe("hand-1");
@@ -284,6 +294,10 @@ describe("@optcg/types API surface", () => {
       "activateTrigger",
       "addToHand"
     ]);
+    expect(payload.lifeTriggerResponse).toEqual({
+      type: "lifeTriggerChoice",
+      choice: "addToHand"
+    });
     expect(payload.message.view.timers.players["player-1"]?.remainingMs).toBe(
       120000
     );

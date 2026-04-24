@@ -1051,6 +1051,7 @@ export type DecisionResponse =
   | { type: "mulligan" }
   | { type: "orderedIds"; ids: string[] }
   | { type: "yesNo"; accept: boolean }
+  | { type: "lifeTriggerChoice"; choice: "activateTrigger" | "addToHand" }
   | { type: "payment"; selection: CostPaymentSelection }
   | { type: "targetSelection"; selected: CardRef[] }
   | { type: "cardSelection"; selected: CardRef[]; saveAs?: SelectionId }
@@ -1161,7 +1162,7 @@ export interface PublicEffectEvent {
   effectId?: EffectId;
   description: string;
   choices?: PublicChoiceSummary;
-  visibleTo: "both" | PlayerId[] | "replayOnly";
+  visibleTo: "both" | PlayerId[];
 }
 
 export interface PublicCardSelectionRequest {
@@ -1346,6 +1347,7 @@ export type RejectionReason =
 export interface ServerActionResult {
   type: "actionResult";
   matchId: MatchId;
+  serverSeq: ServerSeq;
   clientActionId: string;
   accepted: boolean;
   stateSeq: StateSeq;
