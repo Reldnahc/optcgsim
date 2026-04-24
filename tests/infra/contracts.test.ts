@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { checkContractsAndSchema } from "../../tools/check-contract-and-schema.ts";
 
@@ -18,5 +20,17 @@ describe("contracts and effect schema", () => {
     expect(result.invalidFixtures.every((fixture) => !fixture.valid)).toBe(
       true
     );
+  });
+
+  it("keeps the @optcg/types package contract mirror aligned with contracts/canonical-types.ts", () => {
+    const canonical = fs.readFileSync(
+      path.resolve("contracts/canonical-types.ts"),
+      "utf8"
+    );
+    const packageMirror = fs.readFileSync(
+      path.resolve("packages/types/src/canonical-types.ts"),
+      "utf8"
+    );
+    expect(packageMirror).toBe(canonical);
   });
 });
