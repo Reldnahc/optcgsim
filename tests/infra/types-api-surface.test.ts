@@ -73,13 +73,12 @@ describe("@optcg/types API surface", () => {
 
     const publicEvents: PublicEffectEvent[] = [
       {
-        id: asBrand("event-1"),
-        eventSeq: 7,
-        stateSeq,
-        type: "cardPlayed",
-        actor: playerId,
-        visibility: { type: "public" },
-        payload: { instanceId: "instance-1" }
+        id: "event-1",
+        sourceCardId: asBrand<CardId>("OP01-001"),
+        sourceInstanceId: asBrand("instance-1"),
+        effectId: asBrand("effect-1"),
+        description: "Played a card",
+        visibleTo: "both"
       }
     ];
 
@@ -178,7 +177,7 @@ describe("@optcg/types API surface", () => {
     ) as {
       envelope: { protocolVersion: string; expectedDecisionId: string };
       actionResult: {
-        events: Array<{ visibility: { type: string } }>;
+        events: Array<{ visibleTo: string }>;
       };
       message: {
         type: string;
@@ -193,7 +192,7 @@ describe("@optcg/types API surface", () => {
 
     expect(payload.envelope.protocolVersion).toBe("v1");
     expect(payload.envelope.expectedDecisionId).toBe("decision-1");
-    expect(payload.actionResult.events[0]?.visibility.type).toBe("public");
+    expect(payload.actionResult.events[0]?.visibleTo).toBe("both");
     expect(payload.message.type).toBe("stateSync");
     expect(payload.message.view.pendingDecision.type).toBe("selectCards");
     expect(payload.message.view.pendingDecision.candidates).toHaveLength(1);

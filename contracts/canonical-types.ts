@@ -1149,13 +1149,35 @@ export interface CardSelectionCandidate {
   label?: string;
 }
 
-export type PublicEventVisibility = Extract<
-  EventVisibility,
-  { type: "public" } | { type: "private" }
->;
+export interface PublicChoiceSummary {
+  label?: string;
+  count?: number;
+}
 
-export interface PublicEffectEvent extends Omit<EngineEvent, "visibility"> {
-  visibility: PublicEventVisibility;
+export interface PublicEffectEvent {
+  id: string;
+  sourceCardId?: CardId;
+  sourceInstanceId?: InstanceId;
+  effectId?: EffectId;
+  description: string;
+  choices?: PublicChoiceSummary;
+  visibleTo: "both" | PlayerId[];
+}
+
+export interface PublicCardSelectionRequest {
+  chooser: PlayerRef;
+  zone?: ZoneName;
+  player?: PlayerRef;
+  min: number;
+  max: number;
+  allowFewerIfUnavailable: boolean;
+  visibility: "public" | "privateToChooser";
+}
+
+export interface PublicEffectOption {
+  id: string;
+  label: string;
+  availability?: "available" | "unavailable";
 }
 
 export type PublicDecision =
@@ -1185,12 +1207,12 @@ export type PublicDecision =
     })
   | (PublicDecisionBase & {
       type: "selectCards";
-      request: CardSelectionRequest;
+      request: PublicCardSelectionRequest;
       candidates: CardSelectionCandidate[];
     })
   | (PublicDecisionBase & {
       type: "chooseEffectOption";
-      options: EffectOption[];
+      options: PublicEffectOption[];
       min: number;
       max: number;
     })
