@@ -26,6 +26,7 @@
     "stories:approve": "node --experimental-strip-types tools/story-workflow.ts approve",
     "stories:branch": "node --experimental-strip-types tools/story-workflow.ts branch",
     "stories:pr": "node --experimental-strip-types tools/story-workflow.ts pr",
+    "stories:contract-audit": "node --experimental-strip-types tools/story-workflow.ts contract-audit",
     "stories:verify": "corepack pnpm run verify",
     "stories:review-app": "node --experimental-strip-types tools/build-story-review-report.ts",
     "stories:review-report": "node --experimental-strip-types tools/build-story-review-report.ts",

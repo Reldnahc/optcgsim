@@ -16,6 +16,7 @@ type WorkflowCommand =
   | "approve"
   | "branch"
   | "pr"
+  | "contract-audit"
   | "start"
   | "request-review"
   | "changes-requested"
@@ -42,6 +43,7 @@ function parseCommand(argv: string[]): WorkflowCommand {
     command !== "approve" &&
     command !== "branch" &&
     command !== "pr" &&
+    command !== "contract-audit" &&
     command !== "start" &&
     command !== "request-review" &&
     command !== "changes-requested" &&
@@ -50,7 +52,7 @@ function parseCommand(argv: string[]): WorkflowCommand {
     command !== "unblock"
   ) {
     throw new Error(
-      `Unsupported command ${JSON.stringify(command)}. Use "next", "approve", "branch", "pr", "start", "request-review", "changes-requested", "complete", "block", or "unblock".`
+      `Unsupported command ${JSON.stringify(command)}. Use "next", "approve", "branch", "pr", "contract-audit", "start", "request-review", "changes-requested", "complete", "block", or "unblock".`
     );
   }
   return command;
@@ -282,6 +284,25 @@ function printBranchPrSummary(payload: Record<string, unknown>): void {
   process.stdout.write(`${lines.join("\n")}\n`);
 }
 
+function printContractAuditSummary(payload: {
+  story_id: string;
+  audit_path: string;
+  git_head: string;
+  reviewed_at: string;
+  checklist: Array<{ label: string }>;
+}): void {
+  const lines: string[] = [];
+  lines.push(`Contract audit passed for ${payload.story_id}.`);
+  lines.push(`- artifact: ${payload.audit_path}`);
+  lines.push(`- git head: ${payload.git_head}`);
+  lines.push(`- reviewed at: ${payload.reviewed_at}`);
+  lines.push("- checklist:");
+  for (const item of payload.checklist) {
+    lines.push(`  - ${item.label}`);
+  }
+  process.stdout.write(`${lines.join("\n")}\n`);
+}
+
 function nextWorkflow(options: Map<string, string | boolean>): void {
   const sectionLookup = buildSectionLookup(loadSectionIndex());
   const review = buildReview(sectionLookup);
@@ -419,8 +440,45 @@ function branchPrWorkflow(
   printBranchPrSummary(payload);
 }
 
+function contractAuditWorkflow(options: Map<string, string | boolean>): void {
+  const storyId =
+    typeof options.get("id") === "string" ? String(options.get("id")) : "";
+  if (!storyId) {
+    throw new Error("Command contract-audit requires --id <STORY-ID>.");
+  }
+
+  const args = [
+    "--experimental-strip-types",
+    "tools/contract-audit.ts",
+    "--id",
+    storyId
+  ];
+  const notes = options.get("notes");
+  if (typeof notes === "string") {
+    args.push("--notes", notes);
+  }
+
+  const payload = runJsonTool(args) as {
+    story_id: string;
+    audit_path: string;
+    git_head: string;
+    reviewed_at: string;
+    checklist: Array<{ label: string }>;
+  };
+
+  if (options.get("json")) {
+    printJson(payload);
+    return;
+  }
+
+  printContractAuditSummary(payload);
+}
+
 function transitionWorkflow(
-  command: Exclude<WorkflowCommand, "next" | "approve">,
+  command: Exclude<
+    WorkflowCommand,
+    "next" | "approve" | "branch" | "pr" | "contract-audit"
+  >,
   options: Map<string, string | boolean>
 ): void {
   const storyId =
@@ -465,6 +523,11 @@ function main(): void {
 
   if (command === "branch" || command === "pr") {
     branchPrWorkflow(command, options);
+    return;
+  }
+
+  if (command === "contract-audit") {
+    contractAuditWorkflow(options);
     return;
   }
 
