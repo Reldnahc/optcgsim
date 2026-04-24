@@ -1062,83 +1062,73 @@ export type DecisionResponse =
   | { type: "chooseCharacterToTrash"; instanceId: InstanceId }
   | { type: "pass" };
 
+export interface PendingDecisionBase {
+  id: DecisionId;
+  playerId: PlayerId;
+  prompt?: string;
+  timeoutMs?: number;
+  defaultResponse?: DecisionResponse;
+}
+
 export type PendingDecision =
-  | { type: "mulligan"; id: DecisionId; playerId: PlayerId; handCount: number }
-  | {
+  | (PendingDecisionBase & { type: "mulligan"; handCount: number })
+  | (PendingDecisionBase & {
       type: "chooseTriggerOrder";
-      id: DecisionId;
-      playerId: PlayerId;
       triggerIds: QueueEntryId[];
-    }
-  | {
+    })
+  | (PendingDecisionBase & {
       type: "chooseOptionalActivation";
-      id: DecisionId;
-      playerId: PlayerId;
       effectId: EffectId;
       source: CardRef;
-    }
-  | {
+    })
+  | (PendingDecisionBase & {
       type: "payCost";
-      id: DecisionId;
-      playerId: PlayerId;
       cost: Cost;
       options: PaymentOption[];
-    }
-  | {
+    })
+  | (PendingDecisionBase & {
       type: "selectTargets";
-      id: DecisionId;
-      playerId: PlayerId;
       request: TargetRequest;
       candidates: CardRef[];
-    }
-  | {
+    })
+  | (PendingDecisionBase & {
       type: "selectCards";
-      id: DecisionId;
-      playerId: PlayerId;
       request: CardSelectionRequest;
       candidates: CardRef[];
-    }
-  | {
+    })
+  | (PendingDecisionBase & {
       type: "chooseEffectOption";
-      id: DecisionId;
-      playerId: PlayerId;
       options: EffectOption[];
       min: number;
       max: number;
-    }
-  | {
+    })
+  | (PendingDecisionBase & {
       type: "confirmTriggerFromLife";
-      id: DecisionId;
-      playerId: PlayerId;
       card: CardRef;
-    }
-  | {
+    })
+  | (PendingDecisionBase & {
       type: "chooseReplacement";
-      id: DecisionId;
-      playerId: PlayerId;
       processId: string;
       replacementIds: EffectId[];
       optional: boolean;
-    }
-  | {
+    })
+  | (PendingDecisionBase & {
       type: "orderCards";
-      id: DecisionId;
-      playerId: PlayerId;
       cards: CardRef[];
       destination: ZoneName;
-    }
-  | {
+    })
+  | (PendingDecisionBase & {
       type: "chooseCharacterToTrashForOverflow";
-      id: DecisionId;
-      playerId: PlayerId;
       candidates: CardRef[];
-    };
+    });
 
 export interface PublicDecisionBase {
   id: DecisionId;
   type: PendingDecision["type"];
   playerId: PlayerId;
   prompt?: string;
+  timeoutMs?: number;
+  defaultResponse?: DecisionResponse;
 }
 
 export interface TargetCandidate {
@@ -1620,7 +1610,7 @@ export interface DeckValidationInput {
 }
 
 export type DeckValidationField =
-  | "leader"
+  | "leaders"
   | "mainDeck"
   | "donDeck"
   | "formatId"

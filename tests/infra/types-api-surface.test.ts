@@ -66,6 +66,11 @@ describe("@optcg/types API surface", () => {
       type: "chooseOptionalActivation",
       playerId,
       effectId: asBrand("effect-3"),
+      timeoutMs: 15000,
+      defaultResponse: {
+        type: "optionalActivationChoice",
+        choice: "decline"
+      },
       source: {
         cardId: asBrand<CardId>("OP01-004"),
         controller: playerId,
@@ -366,6 +371,8 @@ describe("@optcg/types API surface", () => {
       };
       optionalActivationDecision: {
         options: string[];
+        timeoutMs?: number;
+        defaultResponse?: { type: string; choice: string };
       };
       payCostDecision: {
         options: Array<{
@@ -427,6 +434,11 @@ describe("@optcg/types API surface", () => {
       "activate",
       "decline"
     ]);
+    expect(payload.optionalActivationDecision.timeoutMs).toBe(15000);
+    expect(payload.optionalActivationDecision.defaultResponse).toEqual({
+      type: "optionalActivationChoice",
+      choice: "decline"
+    });
     expect(
       payload.payCostDecision.options[0]?.selectableDon?.[0]?.zone
     ).toEqual({
@@ -502,6 +514,11 @@ describe("@optcg/types API surface", () => {
           message: "Card is unsupported in this mode",
           field: "mainDeck",
           cardId: asBrand<CardId>("OP01-025")
+        },
+        {
+          code: "invalidLeaderCount",
+          message: "Exactly one leader is required",
+          field: "leaders"
         }
       ],
       warnings: [
