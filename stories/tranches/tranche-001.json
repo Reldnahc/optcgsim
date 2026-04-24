@@ -5,9 +5,13 @@
   "summary": {
     "generated_stories": 90,
     "approved_or_done_stories": 18,
+    "approved_stories": 15,
+    "done_stories": 3,
     "candidate_keep_stories": 90,
     "selected": 15,
-    "ready_now_remaining": 10,
+    "selected_implementation_ready": 2,
+    "ready_now_remaining": 1,
+    "approval_ready_blocked_remaining": 9,
     "ready_after": 43,
     "ambiguities": 5,
     "merge_or_replace": 0,
@@ -23,15 +27,20 @@
       "priority": "high",
       "score": 132,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "CON-001"
+      ],
       "story_dependencies": [
         "INF-001",
         "CON-001"
       ],
       "reverse_dependency_count": 11,
+      "implementation_ready": false,
       "reasons": [
         "priority=high",
         "area=cards",
-        "dependents=11"
+        "dependents=11",
+        "implementation waits on done: CON-001"
       ]
     },
     {
@@ -43,15 +52,21 @@
       "priority": "critical",
       "score": 128,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-003",
+        "ENG-004"
+      ],
       "story_dependencies": [
         "ENG-003",
         "ENG-004"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "priority=critical",
         "area=engine",
-        "dependents=0"
+        "dependents=0",
+        "implementation waits on done: ENG-003, ENG-004"
       ]
     },
     {
@@ -63,16 +78,23 @@
       "priority": "critical",
       "score": 126,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "CON-001",
+        "ENG-009",
+        "ENG-015"
+      ],
       "story_dependencies": [
         "CON-001",
         "ENG-009",
         "ENG-015"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "priority=critical",
         "area=engine",
-        "dependents=0"
+        "dependents=0",
+        "implementation waits on done: CON-001, ENG-009, ENG-015"
       ]
     },
     {
@@ -84,16 +106,22 @@
       "priority": "high",
       "score": 122,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "CON-001",
+        "ENG-001"
+      ],
       "story_dependencies": [
         "INF-001",
         "CON-001",
         "ENG-001"
       ],
       "reverse_dependency_count": 9,
+      "implementation_ready": false,
       "reasons": [
         "priority=high",
         "area=server",
-        "dependents=9"
+        "dependents=9",
+        "implementation waits on done: CON-001, ENG-001"
       ]
     },
     {
@@ -105,14 +133,19 @@
       "priority": "high",
       "score": 120,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-007"
+      ],
       "story_dependencies": [
         "ENG-007"
       ],
       "reverse_dependency_count": 5,
+      "implementation_ready": false,
       "reasons": [
         "priority=high",
         "area=engine",
-        "dependents=5"
+        "dependents=5",
+        "implementation waits on done: ENG-007"
       ]
     },
     {
@@ -124,16 +157,23 @@
       "priority": "critical",
       "score": 142,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-010",
+        "ENG-004",
+        "ENG-026"
+      ],
       "story_dependencies": [
         "ENG-010",
         "ENG-004",
         "ENG-026"
       ],
       "reverse_dependency_count": 4,
+      "implementation_ready": false,
       "reasons": [
         "priority=critical",
         "area=engine",
-        "dependents=4"
+        "dependents=4",
+        "implementation waits on done: ENG-010, ENG-004, ENG-026"
       ]
     },
     {
@@ -145,15 +185,21 @@
       "priority": "critical",
       "score": 132,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-004",
+        "ENG-033"
+      ],
       "story_dependencies": [
         "ENG-004",
         "ENG-033"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
         "priority=critical",
         "area=engine",
-        "dependents=1"
+        "dependents=1",
+        "implementation waits on done: ENG-004, ENG-033"
       ]
     },
     {
@@ -165,6 +211,12 @@
       "priority": "critical",
       "score": 144,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "EFF-030",
+        "ENG-004",
+        "ENG-006",
+        "ENG-014"
+      ],
       "story_dependencies": [
         "EFF-030",
         "ENG-004",
@@ -172,10 +224,12 @@
         "ENG-014"
       ],
       "reverse_dependency_count": 5,
+      "implementation_ready": false,
       "reasons": [
         "priority=critical",
         "area=engine",
-        "dependents=5"
+        "dependents=5",
+        "implementation waits on done: EFF-030, ENG-004, ENG-006, ENG-014"
       ]
     },
     {
@@ -187,16 +241,23 @@
       "priority": "critical",
       "score": 142,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-009",
+        "ENG-004",
+        "EFF-031"
+      ],
       "story_dependencies": [
         "ENG-009",
         "ENG-004",
         "EFF-031"
       ],
       "reverse_dependency_count": 4,
+      "implementation_ready": false,
       "reasons": [
         "priority=critical",
         "area=engine",
-        "dependents=4"
+        "dependents=4",
+        "implementation waits on done: ENG-009, ENG-004, EFF-031"
       ]
     },
     {
@@ -208,15 +269,21 @@
       "priority": "critical",
       "score": 128,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-026",
+        "ENG-009"
+      ],
       "story_dependencies": [
         "ENG-026",
         "ENG-009"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "priority=critical",
         "area=engine",
-        "dependents=0"
+        "dependents=0",
+        "implementation waits on done: ENG-026, ENG-009"
       ]
     },
     {
@@ -228,16 +295,23 @@
       "priority": "critical",
       "score": 126,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-033",
+        "ENG-015",
+        "ENG-009"
+      ],
       "story_dependencies": [
         "ENG-033",
         "ENG-015",
         "ENG-009"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "priority=critical",
         "area=engine",
-        "dependents=0"
+        "dependents=0",
+        "implementation waits on done: ENG-033, ENG-015, ENG-009"
       ]
     },
     {
@@ -249,16 +323,23 @@
       "priority": "critical",
       "score": 122,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-009",
+        "ENG-026",
+        "ENG-005"
+      ],
       "story_dependencies": [
         "ENG-009",
         "ENG-026",
         "ENG-005"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "priority=critical",
         "area=security",
-        "dependents=0"
+        "dependents=0",
+        "implementation waits on done: ENG-009, ENG-026, ENG-005"
       ]
     },
     {
@@ -270,14 +351,19 @@
       "priority": "critical",
       "score": 120,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "CAR-001"
+      ],
       "story_dependencies": [
         "CAR-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "priority=critical",
         "area=server",
-        "dependents=0"
+        "dependents=0",
+        "implementation waits on done: CAR-001"
       ]
     },
     {
@@ -289,12 +375,15 @@
       "priority": "high",
       "score": 116,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [],
       "story_dependencies": [],
       "reverse_dependency_count": 6,
+      "implementation_ready": true,
       "reasons": [
         "priority=high",
         "area=server",
-        "dependents=6"
+        "dependents=6",
+        "implementation-ready with current done dependencies"
       ]
     },
     {
@@ -306,35 +395,21 @@
       "priority": "high",
       "score": 112,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [],
       "story_dependencies": [
         "INF-001"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": true,
       "reasons": [
         "priority=high",
         "area=contracts",
-        "dependents=1"
+        "dependents=1",
+        "implementation-ready with current done dependencies"
       ]
     }
   ],
   "ready_now_remaining": [
-    {
-      "id": "EFF-017",
-      "title": "Add DSL primitive selectCards (zone-based) with public/private visibility support",
-      "path": "stories/generated/EFF-017.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 104,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "EFF-010"
-      ],
-      "reverse_dependency_count": 1,
-      "reasons": [
-        "ready with current approved/done dependencies"
-      ]
-    },
     {
       "id": "DB-006",
       "title": "Add users/sessions/player_settings/decks/friendships migrations and DB access layer",
@@ -344,10 +419,35 @@
       "priority": "high",
       "score": 102,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [],
       "story_dependencies": [],
       "reverse_dependency_count": 1,
+      "implementation_ready": true,
       "reasons": [
         "ready with current approved/done dependencies"
+      ]
+    }
+  ],
+  "approval_ready_blocked_remaining": [
+    {
+      "id": "EFF-017",
+      "title": "Add DSL primitive selectCards (zone-based) with public/private visibility support",
+      "path": "stories/generated/EFF-017.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 104,
+      "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "EFF-010"
+      ],
+      "story_dependencies": [
+        "EFF-010"
+      ],
+      "reverse_dependency_count": 1,
+      "implementation_ready": false,
+      "reasons": [
+        "approval-ready, but implementation waits on done: EFF-010"
       ]
     },
     {
@@ -359,14 +459,20 @@
       "priority": "high",
       "score": 100,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-003",
+        "ENG-004",
+        "EFF-030"
+      ],
       "story_dependencies": [
         "ENG-003",
         "ENG-004",
         "EFF-030"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
-        "ready with current approved/done dependencies"
+        "approval-ready, but implementation waits on done: ENG-003, ENG-004, EFF-030"
       ]
     },
     {
@@ -378,14 +484,20 @@
       "priority": "high",
       "score": 100,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-015",
+        "ENG-003",
+        "ENG-004"
+      ],
       "story_dependencies": [
         "ENG-015",
         "ENG-003",
         "ENG-004"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
-        "ready with current approved/done dependencies"
+        "approval-ready, but implementation waits on done: ENG-015, ENG-003, ENG-004"
       ]
     },
     {
@@ -397,12 +509,16 @@
       "priority": "high",
       "score": 100,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-004"
+      ],
       "story_dependencies": [
         "ENG-004"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
-        "ready with current approved/done dependencies"
+        "approval-ready, but implementation waits on done: ENG-004"
       ]
     },
     {
@@ -414,13 +530,17 @@
       "priority": "high",
       "score": 98,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-001"
+      ],
       "story_dependencies": [
         "INF-001",
         "ENG-001"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
-        "ready with current approved/done dependencies"
+        "approval-ready, but implementation waits on done: ENG-001"
       ]
     },
     {
@@ -432,13 +552,18 @@
       "priority": "high",
       "score": 96,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-004",
+        "ENG-009"
+      ],
       "story_dependencies": [
         "ENG-004",
         "ENG-009"
       ],
       "reverse_dependency_count": 2,
+      "implementation_ready": false,
       "reasons": [
-        "ready with current approved/done dependencies"
+        "approval-ready, but implementation waits on done: ENG-004, ENG-009"
       ]
     },
     {
@@ -450,14 +575,20 @@
       "priority": "high",
       "score": 96,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-010",
+        "ENG-004",
+        "ENG-015"
+      ],
       "story_dependencies": [
         "ENG-010",
         "ENG-004",
         "ENG-015"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
-        "ready with current approved/done dependencies"
+        "approval-ready, but implementation waits on done: ENG-010, ENG-004, ENG-015"
       ]
     },
     {
@@ -469,12 +600,16 @@
       "priority": "high",
       "score": 90,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "CON-001"
+      ],
       "story_dependencies": [
         "CON-001"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
-        "ready with current approved/done dependencies"
+        "approval-ready, but implementation waits on done: CON-001"
       ]
     },
     {
@@ -486,13 +621,18 @@
       "priority": "medium",
       "score": 68,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "ENG-006",
+        "ENG-015"
+      ],
       "story_dependencies": [
         "ENG-006",
         "ENG-015"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
-        "ready with current approved/done dependencies"
+        "approval-ready, but implementation waits on done: ENG-006, ENG-015"
       ]
     }
   ],
@@ -508,12 +648,18 @@
       "unmet_story_dependencies": [
         "ENG-031"
       ],
+      "unmet_done_story_dependencies": [
+        "ENG-031",
+        "ENG-015",
+        "EFF-014"
+      ],
       "story_dependencies": [
         "ENG-031",
         "ENG-015",
         "EFF-014"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
         "waits on ENG-031"
       ]
@@ -529,6 +675,12 @@
       "unmet_story_dependencies": [
         "EFF-035"
       ],
+      "unmet_done_story_dependencies": [
+        "EFF-014",
+        "EFF-035",
+        "ENG-011",
+        "ENG-009"
+      ],
       "story_dependencies": [
         "EFF-014",
         "EFF-035",
@@ -536,6 +688,7 @@
         "ENG-009"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-035"
       ]
@@ -551,12 +704,17 @@
       "unmet_story_dependencies": [
         "RPL-001"
       ],
+      "unmet_done_story_dependencies": [
+        "RPL-001",
+        "SRV-001"
+      ],
       "story_dependencies": [
         "INF-001",
         "RPL-001",
         "SRV-001"
       ],
       "reverse_dependency_count": 8,
+      "implementation_ready": false,
       "reasons": [
         "waits on RPL-001"
       ]
@@ -575,6 +733,12 @@
         "SRV-004",
         "RPL-001"
       ],
+      "unmet_done_story_dependencies": [
+        "DB-001",
+        "SRV-002",
+        "SRV-004",
+        "RPL-001"
+      ],
       "story_dependencies": [
         "DB-001",
         "SRV-002",
@@ -582,6 +746,7 @@
         "RPL-001"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
         "waits on DB-001, SRV-002, SRV-004, RPL-001"
       ]
@@ -600,6 +765,12 @@
         "RPL-003",
         "AMB-001"
       ],
+      "unmet_done_story_dependencies": [
+        "SRV-003",
+        "SRV-002",
+        "RPL-003",
+        "AMB-001"
+      ],
       "story_dependencies": [
         "SRV-003",
         "SRV-002",
@@ -607,6 +778,7 @@
         "AMB-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on SRV-003, SRV-002, RPL-003, AMB-001"
       ]
@@ -622,10 +794,14 @@
       "unmet_story_dependencies": [
         "ENG-017"
       ],
+      "unmet_done_story_dependencies": [
+        "ENG-017"
+      ],
       "story_dependencies": [
         "ENG-017"
       ],
       "reverse_dependency_count": 3,
+      "implementation_ready": false,
       "reasons": [
         "waits on ENG-017"
       ]
@@ -644,6 +820,12 @@
         "SRV-002",
         "AMB-001"
       ],
+      "unmet_done_story_dependencies": [
+        "SRV-015",
+        "RPL-003",
+        "SRV-002",
+        "AMB-001"
+      ],
       "story_dependencies": [
         "SRV-015",
         "RPL-003",
@@ -651,6 +833,7 @@
         "AMB-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on SRV-015, RPL-003, SRV-002, AMB-001"
       ]
@@ -670,6 +853,18 @@
         "EFF-012",
         "EFF-038"
       ],
+      "unmet_done_story_dependencies": [
+        "EFF-030",
+        "EFF-031",
+        "EFF-028",
+        "EFF-037",
+        "EFF-008",
+        "EFF-010",
+        "EFF-034",
+        "EFF-012",
+        "EFF-014",
+        "EFF-038"
+      ],
       "story_dependencies": [
         "EFF-030",
         "EFF-031",
@@ -683,6 +878,7 @@
         "EFF-038"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-028, EFF-037, EFF-008, EFF-012, EFF-038"
       ]
@@ -701,6 +897,13 @@
         "SRV-004",
         "SRV-002"
       ],
+      "unmet_done_story_dependencies": [
+        "RPL-003",
+        "SRV-001",
+        "SRV-003",
+        "SRV-004",
+        "SRV-002"
+      ],
       "story_dependencies": [
         "RPL-003",
         "SRV-001",
@@ -710,6 +913,7 @@
         "AMB-007"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on RPL-003, SRV-003, SRV-004, SRV-002"
       ]
@@ -726,12 +930,18 @@
         "QUE-001",
         "DB-001"
       ],
+      "unmet_done_story_dependencies": [
+        "CON-001",
+        "QUE-001",
+        "DB-001"
+      ],
       "story_dependencies": [
         "CON-001",
         "QUE-001",
         "DB-001"
       ],
       "reverse_dependency_count": 2,
+      "implementation_ready": false,
       "reasons": [
         "waits on QUE-001, DB-001"
       ]
@@ -747,6 +957,12 @@
       "unmet_story_dependencies": [
         "EFF-006"
       ],
+      "unmet_done_story_dependencies": [
+        "ENG-003",
+        "ENG-010",
+        "EFF-006",
+        "ENG-015"
+      ],
       "story_dependencies": [
         "ENG-003",
         "ENG-010",
@@ -754,6 +970,7 @@
         "ENG-015"
       ],
       "reverse_dependency_count": 3,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-006"
       ]
@@ -769,11 +986,16 @@
       "unmet_story_dependencies": [
         "EFF-001"
       ],
+      "unmet_done_story_dependencies": [
+        "EFF-001",
+        "CAR-001"
+      ],
       "story_dependencies": [
         "EFF-001",
         "CAR-001"
       ],
       "reverse_dependency_count": 2,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-001"
       ]
@@ -789,11 +1011,16 @@
       "unmet_story_dependencies": [
         "DB-001"
       ],
+      "unmet_done_story_dependencies": [
+        "SRV-001",
+        "DB-001"
+      ],
       "story_dependencies": [
         "SRV-001",
         "DB-001"
       ],
       "reverse_dependency_count": 4,
+      "implementation_ready": false,
       "reasons": [
         "waits on DB-001"
       ]
@@ -809,12 +1036,18 @@
       "unmet_story_dependencies": [
         "EFF-037"
       ],
+      "unmet_done_story_dependencies": [
+        "ENG-015",
+        "EFF-030",
+        "EFF-037"
+      ],
       "story_dependencies": [
         "ENG-015",
         "EFF-030",
         "EFF-037"
       ],
       "reverse_dependency_count": 2,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-037"
       ]
@@ -830,10 +1063,14 @@
       "unmet_story_dependencies": [
         "DB-001"
       ],
+      "unmet_done_story_dependencies": [
+        "DB-001"
+      ],
       "story_dependencies": [
         "DB-001"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
         "waits on DB-001"
       ]
@@ -849,12 +1086,18 @@
       "unmet_story_dependencies": [
         "EFF-037"
       ],
+      "unmet_done_story_dependencies": [
+        "ENG-015",
+        "ENG-011",
+        "EFF-037"
+      ],
       "story_dependencies": [
         "ENG-015",
         "ENG-011",
         "EFF-037"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-037"
       ]
@@ -870,11 +1113,16 @@
       "unmet_story_dependencies": [
         "SEC-001"
       ],
+      "unmet_done_story_dependencies": [
+        "ENG-001",
+        "SEC-001"
+      ],
       "story_dependencies": [
         "ENG-001",
         "SEC-001"
       ],
       "reverse_dependency_count": 4,
+      "implementation_ready": false,
       "reasons": [
         "waits on SEC-001"
       ]
@@ -890,10 +1138,14 @@
       "unmet_story_dependencies": [
         "DB-001"
       ],
+      "unmet_done_story_dependencies": [
+        "DB-001"
+      ],
       "story_dependencies": [
         "DB-001"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
         "waits on DB-001"
       ]
@@ -910,6 +1162,12 @@
         "EFF-008",
         "EFF-009"
       ],
+      "unmet_done_story_dependencies": [
+        "EFF-031",
+        "EFF-008",
+        "EFF-009",
+        "EFF-010"
+      ],
       "story_dependencies": [
         "EFF-031",
         "EFF-008",
@@ -917,6 +1175,7 @@
         "EFF-010"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-008, EFF-009"
       ]
@@ -933,11 +1192,16 @@
         "DB-001",
         "CON-005"
       ],
+      "unmet_done_story_dependencies": [
+        "DB-001",
+        "CON-005"
+      ],
       "story_dependencies": [
         "DB-001",
         "CON-005"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
         "waits on DB-001, CON-005"
       ]
@@ -953,12 +1217,18 @@
       "unmet_story_dependencies": [
         "EFF-012"
       ],
+      "unmet_done_story_dependencies": [
+        "ENG-010",
+        "ENG-033",
+        "EFF-012"
+      ],
       "story_dependencies": [
         "ENG-010",
         "ENG-033",
         "EFF-012"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-012"
       ]
@@ -974,12 +1244,18 @@
       "unmet_story_dependencies": [
         "ENG-022"
       ],
+      "unmet_done_story_dependencies": [
+        "ENG-015",
+        "ENG-009",
+        "ENG-022"
+      ],
       "story_dependencies": [
         "ENG-015",
         "ENG-009",
         "ENG-022"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on ENG-022"
       ]
@@ -995,10 +1271,14 @@
       "unmet_story_dependencies": [
         "SRV-007"
       ],
+      "unmet_done_story_dependencies": [
+        "SRV-007"
+      ],
       "story_dependencies": [
         "SRV-007"
       ],
       "reverse_dependency_count": 1,
+      "implementation_ready": false,
       "reasons": [
         "waits on SRV-007"
       ]
@@ -1014,11 +1294,16 @@
       "unmet_story_dependencies": [
         "CLI-003"
       ],
+      "unmet_done_story_dependencies": [
+        "CON-001",
+        "CLI-003"
+      ],
       "story_dependencies": [
         "CON-001",
         "CLI-003"
       ],
       "reverse_dependency_count": 2,
+      "implementation_ready": false,
       "reasons": [
         "waits on CLI-003"
       ]
@@ -1034,10 +1319,14 @@
       "unmet_story_dependencies": [
         "LOB-001"
       ],
+      "unmet_done_story_dependencies": [
+        "LOB-001"
+      ],
       "story_dependencies": [
         "LOB-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on LOB-001"
       ]
@@ -1053,11 +1342,16 @@
       "unmet_story_dependencies": [
         "EFF-001"
       ],
+      "unmet_done_story_dependencies": [
+        "CAR-001",
+        "EFF-001"
+      ],
       "story_dependencies": [
         "CAR-001",
         "EFF-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-001"
       ]
@@ -1074,11 +1368,16 @@
         "SRV-010",
         "EFF-038"
       ],
+      "unmet_done_story_dependencies": [
+        "SRV-010",
+        "EFF-038"
+      ],
       "story_dependencies": [
         "SRV-010",
         "EFF-038"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on SRV-010, EFF-038"
       ]
@@ -1094,11 +1393,16 @@
       "unmet_story_dependencies": [
         "DB-005"
       ],
+      "unmet_done_story_dependencies": [
+        "SRV-013",
+        "DB-005"
+      ],
       "story_dependencies": [
         "SRV-013",
         "DB-005"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on DB-005"
       ]
@@ -1115,6 +1419,12 @@
         "RPL-001",
         "DB-001"
       ],
+      "unmet_done_story_dependencies": [
+        "RPL-001",
+        "SRV-001",
+        "ENG-001",
+        "DB-001"
+      ],
       "story_dependencies": [
         "RPL-001",
         "SRV-001",
@@ -1122,6 +1432,7 @@
         "DB-001"
       ],
       "reverse_dependency_count": 2,
+      "implementation_ready": false,
       "reasons": [
         "waits on RPL-001, DB-001"
       ]
@@ -1137,11 +1448,16 @@
       "unmet_story_dependencies": [
         "EFF-016"
       ],
+      "unmet_done_story_dependencies": [
+        "EFF-016",
+        "CAR-001"
+      ],
       "story_dependencies": [
         "EFF-016",
         "CAR-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-016"
       ]
@@ -1157,10 +1473,14 @@
       "unmet_story_dependencies": [
         "CLI-001"
       ],
+      "unmet_done_story_dependencies": [
+        "CLI-001"
+      ],
       "story_dependencies": [
         "CLI-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on CLI-001"
       ]
@@ -1178,12 +1498,18 @@
         "CON-005",
         "DB-007"
       ],
+      "unmet_done_story_dependencies": [
+        "QUE-001",
+        "CON-005",
+        "DB-007"
+      ],
       "story_dependencies": [
         "QUE-001",
         "CON-005",
         "DB-007"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on QUE-001, CON-005, DB-007"
       ]
@@ -1199,12 +1525,18 @@
       "unmet_story_dependencies": [
         "SRV-003"
       ],
+      "unmet_done_story_dependencies": [
+        "SRV-001",
+        "ENG-001",
+        "SRV-003"
+      ],
       "story_dependencies": [
         "SRV-001",
         "ENG-001",
         "SRV-003"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on SRV-003"
       ]
@@ -1221,12 +1553,18 @@
         "SRV-002",
         "SRV-003"
       ],
+      "unmet_done_story_dependencies": [
+        "SRV-002",
+        "SRV-003",
+        "ENG-001"
+      ],
       "story_dependencies": [
         "SRV-002",
         "SRV-003",
         "ENG-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on SRV-002, SRV-003"
       ]
@@ -1245,6 +1583,12 @@
         "RPL-003",
         "DB-009"
       ],
+      "unmet_done_story_dependencies": [
+        "DB-001",
+        "RPL-002",
+        "RPL-003",
+        "DB-009"
+      ],
       "story_dependencies": [
         "DB-001",
         "RPL-002",
@@ -1252,6 +1596,7 @@
         "DB-009"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on DB-001, RPL-002, RPL-003, DB-009"
       ]
@@ -1269,6 +1614,12 @@
         "EFF-017",
         "ENG-030"
       ],
+      "unmet_done_story_dependencies": [
+        "EFF-012",
+        "EFF-017",
+        "ENG-030",
+        "CAR-001"
+      ],
       "story_dependencies": [
         "EFF-012",
         "EFF-017",
@@ -1276,6 +1627,7 @@
         "CAR-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-012, EFF-017, ENG-030"
       ]
@@ -1291,11 +1643,16 @@
       "unmet_story_dependencies": [
         "QUE-001"
       ],
+      "unmet_done_story_dependencies": [
+        "SRV-001",
+        "QUE-001"
+      ],
       "story_dependencies": [
         "SRV-001",
         "QUE-001"
       ],
       "reverse_dependency_count": 3,
+      "implementation_ready": false,
       "reasons": [
         "waits on QUE-001"
       ]
@@ -1312,12 +1669,18 @@
         "RPL-001",
         "RPL-002"
       ],
+      "unmet_done_story_dependencies": [
+        "RPL-001",
+        "RPL-002",
+        "ENG-001"
+      ],
       "story_dependencies": [
         "RPL-001",
         "RPL-002",
         "ENG-001"
       ],
       "reverse_dependency_count": 4,
+      "implementation_ready": false,
       "reasons": [
         "waits on RPL-001, RPL-002"
       ]
@@ -1333,11 +1696,16 @@
       "unmet_story_dependencies": [
         "DB-006"
       ],
+      "unmet_done_story_dependencies": [
+        "DB-006",
+        "SRV-013"
+      ],
       "story_dependencies": [
         "DB-006",
         "SRV-013"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on DB-006"
       ]
@@ -1353,11 +1721,16 @@
       "unmet_story_dependencies": [
         "EFF-001"
       ],
+      "unmet_done_story_dependencies": [
+        "CAR-001",
+        "EFF-001"
+      ],
       "story_dependencies": [
         "CAR-001",
         "EFF-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on EFF-001"
       ]
@@ -1373,10 +1746,14 @@
       "unmet_story_dependencies": [
         "CLI-001"
       ],
+      "unmet_done_story_dependencies": [
+        "CLI-001"
+      ],
       "story_dependencies": [
         "CLI-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on CLI-001"
       ]
@@ -1393,12 +1770,18 @@
         "LOB-001",
         "QUE-001"
       ],
+      "unmet_done_story_dependencies": [
+        "SRV-013",
+        "LOB-001",
+        "QUE-001"
+      ],
       "story_dependencies": [
         "SRV-013",
         "LOB-001",
         "QUE-001"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on LOB-001, QUE-001"
       ]
@@ -1416,6 +1799,11 @@
         "FMT-003",
         "SRV-007"
       ],
+      "unmet_done_story_dependencies": [
+        "LOB-001",
+        "FMT-003",
+        "SRV-007"
+      ],
       "story_dependencies": [
         "LOB-001",
         "FMT-003",
@@ -1423,6 +1811,7 @@
         "AMB-007"
       ],
       "reverse_dependency_count": 0,
+      "implementation_ready": false,
       "reasons": [
         "waits on LOB-001, FMT-003, SRV-007"
       ]
@@ -1438,11 +1827,16 @@
       "priority": "high",
       "score": 100,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [
+        "CON-001",
+        "SRV-015"
+      ],
       "story_dependencies": [
         "CON-001",
         "SRV-015"
       ],
       "reverse_dependency_count": 2,
+      "implementation_ready": false,
       "reasons": [
         "clarification item; do not promote into implementation tranche"
       ]
@@ -1456,8 +1850,10 @@
       "priority": "high",
       "score": 96,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [],
       "story_dependencies": [],
       "reverse_dependency_count": 0,
+      "implementation_ready": true,
       "reasons": [
         "clarification item; do not promote into implementation tranche"
       ]
@@ -1471,8 +1867,10 @@
       "priority": "high",
       "score": 96,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [],
       "story_dependencies": [],
       "reverse_dependency_count": 0,
+      "implementation_ready": true,
       "reasons": [
         "clarification item; do not promote into implementation tranche"
       ]
@@ -1486,8 +1884,10 @@
       "priority": "high",
       "score": 96,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [],
       "story_dependencies": [],
       "reverse_dependency_count": 0,
+      "implementation_ready": true,
       "reasons": [
         "clarification item; do not promote into implementation tranche"
       ]
@@ -1501,8 +1901,10 @@
       "priority": "medium",
       "score": 66,
       "unmet_story_dependencies": [],
+      "unmet_done_story_dependencies": [],
       "story_dependencies": [],
       "reverse_dependency_count": 0,
+      "implementation_ready": true,
       "reasons": [
         "clarification item; do not promote into implementation tranche"
       ]

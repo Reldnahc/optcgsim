@@ -118,13 +118,16 @@ function printNextSummary(payload: {
   plan: {
     summary: {
       selected: number;
+      selected_implementation_ready?: number;
       ready_now_remaining: number;
+      approval_ready_blocked_remaining?: number;
       ready_after: number;
       ambiguities: number;
       reject_or_needs_edit: number;
     };
     selected: Array<{ id: string; title: string }>;
     ready_now_remaining: Array<{ id: string; title: string }>;
+    approval_ready_blocked_remaining?: Array<{ id: string; title: string }>;
     ambiguities: Array<{ id: string; title: string }>;
   };
 }): void {
@@ -133,7 +136,7 @@ function printNextSummary(payload: {
     `Reviewed ${payload.review.totals.reviewed} generated stories: ${payload.review.totals.keep} keep, ${payload.review.totals.merge_or_replace} merge, ${payload.review.totals.needs_edit} needs edit, ${payload.review.totals.reject} reject.`
   );
   lines.push(
-    `Selected tranche: ${payload.plan.summary.selected} stories. Ready now remaining: ${payload.plan.summary.ready_now_remaining}. Ready after: ${payload.plan.summary.ready_after}. Ambiguities: ${payload.plan.summary.ambiguities}.`
+    `Selected tranche: ${payload.plan.summary.selected} approval candidates (${payload.plan.summary.selected_implementation_ready ?? 0} implementation-ready today). Ready now remaining: ${payload.plan.summary.ready_now_remaining}. Approval-ready but execution-blocked: ${payload.plan.summary.approval_ready_blocked_remaining ?? 0}. Ready after: ${payload.plan.summary.ready_after}. Ambiguities: ${payload.plan.summary.ambiguities}.`
   );
   lines.push("");
   lines.push("Selected now:");
@@ -144,6 +147,16 @@ function printNextSummary(payload: {
     lines.push("");
     lines.push("Also ready now:");
     for (const story of payload.plan.ready_now_remaining.slice(0, 10)) {
+      lines.push(`- ${story.id}: ${story.title}`);
+    }
+  }
+  if ((payload.plan.approval_ready_blocked_remaining?.length ?? 0) > 0) {
+    lines.push("");
+    lines.push("Approval-ready but blocked on done prerequisites:");
+    for (const story of payload.plan.approval_ready_blocked_remaining!.slice(
+      0,
+      10
+    )) {
       lines.push(`- ${story.id}: ${story.title}`);
     }
   }

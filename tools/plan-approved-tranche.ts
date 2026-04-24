@@ -46,8 +46,10 @@ interface PlannedStory {
   priority: Story["priority"];
   score: number;
   unmet_story_dependencies: string[];
+  unmet_done_story_dependencies: string[];
   story_dependencies: string[];
   reverse_dependency_count: number;
+  implementation_ready: boolean;
   reasons: string[];
 }
 
@@ -58,9 +60,13 @@ interface TranchePlan {
   summary: {
     generated_stories: number;
     approved_or_done_stories: number;
+    approved_stories: number;
+    done_stories: number;
     candidate_keep_stories: number;
     selected: number;
+    selected_implementation_ready: number;
     ready_now_remaining: number;
+    approval_ready_blocked_remaining: number;
     ready_after: number;
     ambiguities: number;
     merge_or_replace: number;
@@ -68,6 +74,7 @@ interface TranchePlan {
   };
   selected: PlannedStory[];
   ready_now_remaining: PlannedStory[];
+  approval_ready_blocked_remaining: PlannedStory[];
   ready_after: PlannedStory[];
   ambiguities: PlannedStory[];
   merge_or_replace: PlannedStory[];
@@ -78,7 +85,6 @@ const STORY_ID_RE = /^[A-Z]{2,}-\d{3,}$/;
 const DEFAULT_REVIEW_PATH = "stories/generated-review.json";
 const DEFAULT_OUTPUT_PATH = "stories/tranches/tranche-001.json";
 const GENERATED_DIR = "stories/generated";
-const SATISFIED_DIRS = ["stories/approved", "stories/done"];
 
 function isStoryId(value: string): boolean {
   return STORY_ID_RE.test(value);
@@ -180,12 +186,19 @@ function storyScore(story: Story, dependents: number): number {
   );
 }
 
+function unmetDoneDependencies(story: Story, doneIds: Set<string>): string[] {
+  return storyDependencyIds(story).filter(
+    (dependency) => !doneIds.has(dependency)
+  );
+}
+
 function plannedStory(
   story: Story,
   path: string,
   score: number,
   reverseDependencyCount: number,
   unmetDeps: string[],
+  unmetDoneDeps: string[],
   reasons: string[]
 ): PlannedStory {
   return {
@@ -197,8 +210,10 @@ function plannedStory(
     priority: story.priority,
     score,
     unmet_story_dependencies: unmetDeps,
+    unmet_done_story_dependencies: unmetDoneDeps,
     story_dependencies: storyDependencyIds(story),
     reverse_dependency_count: reverseDependencyCount,
+    implementation_ready: unmetDoneDeps.length === 0,
     reasons
   };
 }
@@ -242,8 +257,11 @@ export function createTranchePlan(
     report.storyReviews.map((review) => [review.id, review])
   );
   const generated = loadStoriesByDir(GENERATED_DIR);
-  const approvedOrDone = SATISFIED_DIRS.flatMap((dir) => loadStoriesByDir(dir));
+  const approvedStories = loadStoriesByDir("stories/approved");
+  const doneStories = loadStoriesByDir("stories/done");
+  const approvedOrDone = [...approvedStories, ...doneStories];
   const satisfiedIds = new Set(approvedOrDone.map((entry) => entry.story.id));
+  const doneIds = new Set(doneStories.map((entry) => entry.story.id));
   const keepStories = generated.filter(
     (entry) => reviewById.get(entry.story.id)?.recommendation === "keep"
   );
@@ -272,17 +290,26 @@ export function createTranchePlan(
           entry.story,
           dependents.get(entry.story.id) ?? 0
         );
+        const unmetDoneDeps = unmetDoneDependencies(entry.story, doneIds);
         const reasons = [
           `priority=${entry.story.priority}`,
           `area=${entry.story.area}`,
           `dependents=${dependents.get(entry.story.id) ?? 0}`
         ];
+        if (unmetDoneDeps.length > 0) {
+          reasons.push(
+            `implementation waits on done: ${unmetDoneDeps.join(", ")}`
+          );
+        } else {
+          reasons.push("implementation-ready with current done dependencies");
+        }
         return plannedStory(
           entry.story,
           entry.path,
           score,
           dependents.get(entry.story.id) ?? 0,
           [],
+          unmetDoneDeps,
           reasons
         );
       })
@@ -308,6 +335,10 @@ export function createTranchePlan(
       if (unmetDeps.length > 0) {
         return null;
       }
+      const unmetDoneDeps = unmetDoneDependencies(entry.story, doneIds);
+      if (unmetDoneDeps.length > 0) {
+        return null;
+      }
       const score = storyScore(
         entry.story,
         dependents.get(entry.story.id) ?? 0
@@ -318,7 +349,40 @@ export function createTranchePlan(
         score,
         dependents.get(entry.story.id) ?? 0,
         [],
+        [],
         ["ready with current approved/done dependencies"]
+      );
+    })
+    .filter((entry): entry is PlannedStory => entry !== null)
+    .sort(comparePlannedStories);
+
+  const approvalReadyBlockedRemaining = keepNonAmbiguities
+    .filter((entry) => !selectedIdSet.has(entry.story.id))
+    .map((entry) => {
+      const unmetDeps = storyDependencyIds(entry.story).filter(
+        (dependency) => !satisfiedIds.has(dependency)
+      );
+      if (unmetDeps.length > 0) {
+        return null;
+      }
+      const unmetDoneDeps = unmetDoneDependencies(entry.story, doneIds);
+      if (unmetDoneDeps.length === 0) {
+        return null;
+      }
+      const score = storyScore(
+        entry.story,
+        dependents.get(entry.story.id) ?? 0
+      );
+      return plannedStory(
+        entry.story,
+        entry.path,
+        score,
+        dependents.get(entry.story.id) ?? 0,
+        [],
+        unmetDoneDeps,
+        [
+          `approval-ready, but implementation waits on done: ${unmetDoneDeps.join(", ")}`
+        ]
       );
     })
     .filter((entry): entry is PlannedStory => entry !== null)
@@ -344,6 +408,7 @@ export function createTranchePlan(
         score,
         dependents.get(entry.story.id) ?? 0,
         unmetDeps,
+        unmetDoneDependencies(entry.story, doneIds),
         [`waits on ${unmetDeps.join(", ")}`]
       );
     })
@@ -359,6 +424,7 @@ export function createTranchePlan(
         storyScore(entry.story, dependents.get(entry.story.id) ?? 0),
         dependents.get(entry.story.id) ?? 0,
         [],
+        unmetDoneDependencies(entry.story, doneIds),
         ["clarification item; do not promote into implementation tranche"]
       )
     )
@@ -378,6 +444,7 @@ export function createTranchePlan(
         storyDependencyIds(entry.story).filter(
           (dependency) => !satisfiedIds.has(dependency)
         ),
+        unmetDoneDependencies(entry.story, doneIds),
         reviewById.get(entry.story.id)?.reasons ?? []
       )
     )
@@ -397,6 +464,7 @@ export function createTranchePlan(
         storyDependencyIds(entry.story).filter(
           (dependency) => !satisfiedIds.has(dependency)
         ),
+        unmetDoneDependencies(entry.story, doneIds),
         reviewById.get(entry.story.id)?.reasons ?? []
       )
     )
@@ -409,9 +477,15 @@ export function createTranchePlan(
     summary: {
       generated_stories: generated.length,
       approved_or_done_stories: approvedOrDone.length,
+      approved_stories: approvedStories.length,
+      done_stories: doneStories.length,
       candidate_keep_stories: keepStories.length,
       selected: selected.length,
+      selected_implementation_ready: selected.filter(
+        (entry) => entry.implementation_ready
+      ).length,
       ready_now_remaining: readyNowRemaining.length,
+      approval_ready_blocked_remaining: approvalReadyBlockedRemaining.length,
       ready_after: readyAfter.length,
       ambiguities: ambiguities.length,
       merge_or_replace: mergeOrReplace.length,
@@ -419,6 +493,7 @@ export function createTranchePlan(
     },
     selected,
     ready_now_remaining: readyNowRemaining,
+    approval_ready_blocked_remaining: approvalReadyBlockedRemaining,
     ready_after: readyAfter,
     ambiguities,
     merge_or_replace: mergeOrReplace,
