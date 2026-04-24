@@ -6,4 +6,3 @@ coverage/
 .DS_Store
 stories/review/bridge.stdout.log
 stories/review/bridge.stderr.log
-stories/.review/

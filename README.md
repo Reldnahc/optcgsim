@@ -230,7 +230,6 @@ Story lifecycle automation is standardized behind repo scripts.
 - prepare branch: `npm run stories:branch -- --id STORY-ID`
 - open PR: `npm run stories:pr -- --id STORY-ID --push`
 - start work: `npm run stories:start -- --id STORY-ID`
-- contract-story audit: `npm run stories:contract-audit -- --id STORY-ID`
 - request review: `npm run stories:request-review -- --id STORY-ID`
 - mark changes requested: `npm run stories:changes-requested -- --id STORY-ID`
 - complete work: `npm run stories:complete -- --id STORY-ID`
@@ -241,7 +240,5 @@ Story lifecycle automation is standardized behind repo scripts.
 Prefer these scripts over invoking individual workflow tools directly.
 
 Review is expected to happen on a pull request, not only on an issue. Stories should have a branch and PR before moving into `in_review`, and `complete` should only happen after review passes and the PR is merged.
-
-For stories with `area: contracts`, `request-review` is gated by a contract audit artifact tied to the current git `HEAD`. The audit command reruns `stories:verify`, records the contract-review checklist under `stories/.review/`, and `request-review` refuses to proceed until that audit is current and the worktree is clean.
 
 Bootstrap exception: `INF-001` is grandfathered because it established the repo baseline directly on `main` before the branch/PR workflow existed. It may complete without PR metadata, but that exception should not be reused for later stories.
