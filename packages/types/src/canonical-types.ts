@@ -1180,6 +1180,47 @@ export interface PublicEffectOption {
   availability?: "available" | "unavailable";
 }
 
+export interface PublicTriggerOrderOption {
+  triggerId: QueueEntryId;
+  label: string;
+  sourceCardId?: CardId;
+  sourceInstanceId?: InstanceId;
+  effectId?: EffectId;
+}
+
+export interface PublicReplacementOption {
+  replacementId: EffectId;
+  label: string;
+  sourceCardId?: CardId;
+  sourceInstanceId?: InstanceId;
+}
+
+export type PublicLegalAction = Action;
+
+export type RevealReason =
+  | "play"
+  | "counter"
+  | "trigger"
+  | "search"
+  | "lookAt"
+  | "effect"
+  | "trash";
+
+export type RevealExpiration =
+  | { type: "eventEnd" }
+  | { type: "zoneChange" }
+  | { type: "stateSeq"; stateSeq: StateSeq }
+  | { type: "permanent" };
+
+export interface PublicRevealRecord {
+  id: string;
+  card: CardRef;
+  sourceZone: ZoneName;
+  reason: RevealReason;
+  visibleTo: "both" | PlayerId[] | "replayOnly";
+  expires: RevealExpiration;
+}
+
 export type PublicDecision =
   | (PublicDecisionBase & {
       type: "mulligan";
@@ -1187,7 +1228,7 @@ export type PublicDecision =
     })
   | (PublicDecisionBase & {
       type: "chooseTriggerOrder";
-      triggerIds: QueueEntryId[];
+      triggers: PublicTriggerOrderOption[];
     })
   | (PublicDecisionBase & {
       type: "chooseOptionalActivation";
@@ -1224,7 +1265,7 @@ export type PublicDecision =
   | (PublicDecisionBase & {
       type: "chooseReplacement";
       processId: string;
-      replacementIds: EffectId[];
+      replacements: PublicReplacementOption[];
       optional: boolean;
     })
   | (PublicDecisionBase & {
@@ -1329,21 +1370,25 @@ export interface PlayerViewState {
   life: Array<{ faceUp: boolean; card?: PublicCardView }> | HiddenZoneView;
 }
 
+export type VisiblePlayerState = PlayerViewState;
+export type OpponentVisibleState = PlayerViewState;
+export type PublicTurnState = TurnState;
+export type PublicBattleState = BattleState;
+
 export interface PlayerView {
   matchId: MatchId;
-  viewer: PlayerId;
-  gameType: GameType;
-  formatId: FormatId;
+  playerId: PlayerId;
   stateSeq: StateSeq;
-  serverSeq: ServerSeq;
-  you: PlayerViewState;
-  opponent: PlayerViewState;
-  turn: TurnState;
-  battle?: BattleState;
+  actionSeq: ActionSeq;
+  turn: PublicTurnState;
+  self: VisiblePlayerState;
+  opponent: OpponentVisibleState;
+  battle?: PublicBattleState;
   pendingDecision?: PublicDecision;
+  legalActions: PublicLegalAction[];
+  revealedCards: PublicRevealRecord[];
+  effectEvents: PublicEffectEvent[];
   timers: PublicTimerState;
-  visibleEvents: PublicEffectEvent[];
-  winner?: MatchResult["winner"];
 }
 
 export type SpectatorMode = "disabled" | "live-filtered";

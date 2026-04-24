@@ -29,6 +29,7 @@ describe("@optcg/types API surface", () => {
     const playerId = asBrand<PlayerId>("player-1");
     const stateSeq = asBrand<StateSeq>(12);
     const decisionId = asBrand<DecisionId>("decision-1");
+    const replacementDecisionId = asBrand<DecisionId>("decision-2");
 
     const action: Action = { type: "endMainPhase" };
     const envelope: ClientActionEnvelope = {
@@ -46,27 +47,33 @@ describe("@optcg/types API surface", () => {
 
     const decision: PublicDecision = {
       id: decisionId,
-      type: "selectCards",
+      type: "chooseTriggerOrder",
       playerId,
-      prompt: "Choose cards",
-      request: {
-        chooser: "self",
-        zone: "hand",
-        player: "self",
-        min: 1,
-        max: 1,
-        allowFewerIfUnavailable: false,
-        visibility: "public"
-      },
-      candidates: [
+      prompt: "Choose trigger order",
+      triggers: [
         {
-          card: {
-            cardId: asBrand<CardId>("OP01-001"),
-            controller: playerId,
-            owner: playerId,
-            instanceId: asBrand("instance-1")
-          },
-          label: "Target 1"
+          triggerId: asBrand("queue-1"),
+          label: "Leader trigger",
+          sourceCardId: asBrand<CardId>("OP01-001"),
+          sourceInstanceId: asBrand("instance-1"),
+          effectId: asBrand("effect-1")
+        }
+      ]
+    };
+
+    const replacementDecision: PublicDecision = {
+      id: replacementDecisionId,
+      type: "chooseReplacement",
+      playerId,
+      prompt: "Choose replacement",
+      processId: "process-1",
+      optional: true,
+      replacements: [
+        {
+          replacementId: asBrand("effect-2"),
+          label: "Use replacement shield",
+          sourceCardId: asBrand<CardId>("OP01-002"),
+          sourceInstanceId: asBrand("instance-2")
         }
       ]
     };
@@ -116,12 +123,10 @@ describe("@optcg/types API surface", () => {
       stateSeq,
       view: {
         matchId,
-        viewer: playerId,
-        gameType: "unranked" satisfies GameType,
-        formatId: asBrand<FormatId>("format-1"),
+        playerId,
         stateSeq,
-        serverSeq: asBrand(4),
-        you: {
+        actionSeq: asBrand(5),
+        self: {
           playerId,
           deck: { count: 40 },
           donDeck: { count: 10 },
@@ -167,13 +172,36 @@ describe("@optcg/types API surface", () => {
           phase: "main"
         },
         pendingDecision: decision,
+        legalActions: [action],
+        revealedCards: [
+          {
+            id: "reveal-1",
+            card: {
+              cardId: asBrand<CardId>("OP01-010"),
+              controller: playerId,
+              owner: playerId,
+              instanceId: asBrand("instance-3")
+            },
+            sourceZone: "life",
+            reason: "trigger",
+            visibleTo: "both",
+            expires: { type: "eventEnd" }
+          }
+        ],
         timers,
-        visibleEvents: publicEvents
+        effectEvents: publicEvents
       }
     };
 
     const payload = JSON.parse(
-      JSON.stringify({ envelope, actionResult, message, timers, result })
+      JSON.stringify({
+        envelope,
+        actionResult,
+        message,
+        replacementDecision,
+        timers,
+        result
+      })
     ) as {
       envelope: { protocolVersion: string; expectedDecisionId: string };
       actionResult: {
@@ -182,9 +210,15 @@ describe("@optcg/types API surface", () => {
       message: {
         type: string;
         view: {
-          pendingDecision: { type: string; candidates: unknown[] };
+          playerId: string;
+          pendingDecision: { type: string; triggers: Array<{ label: string }> };
+          legalActions: Array<{ type: string }>;
+          revealedCards: Array<{ reason: string }>;
           timers: { players: Record<string, { remainingMs: number }> };
         };
+      };
+      replacementDecision: {
+        replacements: Array<{ label: string }>;
       };
       timers: { players: Record<string, { remainingMs: number }> };
       result: { reason: string };
@@ -194,8 +228,18 @@ describe("@optcg/types API surface", () => {
     expect(payload.envelope.expectedDecisionId).toBe("decision-1");
     expect(payload.actionResult.events[0]?.visibleTo).toBe("both");
     expect(payload.message.type).toBe("stateSync");
-    expect(payload.message.view.pendingDecision.type).toBe("selectCards");
-    expect(payload.message.view.pendingDecision.candidates).toHaveLength(1);
+    expect(payload.message.view.playerId).toBe("player-1");
+    expect(payload.message.view.pendingDecision.type).toBe(
+      "chooseTriggerOrder"
+    );
+    expect(payload.message.view.pendingDecision.triggers[0]?.label).toBe(
+      "Leader trigger"
+    );
+    expect(payload.message.view.legalActions[0]?.type).toBe("endMainPhase");
+    expect(payload.message.view.revealedCards[0]?.reason).toBe("trigger");
+    expect(payload.replacementDecision.replacements[0]?.label).toBe(
+      "Use replacement shield"
+    );
     expect(payload.message.view.timers.players["player-1"]?.remainingMs).toBe(
       120000
     );
