@@ -390,6 +390,20 @@ function toPublicDecisionVisibility(
   }
 }
 
+function shouldExposeDecisionCandidatesToViewer(
+  pendingDecision: Extract<
+    PendingDecision,
+    { type: "selectTargets" | "selectCards" }
+  >,
+  viewerId: PlayerId
+): boolean {
+  if (viewerId === pendingDecision.playerId) {
+    return true;
+  }
+
+  return pendingDecision.request.visibility !== "privateToChooser";
+}
+
 function toPublicDecision(
   pendingDecision: PendingDecision | undefined,
   viewerId: PlayerId
@@ -489,18 +503,28 @@ function toPublicDecision(
         ...base,
         type: "selectTargets",
         request: toPublicTargetRequest(pendingDecision.request),
-        candidates: pendingDecision.candidates.map((candidate) => ({
-          card: toPublicDecisionCardRef(candidate, viewerId)
-        }))
+        candidates: shouldExposeDecisionCandidatesToViewer(
+          pendingDecision,
+          viewerId
+        )
+          ? pendingDecision.candidates.map((candidate) => ({
+              card: toPublicDecisionCardRef(candidate, viewerId)
+            }))
+          : []
       }) as PublicDecision;
     case "selectCards":
       return withOptionalBaseFields({
         ...base,
         type: "selectCards",
         request: toPublicCardSelectionRequest(pendingDecision.request),
-        candidates: pendingDecision.candidates.map((candidate) => ({
-          card: toPublicDecisionCardRef(candidate, viewerId)
-        }))
+        candidates: shouldExposeDecisionCandidatesToViewer(
+          pendingDecision,
+          viewerId
+        )
+          ? pendingDecision.candidates.map((candidate) => ({
+              card: toPublicDecisionCardRef(candidate, viewerId)
+            }))
+          : []
       }) as PublicDecision;
     case "chooseEffectOption":
       return withOptionalBaseFields({
@@ -804,11 +828,12 @@ function assertAllCardsInExactlyOneLocation(state: GameState): void {
     }
     player.costArea.forEach((card, index) => {
       if (
-        !("playerId" in card.zone) ||
-        card.zone.playerId !== player.playerId
+        card.zone.zone !== "costArea" ||
+        card.zone.playerId !== player.playerId ||
+        card.zone.index !== index
       ) {
         throw new Error(
-          `Cost-area card ${card.instanceId} has inconsistent owner metadata`
+          `Cost-area card ${card.instanceId} has inconsistent zone metadata`
         );
       }
       visit(card, `${player.playerId}:cost:${index}`);
@@ -1301,9 +1326,37 @@ function assertValidDecisionResponse(
 ): void {
   switch (pendingDecision.type) {
     case "mulligan":
-    case "chooseOptionalActivation":
-    case "confirmTriggerFromLife":
       return;
+    case "chooseOptionalActivation": {
+      const optionalActivationResponse = response as Extract<
+        DecisionResponse,
+        { type: "optionalActivationChoice" }
+      >;
+      if (
+        optionalActivationResponse.choice !== "activate" &&
+        optionalActivationResponse.choice !== "decline"
+      ) {
+        throw new Error(
+          "optionalActivationChoice response references an unknown choice"
+        );
+      }
+      return;
+    }
+    case "confirmTriggerFromLife": {
+      const lifeTriggerResponse = response as Extract<
+        DecisionResponse,
+        { type: "lifeTriggerChoice" }
+      >;
+      if (
+        lifeTriggerResponse.choice !== "activateTrigger" &&
+        lifeTriggerResponse.choice !== "addToHand"
+      ) {
+        throw new Error(
+          "lifeTriggerChoice response references an unknown choice"
+        );
+      }
+      return;
+    }
     case "chooseTriggerOrder": {
       const orderedIdsResponse = response as Extract<
         DecisionResponse,

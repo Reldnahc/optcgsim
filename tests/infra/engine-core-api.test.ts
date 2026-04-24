@@ -374,6 +374,57 @@ describe("engine-core API skeleton", () => {
     expect(serializedView).not.toContain("life-1");
   });
 
+  it("hides private-to-chooser decision candidates from the other player", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-private-candidates"),
+          type: "selectCards",
+          playerId: asId("p1"),
+          visibility: { type: "public" },
+          request: {
+            chooser: "self",
+            zone: "hand",
+            player: "self",
+            min: 1,
+            max: 1,
+            allowFewerIfUnavailable: false,
+            visibility: "privateToChooser"
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-hand-1"),
+              cardId: asId("event-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "hand",
+                playerId: asId("p1"),
+                index: 0
+              }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    const opponentView = filterStateForPlayer(state, asId("p2"));
+
+    expect(chooserView.pendingDecision?.type).toBe("selectCards");
+    expect(
+      chooserView.pendingDecision?.type === "selectCards"
+        ? chooserView.pendingDecision.candidates
+        : []
+    ).toHaveLength(1);
+    expect(opponentView.pendingDecision?.type).toBe("selectCards");
+    expect(
+      opponentView.pendingDecision?.type === "selectCards"
+        ? opponentView.pendingDecision.candidates
+        : []
+    ).toEqual([]);
+  });
+
   it("runs invariant checks after actions in test mode", () => {
     const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
     process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
@@ -416,6 +467,28 @@ describe("engine-core API skeleton", () => {
       const state = createInitialState(input);
       expect(() => resumeDecision(state, { type: "keepOpeningHand" })).toThrow(
         /multiple locations/
+      );
+    } finally {
+      if (originalFlag === undefined) {
+        delete process.env["OPTCG_ENGINE_TEST_MODE"];
+      } else {
+        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
+      }
+    }
+  });
+
+  it("runs cost-area zone invariants in test mode", () => {
+    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
+    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
+
+    const input = makeInput();
+    const p1 = input.players[asId<PlayerId>("p1")]!;
+    p1.costArea[0]!.zone = makeZone("deck", "p1", 0);
+
+    try {
+      const state = createInitialState(input);
+      expect(() => applyAction(state, { type: "concede" })).toThrow(
+        /Cost-area card .* inconsistent zone metadata/
       );
     } finally {
       if (originalFlag === undefined) {
@@ -749,5 +822,34 @@ describe("engine-core API skeleton", () => {
         ]
       })
     ).toThrow(/may not contain duplicates/);
+  });
+
+  it("rejects malformed runtime choice enums before clearing the pending decision", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-8"),
+          type: "chooseOptionalActivation",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          effectId: asId("effect-1"),
+          source: {
+            instanceId: asId("p1-char-1"),
+            cardId: asId("char-1"),
+            owner: asId("p1"),
+            controller: asId("p1"),
+            zone: { zone: "characterArea", playerId: asId("p1"), index: 0 }
+          }
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(() =>
+      resumeDecision(state, {
+        type: "optionalActivationChoice",
+        choice: "bogus"
+      } as unknown as { type: "optionalActivationChoice"; choice: never })
+    ).toThrow(/unknown choice/);
+    expect(state.pendingDecision?.id).toBe(asId("decision-8"));
   });
 });
