@@ -1,0 +1,50 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-035
+title: Implement rule-processing checkpoint runner after every atomic mutation
+type: implementation
+area: engine
+priority: critical
+status: generated
+summary: >
+  Add a unified afterAtomicMutation hook that runs rule processing after every atomic state change (including mid-effect), emitting ruleProcessingChecked and producing gameEnded when applicable, per authoritative win/loss rules.
+spec_refs:
+  - 02-engine-mechanics.s003 (Rule-processing checkpoints)
+  - 02-engine-mechanics.s035 (Exact win/loss conditions)
+  - 03-game-state-events-decisions.s007 (Atomic mutation contract)
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 03-game-state-events-decisions.s004 (Engine result)
+scope:
+  - Implement an engine-level wrapper that runs rule processing after every AtomicMutation result (EngineStepResult).
+  - "Implement rule processing checks: leader damage at 0 life loss condition, deck-out at checkpoint loss condition, effect-based win/loss marker handling if present in state, simultaneous double loss -> draw, dev/test invariant violation escalation hook."
+  - "Emit EngineEvent types: ruleProcessingChecked; and gameEnded when terminal outcome is reached, with appropriate visibility."
+  - "Ensure concession is handled as immediate, not replaceable/preventable (rule processing should not override this)."
+  - "Ensure rule processing can run mid-effect: integrate with any existing internal mutation pipeline used by actions/decision resolution."
+non_scope:
+  - Implementing effect-created win/loss mechanisms beyond recognizing a pre-marked terminal flag/state field (if not already modeled).
+  - Match-server messaging and client UX for game end.
+  - Replay/rollback policies beyond event emission.
+dependencies:
+  - ENG-003
+  - ENG-004
+acceptance_criteria:
+  - Every atomic state mutation executed by engine core results in rule-processing being executed exactly once afterward.
+  - "If a player has 0 cards in deck at a rule-processing checkpoint, gameEnded is produced with that player losing (or draw if both lose at same checkpoint)."
+  - "If a leader would take damage while that player has 0 life, gameEnded is produced at the rule-processing checkpoint."
+  - "If both players meet defeat conditions at the same rule-processing checkpoint, gameEnded marks the match as draw."
+  - Concession action immediately ends match and cannot be prevented or replaced by any rule-processing or effect mechanisms.
+  - "ruleProcessingChecked is appended to event journal each time rule processing runs, and gameEnded is emitted only once when game ends."
+required_tests:
+  - "Unit: rule processing invoked after a representative AtomicMutation and appends ruleProcessingChecked."
+  - "Unit: deck-out at checkpoint produces gameEnded loss; double deck-out produces draw."
+  - "Unit: 0-life leader would take damage => loss at checkpoint."
+  - "Integration: M1-010, M1-013, M1-014 behaviors satisfied (from 18-acceptance-tests.s003)."
+repo_rules:
+  - All produced state/events are JSON-serializable (00-project-overview.s010).
+  - Do not mutate canonical state in place in production logic (03-game-state-events-decisions.s007).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-035.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

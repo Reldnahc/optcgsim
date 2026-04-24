@@ -1,0 +1,45 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-004
+title: Implement EngineEvent journal emission + visibility filtering hooks
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement canonical EngineEvent creation, eventJournal append behavior for atomic mutations, and event visibility tagging to support later player-view filtering.
+spec_refs:
+  - 00-project-overview.s012 (Effects are event-driven)
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 03-game-state-events-decisions.s006 (Event visibility)
+  - 03-game-state-events-decisions.s007 (Atomic mutation contract)
+  - 03-game-state-events-decisions.s008 (Causality)
+  - 03-game-state-events-decisions.s018 (Canonical event visibility)
+scope:
+  - "Create an engine event factory that assigns EngineEventId, seq (event-local), createdAtStateSeq, and visibility."
+  - Enforce 'every atomic mutation emits events' by requiring AtomicMutation results to include events and appending them to state.eventJournal in a single place.
+  - Add causality references (playerAction/effect/ruleProcess/replacement/decision) plumbing so events can be tagged with causedBy by callers.
+  - "Implement a minimal filterEventsForPlayer(events, playerId) utility based on EventVisibility (public/private/hidden/replayOnly) without leaking hidden payloads."
+non_scope:
+  - Full PlayerView state filtering (handled elsewhere).
+  - Replay writer/storage format.
+  - Card/effect trigger detection logic (only event plumbing).
+dependencies:
+  - ENG-001
+  - ENG-003
+acceptance_criteria:
+  - Any engine atomic mutation routed through the engine pipeline results in emitted events being appended to state.eventJournal.
+  - "EngineEvent includes fields: id, seq, type, payload, visibility, createdAtStateSeq; and supports optional actor/source/affected/causedBy."
+  - "filterEventsForPlayer excludes {type:'hidden'} and excludes private events for other players; includes public; does not include replayOnly in live view filtering helper."
+required_tests:
+  - "Unit: filterEventsForPlayer includes/excludes each visibility type correctly."
+  - "Integration: applying a simple action results in at least one event in result.events and appended to state.eventJournal with createdAtStateSeq matching result.state.seq."
+repo_rules:
+  - Do not place transport envelopes in canonical EngineEvent payloads.
+  - Events must remain JSON-serializable.
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/approved/ENG-004.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

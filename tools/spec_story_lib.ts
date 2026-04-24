@@ -54,8 +54,18 @@ export type StoryArea =
   | "security";
 
 export type StoryPriority = "critical" | "high" | "medium" | "low";
-export type StoryStatus = "generated" | "approved" | "in_progress" | "blocked" | "done" | "replaced";
-export type AmbiguityPolicy = "fail_and_escalate" | "implement_if_clearly_implied";
+export type StoryStatus =
+  | "generated"
+  | "approved"
+  | "in_progress"
+  | "in_review"
+  | "changes_requested"
+  | "blocked"
+  | "done"
+  | "replaced";
+export type AmbiguityPolicy =
+  | "fail_and_escalate"
+  | "implement_if_clearly_implied";
 
 export interface StoryBoard {
   project?: string;
@@ -153,8 +163,12 @@ export function loadSectionIndex(): SectionIndex {
   return JSON.parse(readUtf8("section-index.json")) as SectionIndex;
 }
 
-export function buildSectionLookup(index: SectionIndex): Map<string, SectionEntry> {
-  return new Map(index.sections.map((section) => [section.section_ref, section]));
+export function buildSectionLookup(
+  index: SectionIndex
+): Map<string, SectionEntry> {
+  return new Map(
+    index.sections.map((section) => [section.section_ref, section])
+  );
 }
 
 export function normalizeSpecRef(rawSpecRef: string): string {
@@ -165,17 +179,25 @@ export function normalizeSpecRef(rawSpecRef: string): string {
   return match.groups.ref;
 }
 
-export function enrichSpecRefs(specRefIds: string[], sectionLookup: Map<string, SectionEntry>): string[] {
+export function enrichSpecRefs(
+  specRefIds: string[],
+  sectionLookup: Map<string, SectionEntry>
+): string[] {
   return specRefIds.map((specRefId) => {
     const section = sectionLookup.get(specRefId);
     if (!section) {
-      throw new Error(`Missing section ref in section-index.json: ${specRefId}`);
+      throw new Error(
+        `Missing section ref in section-index.json: ${specRefId}`
+      );
     }
     return `${specRefId} (${section.heading})`;
   });
 }
 
-export function createGeneratedStory(seed: StorySeed, sectionLookup: Map<string, SectionEntry>): Story {
+export function createGeneratedStory(
+  seed: StorySeed,
+  sectionLookup: Map<string, SectionEntry>
+): Story {
   return {
     spec_version: "v6",
     spec_package_name: "optcg-md-specs-v6",
@@ -204,18 +226,28 @@ export function createGeneratedStory(seed: StorySeed, sectionLookup: Map<string,
   };
 }
 
-export function validateStory(story: Story, sectionLookup: Map<string, SectionEntry>, options?: { requireApproved?: boolean }): void {
+export function validateStory(
+  story: Story,
+  sectionLookup: Map<string, SectionEntry>,
+  options?: { requireApproved?: boolean }
+): void {
   const errors: string[] = [];
   const seenKeys = new Set(Object.keys(story));
 
   if (story.spec_version !== "v6") {
-    errors.push(`spec_version must be "v6", got ${JSON.stringify(story.spec_version)}`);
+    errors.push(
+      `spec_version must be "v6", got ${JSON.stringify(story.spec_version)}`
+    );
   }
   if (story.spec_package_name !== "optcg-md-specs-v6") {
-    errors.push(`spec_package_name must be "optcg-md-specs-v6", got ${JSON.stringify(story.spec_package_name)}`);
+    errors.push(
+      `spec_package_name must be "optcg-md-specs-v6", got ${JSON.stringify(story.spec_package_name)}`
+    );
   }
   if (story.story_schema_version !== "1.0.0") {
-    errors.push(`story_schema_version must be "1.0.0", got ${JSON.stringify(story.story_schema_version)}`);
+    errors.push(
+      `story_schema_version must be "1.0.0", got ${JSON.stringify(story.story_schema_version)}`
+    );
   }
   if (!STORY_ID_RE.test(story.id)) {
     errors.push(`id must match ${STORY_ID_RE.source}`);
@@ -227,22 +259,53 @@ export function validateStory(story: Story, sectionLookup: Map<string, SectionEn
   }
 
   const enumChecks = {
-    type: ["design", "implementation", "verification", "refactor", "tooling", "ambiguity"],
-    area: ["contracts", "engine", "cards", "server", "client", "replay", "database", "infra", "docs", "security"],
+    type: [
+      "design",
+      "implementation",
+      "verification",
+      "refactor",
+      "tooling",
+      "ambiguity"
+    ],
+    area: [
+      "contracts",
+      "engine",
+      "cards",
+      "server",
+      "client",
+      "replay",
+      "database",
+      "infra",
+      "docs",
+      "security"
+    ],
     priority: ["critical", "high", "medium", "low"],
-    status: ["generated", "approved", "in_progress", "blocked", "done", "replaced"],
+    status: [
+      "generated",
+      "approved",
+      "in_progress",
+      "in_review",
+      "changes_requested",
+      "blocked",
+      "done",
+      "replaced"
+    ],
     ambiguity_policy: ["fail_and_escalate", "implement_if_clearly_implied"]
   } as const;
 
   for (const [key, allowed] of Object.entries(enumChecks)) {
     const value = String((story as Record<string, unknown>)[key] ?? "");
     if (!allowed.includes(value as never)) {
-      errors.push(`${key} must be one of ${allowed.join(", ")}, got ${JSON.stringify(value)}`);
+      errors.push(
+        `${key} must be one of ${allowed.join(", ")}, got ${JSON.stringify(value)}`
+      );
     }
   }
 
   if (options?.requireApproved && story.status !== "approved") {
-    errors.push(`story status must be "approved" to build a packet, got ${JSON.stringify(story.status)}`);
+    errors.push(
+      `story status must be "approved" to build a packet, got ${JSON.stringify(story.status)}`
+    );
   }
 
   const listFields = [
@@ -283,20 +346,26 @@ export function validateStory(story: Story, sectionLookup: Map<string, SectionEn
     }
   }
 
-  const unexpectedTopLevelKeys = [...seenKeys].filter((key) => !TOP_LEVEL_FIELDS.includes(key as never));
+  const unexpectedTopLevelKeys = [...seenKeys].filter(
+    (key) => !TOP_LEVEL_FIELDS.includes(key as never)
+  );
   if (unexpectedTopLevelKeys.length > 0) {
-    errors.push(`unexpected top-level fields: ${unexpectedTopLevelKeys.join(", ")}`);
+    errors.push(
+      `unexpected top-level fields: ${unexpectedTopLevelKeys.join(", ")}`
+    );
   }
 
   if (errors.length > 0) {
-    throw new Error(`Story validation failed for ${story.id}:\n- ${errors.join("\n- ")}`);
+    throw new Error(
+      `Story validation failed for ${story.id}:\n- ${errors.join("\n- ")}`
+    );
   }
 }
 
 function yamlQuoteIfNeeded(value: string): string {
   if (
     value === "" ||
-    /[:{}\[\],&*#?|<>=!%@`]/.test(value) ||
+    /[:{}[\],&*#?|<>=!%@`]/.test(value) ||
     /^\s|\s$/.test(value) ||
     /^(true|false|null|yes|no|on|off)$/i.test(value) ||
     /^-?\d+(\.\d+)?$/.test(value)
@@ -313,8 +382,14 @@ function emitStringList(lines: string[], key: string, items: string[]): void {
   }
 }
 
-function emitObject(lines: string[], key: string, value: Record<string, unknown>): void {
-  const entries = Object.entries(value).filter(([, itemValue]) => itemValue !== undefined && itemValue !== null);
+function emitObject(
+  lines: string[],
+  key: string,
+  value: Record<string, unknown>
+): void {
+  const entries = Object.entries(value).filter(
+    ([, itemValue]) => itemValue !== undefined && itemValue !== null
+  );
   if (entries.length === 0) {
     return;
   }
@@ -369,7 +444,7 @@ function indentOf(line: string): number {
 
 function parseScalar(rawValue: string): string | number | boolean {
   const value = rawValue.trim();
-  if (value.startsWith("\"") && value.endsWith("\"")) {
+  if (value.startsWith('"') && value.endsWith('"')) {
     return JSON.parse(value);
   }
   if (value === "true") {
@@ -387,7 +462,11 @@ function parseScalar(rawValue: string): string | number | boolean {
   return value;
 }
 
-function collectIndentedBlock(lines: string[], startIndex: number, minimumIndent: number): [string[], number] {
+function collectIndentedBlock(
+  lines: string[],
+  startIndex: number,
+  minimumIndent: number
+): [string[], number] {
   const collected: string[] = [];
   let index = startIndex;
   while (index < lines.length) {
@@ -407,7 +486,9 @@ function collectIndentedBlock(lines: string[], startIndex: number, minimumIndent
 }
 
 function parseBlockScalar(lines: string[], folded: boolean): string {
-  const normalized = lines.map((line) => (line.startsWith("  ") ? line.slice(2) : line.trimStart()));
+  const normalized = lines.map((line) =>
+    line.startsWith("  ") ? line.slice(2) : line.trimStart()
+  );
   if (!folded) {
     return normalized.join("\n").trim();
   }
@@ -443,7 +524,10 @@ function parseListBlock(lines: string[], indent: number): string[] {
   return items;
 }
 
-function parseMappingBlock(lines: string[], indent: number): Record<string, unknown> {
+function parseMappingBlock(
+  lines: string[],
+  indent: number
+): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   let index = 0;
   while (index < lines.length) {
@@ -464,7 +548,11 @@ function parseMappingBlock(lines: string[], indent: number): Record<string, unkn
     const rawValue = trimmed.slice(separator + 1).trim();
     index += 1;
     if (!rawValue) {
-      const [nested, nextIndex] = collectIndentedBlock(lines, index, indent + 2);
+      const [nested, nextIndex] = collectIndentedBlock(
+        lines,
+        index,
+        indent + 2
+      );
       index = nextIndex;
       result[key] = parseIndentedValue(nested, indent + 2);
       continue;
@@ -498,7 +586,9 @@ export function parseStoryYaml(text: string): Story {
       continue;
     }
     if (indentOf(line) !== 0) {
-      throw new Error(`Unsupported top-level indentation in story YAML: ${line}`);
+      throw new Error(
+        `Unsupported top-level indentation in story YAML: ${line}`
+      );
     }
     const separator = line.indexOf(":");
     if (separator === -1) {
@@ -537,7 +627,10 @@ export function listStoryFiles(relativeDir: string): string[] {
   }
   const results: string[] = [];
   for (const entry of fs.readdirSync(absoluteDir, { withFileTypes: true })) {
-    const entryRelativePath = path.posix.join(relativeDir.replace(/\\/g, "/"), entry.name);
+    const entryRelativePath = path.posix.join(
+      relativeDir.replace(/\\/g, "/"),
+      entry.name
+    );
     if (entry.isDirectory()) {
       results.push(...listStoryFiles(entryRelativePath));
     } else if (entry.isFile() && entry.name.endsWith(".story.yaml")) {
@@ -550,9 +643,13 @@ export function listStoryFiles(relativeDir: string): string[] {
 export function extractSectionExcerpt(section: SectionEntry): string {
   const content = readUtf8(section.path);
   const lines = content.split(/\r?\n/);
-  const refLineIndex = lines.findIndex((line) => line.includes(`Section Ref: \`${section.section_ref}\``));
+  const refLineIndex = lines.findIndex((line) =>
+    line.includes(`Section Ref: \`${section.section_ref}\``)
+  );
   if (refLineIndex === -1) {
-    throw new Error(`Could not locate section ${section.section_ref} in ${section.path}`);
+    throw new Error(
+      `Could not locate section ${section.section_ref} in ${section.path}`
+    );
   }
 
   let start = refLineIndex + 1;

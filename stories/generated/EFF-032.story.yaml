@@ -1,0 +1,40 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-032
+title: Implement duration expiration for effect queue and continuous effects
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Implement duration expiration points for continuous effects and any duration-bound runtime records, including end-of-battle, end-phase cleanup, start of next turn, and whileSourceOnField.
+spec_refs:
+  - 04-effect-runtime.s015 (Duration expiration)
+  - 04-effect-runtime.s014 (Continuous effects as computed view)
+scope:
+  - "Implement duration evaluation for ContinuousEffectRecord: thisBattle, thisTurn/untilEndOfTurn, untilStartOfNextTurn, whileSourceOnField, whileConditionTrue, permanent (04-effect-runtime.s015)."
+  - "Add cleanup hooks at expiration points: End of Battle, End Phase cleanup, Start of Refresh phase for specified player (04-effect-runtime.s015)."
+  - "When whileSourceOnField ends, remove or inactivate modifier according to policy (04-effect-runtime.s015)."
+non_scope:
+  - Implementing battle/phase sequencing itself (assumes turn engine emits checkpoints).
+  - Defining 'removed or ignored by policy' for whileConditionTrue beyond making it inactive when condition false.
+dependencies:
+  - ENG-010
+  - ENG-033
+  - EFF-012
+acceptance_criteria:
+  - Durations expire at the exact points specified in the duration table (04-effect-runtime.s015).
+  - whileSourceOnField continuous effects stop applying when the source leaves the required zone (04-effect-runtime.s015).
+  - whileConditionTrue effects are not active when condition is false (04-effect-runtime.s015).
+required_tests:
+  - "Unit: untilEndOfTurn modifier applies during turn and is absent after End Phase cleanup."
+  - "Unit: thisBattle modifier applies during battle only and expires at End of Battle."
+  - "Integration: keyword given with whileSourceOnField disappears after card leaves field."
+repo_rules:
+  - "Expiration must be deterministic and driven by engine phase/battle boundaries, not wall-clock time."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-032.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

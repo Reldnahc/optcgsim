@@ -1,0 +1,43 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-024
+title: "Implement RevealRecord lifecycle: temporary visibility records with expiration cleanup in engine output views"
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Support temporary visibility by tracking RevealRecords and ensuring expired records are removed during effect cleanup, so PlayerView includes only currently revealed cards for each recipient.
+spec_refs:
+  - 06-visibility-security.s005 (Temporary visibility)
+  - 06-visibility-security.s004 (PlayerView shape)
+  - 03-game-state-events-decisions.s003 (Base state vs. computed view)
+scope:
+  - "Add canonical data structure in base state for reveal records (if not already present) with fields matching spec: id, card ref, sourceZone, reason, visibleTo, expires."
+  - "Implement helper to compute per-recipient PublicRevealRecord[] from reveal records respecting visibleTo (both, player list, replayOnly)."
+  - Implement expiration evaluation and removal as part of effect cleanup / resolution cleanup step (hook into existing effect cleanup mechanism).
+  - Ensure trash-from-hidden-zone becomes public once in trash (by adding/keeping a reveal record or by exposing card identity in trash zone view once moved).
+non_scope:
+  - Defining new effect DSL that creates reveal records (handled by effect runtime stories).
+  - Spectator delay buffering semantics.
+  - Persisting reveal records beyond match end.
+dependencies:
+  - ENG-003
+  - ENG-009
+  - EFF-014
+acceptance_criteria:
+  - PlayerView.revealedCards contains only reveal records currently valid for that recipient and omits replayOnly during live play.
+  - Expired RevealRecords are removed from state as part of cleanup and no longer appear in subsequent PlayerViews.
+  - "A reveal record with visibleTo=PlayerId[] is visible only to those players in their PlayerViews."
+required_tests:
+  - "Unit test: create reveal record with expires condition met, run cleanup, assert record removed."
+  - "Unit test: same base state yields different revealedCards arrays for two different recipient playerIds based on visibleTo."
+  - "Property test (optional): revealedCards never includes card identities not present in base state card registry/instances."
+repo_rules:
+  - Treat reveal record visibility as a security boundary; prefer strict filtering.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-024.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

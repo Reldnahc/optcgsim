@@ -1,0 +1,46 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-009
+title: Implement PlayerView filtering for hidden zones + forbidden internals
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement filterStateForPlayer to produce a PlayerView that hides opponent hand/deck/life details, excludes RNG/queues, and conforms to global invariants for visibility.
+spec_refs:
+  - 02-engine-mechanics.s005 (Zones)
+  - 03-game-state-events-decisions.s002 (Canonical state model)
+  - 03-game-state-events-decisions.s006 (Event visibility)
+  - 03-game-state-events-decisions.s018 (Canonical event visibility)
+  - 18-acceptance-tests.s003 (Milestone 1 - terminal engine)
+  - 18-acceptance-tests.s009 (Global invariants)
+  - "01-system-architecture.s005 (`@optcg/engine-core`)"
+scope:
+  - "Define PlayerView structure in engine-core output (or reuse from contracts) and implement filterStateForPlayer(state, playerId)."
+  - "For opponent hidden zones (Deck, Hand, Life where face-down), expose counts only; do not expose order or cardIds; represent public zones with cardIds as allowed."
+  - "Exclude from PlayerView: rng, effectQueue internals, deferredTriggers, replacementState, full event payloads with hidden info, and any server-only audit metadata."
+  - "Include only information necessary for client rendering: public board zones, active/rested, attached DON counts/ids only where visible by rules, and known revealed/face-up life where applicable."
+non_scope:
+  - Spectator views and delayed spectator projection.
+  - Replay full-information view.
+  - Client-side rendering.
+dependencies:
+  - ENG-003
+  - ENG-004
+acceptance_criteria:
+  - "M1-016: PlayerView hides opponent hand and deck order; opponent sees counts only."
+  - "G-007..G-010: public zones contain public card IDs; hidden zones represented by counts only; RNG and effect queue internals never appear in any client view."
+  - filterStateForPlayer returns JSON-serializable object.
+required_tests:
+  - "Integration: after setup, each player view shows own hand cardIds but opponent hand only count."
+  - "Integration: opponent deck is count-only and does not reveal shuffle order."
+  - "Security regression: assert PlayerView JSON does not contain keys 'rng','effectQueue','deferredTriggers','replacementState'."
+repo_rules:
+  - Treat hidden information as a security boundary; do not leak via derived views or helper fields.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/ENG-009.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

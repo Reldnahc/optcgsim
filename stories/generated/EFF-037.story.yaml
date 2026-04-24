@@ -1,0 +1,43 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-037
+title: Implement once-per-turn usage records and commitment rules
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Add OncePerTurnRecord tracking keyed by source.instanceId + effectId + turn, and enforce consumption only after legal commitment; ensure declined optional/failed costs do not consume, but committed effects that fizzle do.
+spec_refs:
+  - 04-effect-runtime.s011 (Conditions and costs)
+  - 04-effect-runtime.s004 (Stable effect identity)
+  - 18-acceptance-tests.s004 (Milestone 2 - first effect runtime)
+scope:
+  - Add OncePerTurnRecord model to GameState and persistence (04-effect-runtime.s011).
+  - "Enforce once-per-turn checks before activation/resolution based on source.instanceId + effectBlock.id + turnNumber (04-effect-runtime.s011, 04-effect-runtime.s004)."
+  - "Implement commitment point rules: mark used only after activation conditions passed, activation-time targets selected, costs paid, and optional accepted (04-effect-runtime.s011)."
+  - Ensure declined optional effects and failed costs do not consume usage; committed effects that later fizzle still consume (04-effect-runtime.s011).
+non_scope:
+  - Defining turn numbering and turn transitions (engine turn skeleton).
+  - Full cost/target implementations beyond those needed for tests.
+dependencies:
+  - ENG-003
+  - ENG-010
+  - EFF-006
+  - ENG-015
+acceptance_criteria:
+  - "Once-per-turn is keyed by (source instance id, effect block id, turn number) and not by array index (04-effect-runtime.s004, 04-effect-runtime.s011)."
+  - Failed cost does not consume once-per-turn (18-acceptance-tests.s004 M2-016).
+  - Committed effect that later fizzles does consume once-per-turn (18-acceptance-tests.s004 M2-017).
+required_tests:
+  - "Integration: M2-016 scenario—attempt activation with insufficient cost; verify no usage record created."
+  - "Integration: M2-017 scenario—commit activation then remove all legal targets before resolution; verify effect cancelled/fizzles but usage record exists."
+  - "Unit: usage record resets across turns and persists within a turn by stateSeq."
+repo_rules:
+  - EffectBlock.id must be stable and used as part of once-per-turn identity (04-effect-runtime.s004).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-037.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

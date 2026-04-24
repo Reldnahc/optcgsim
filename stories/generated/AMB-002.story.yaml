@@ -1,0 +1,34 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: AMB-002
+title: "Ambiguity: define exact semantics and identifiers for EngineEvents emitted by effect runtime queue lifecycle and transient-set cardMoved visibility"
+type: ambiguity
+area: contracts
+priority: high
+status: generated
+summary: >
+  The spec defines required behaviors but does not fully specify the EngineEvent contract payload shapes for effectQueued/effectResolved/effectCancelled, decision events, and transient-set cardMoved visibility/redaction. Clarify canonical event types/fields to ensure replay/security correctness.
+spec_refs:
+  - 04-effect-runtime.s019 (Effect logging)
+  - 04-effect-runtime.s017 (Transient reveal and selection sets)
+  - 00-project-overview.s012 (Effects are event-driven)
+scope:
+  - "Request/derive authoritative EngineEvent type names and payload fields for: effect queued/resolving/resolved/cancelled; decisionRequired/decisionResponse; transient-set cardMoved with visibility and redaction markers; replacementApplied visibility levels."
+  - Clarify how event visibility filtering should label replayOnly vs public vs private-to-player for these events to prevent hidden information leaks.
+non_scope:
+  - Implementation changes beyond aligning to clarified contract.
+  - Client-side rendering of events.
+dependencies:
+acceptance_criteria:
+  - A reviewed clarification exists specifying exact EngineEvent shapes/fields/visibility for effect runtime logging and transient reveal movement/redaction compatible with replay determinism and hidden-info safety.
+required_tests:
+  - "Contract test: emitted events conform to clarified EngineEvent contracts for at least one reveal sequence and one replacement application."
+  - "Security test: opponent event stream does not include private decision candidate IDs or redacted card IDs after face-down return."
+repo_rules:
+  - Prefer fail-and-escalate for hidden-information and replay behavior (authority rules).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/AMB-002.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,47 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-003
+title: Implement canonical GameState model + JSON-serializable invariants baseline
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement the canonical GameState data model requirements (server-only, serializable arrays, branded IDs) and run required invariants after every accepted action and decision resume in tests/dev.
+spec_refs:
+  - 00-project-overview.s010 (State is serializable)
+  - 03-game-state-events-decisions.s002 (Canonical state model)
+  - 03-game-state-events-decisions.s007 (Atomic mutation contract)
+  - 03-game-state-events-decisions.s021 (Invariant hooks)
+  - 03-game-state-events-decisions.s022 (Internal state sequencing)
+  - 18-acceptance-tests.s009 (Global invariants)
+scope:
+  - "Define/align engine-core canonical GameState shape with required fields (seq/stateSeq, actionSeq, turn, players, battle?, pendingDecision?, effectQueue, deferredTriggers, continuousEffects, replacementState, revealedCards, rng, eventJournal, audit)."
+  - Ensure canonical state uses JSON-serializable structures (no JS Set/Map in state; arrays for deterministic hashing inputs).
+  - Implement invariant hook runner callable by engine loop after each accepted action and decision resume in dev/test mode.
+  - Implement each required invariant listed in spec as separate functions with structured failure details.
+non_scope:
+  - Network envelopes or match-server protocol handling.
+  - Effect DSL runtime execution beyond validating queue entries have valid sources/policies (no new effect semantics here).
+  - Database persistence or replay artifacts.
+dependencies:
+  - ENG-001
+  - CON-001
+acceptance_criteria:
+  - "GameState, actions, events, decisions remain JSON-serializable (no functions, Dates, Sets)."
+  - All invariants in 03-game-state-events-decisions.s021 are executed after every accepted action and after every decision resume in dev/test mode.
+  - "Invariant failures produce EngineError {type:'invariantViolation'}-compatible details or throw in tests (implementation choice) without mutating state further."
+  - G-001..G-012 invariants from 18-acceptance-tests.s009 pass for baseline flows used in Milestone 1 acceptance tests.
+required_tests:
+  - "Unit: each invariant function fails on a minimal constructed counterexample and passes on a minimal valid state."
+  - "Integration: engine applyAction/resumeDecision invokes invariant runner in dev/test mode (spy/assert call count)."
+  - "Property/serialization: JSON.stringify(GameState) roundtrip does not drop required fields (except brands) and remains stable."
+repo_rules:
+  - Do not add non-serializable objects into canonical state.
+  - Prefer pure functions; do not mutate state in place in production logic per atomic mutation contract.
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/approved/ENG-003.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

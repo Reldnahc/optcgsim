@@ -1,0 +1,41 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-013
+title: Implement auth/session REST endpoints backed by users/sessions tables
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Add @optcg/api REST endpoints for session creation and session validation/refresh backed by the v6 users and sessions schema. Use token_hash storage and expiry enforcement.
+spec_refs:
+  - "01-system-architecture.s010 (`@optcg/api`)"
+  - 10-database-schema.s005 (Users and sessions)
+scope:
+  - "Implement REST routes for auth/session endpoints in @optcg/api (login/session create, session validate/get current user, session revoke/logout)."
+  - "Persist sessions in sessions table with token_hash and expires_at, linked to users by user_id."
+  - Enforce session expiry at request time.
+  - Ensure token hashes are stored (never store raw tokens).
+non_scope:
+  - OAuth provider integration and auth_accounts behavior beyond noting the table exists.
+  - "UI flows in @optcg/client."
+  - "Rate limiting, CAPTCHA, or moderation/reporting endpoints."
+dependencies:
+acceptance_criteria:
+  - "Given a new user, the API can create a session row referencing that user and returns an opaque session token to the client while only persisting token_hash."
+  - "Given an expired session (expires_at < now()), authenticated endpoints reject it consistently."
+  - "Given a revoked session (deleted row), authenticated endpoints reject it."
+  - "DB constraints match the provided schema: sessions.user_id references users.id with ON DELETE CASCADE; sessions.token_hash is UNIQUE; sessions.expires_at is required."
+required_tests:
+  - "Integration: creating a session stores token_hash (not raw token) and returns token; subsequent request authenticates."
+  - "Integration: expired session is rejected."
+  - "Integration: deleting a user cascades session deletion."
+  - "Unit: token hashing function is deterministic for same input and uses a one-way hash. (No requirement on algorithm in cited text; just verify non-plaintext persistence)."
+repo_rules:
+  - "Prefer API contract types from @optcg/types once available; otherwise keep route DTOs local and migrate later."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-013.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

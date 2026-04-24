@@ -1,0 +1,38 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-010
+title: "Implement deck validation endpoint: reject unknown Poneglyph card IDs"
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Provide @optcg/api deck validation that rejects unknown Poneglyph card IDs when validating a decklist.
+spec_refs:
+  - "01-system-architecture.s010 (`@optcg/api`)"
+  - "12-roadmap.s009 (Milestone 5: deck builder and card data)"
+  - 18-acceptance-tests.s007 (Milestone 5 - Poneglyph and deck builder)
+scope:
+  - REST endpoint to validate a submitted decklist payload.
+  - "Validation rule: reject any card ID not known by the card-data adapter (Poneglyph metadata)."
+  - "Return a clear, structured error describing unknown IDs."
+non_scope:
+  - "Full OPTCG deck legality rules beyond unknown-card check (counts, leader constraints, etc.)."
+  - Unsupported-card policy in ranked (separate story).
+  - Variant split counting (separate story).
+dependencies:
+  - CAR-001
+acceptance_criteria:
+  - Submitting a decklist containing an unknown card ID results in a validation failure (M5-004).
+  - Submitting a decklist with only known card IDs passes this specific check.
+required_tests:
+  - "Integration: validation rejects unknown ID."
+  - "Integration: validation accepts known IDs (use fixture-backed card adapter)."
+repo_rules:
+  - Use server-side card data as authority for validation; do not trust client-fetched display data.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-010.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,41 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CLI-003
+title: "Create @optcg/view-engine package with PlayerView-only API boundary and no hidden-state inputs"
+type: implementation
+area: client
+priority: high
+status: generated
+summary: >
+  Introduce the client-safe @optcg/view-engine helper layer and enforce (by types + lint/test guards) that it accepts only PlayerView / replay snapshots and cannot access GameState, hidden zones, RNG, or effect-queue internals.
+spec_refs:
+  - "01-system-architecture.s006 (`@optcg/view-engine`)"
+  - 06-visibility-security.s019 (View-engine split)
+  - 01-system-architecture.s014 (Client prediction policy)
+scope:
+  - "Create @optcg/view-engine package entrypoint and exported surface for UI helpers (initially minimal stubs)."
+  - "Define TypeScript types/interfaces for view-engine inputs as PlayerView (and optionally a ReplayView snapshot type if already present in @optcg/types)."
+  - "Add compile-time boundary: view-engine must not import engine-core GameState types/modules (enforce via TS project references and/or eslint rule)."
+  - "Add runtime assertion helper(s) (dev-only) that checks a provided object conforms to PlayerView forbidden-fields checklist (best-effort, does not replace server filtering)."
+non_scope:
+  - Implementing authoritative legal action generation in the client/view-engine.
+  - "Any logic that requires full GameState, RNG seed/state, or effect queue internals."
+  - Spectator delay buffering and server-side filtering logic.
+dependencies:
+  - CON-001
+acceptance_criteria:
+  - "@optcg/view-engine builds and exports at least one helper that accepts PlayerView and returns derived UI data (even if trivial)."
+  - The package has no dependency path to engine-core GameState modules/types; CI fails if such an import is added.
+  - Documentation/comments in code state that view-engine operates only on PlayerView or replay snapshots and must not compute legal actions from hidden state.
+required_tests:
+  - "Unit test: verify eslint/ts-arch rule (or equivalent) rejects importing engine-core GameState from @optcg/view-engine."
+  - "Unit test: dev-only PlayerView guard rejects objects containing forbidden keys like rngSeed/effectQueue/deckOrder/opponentHandCardIds when present (synthetic)."
+repo_rules:
+  - Do not add new network/protocol behavior; this story is client-side package boundary only.
+  - Prefer failing tests over silently allowing hidden-state imports.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/CLI-003.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

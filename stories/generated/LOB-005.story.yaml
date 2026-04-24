@@ -1,0 +1,43 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: LOB-005
+title: Emit MatchErrorMessage to clients on match-level errors with report token; never silently return to lobby
+type: implementation
+area: server
+priority: critical
+status: generated
+summary: >
+  Add server-to-client error messaging for match-level failures using MatchErrorMessage, including reportToken, lastSafeStateSeq, and whether recovery is offered. Ensure clients are not silently dumped to lobby on errors.
+spec_refs:
+  - 08-replay-rollback-recovery.s028 (Player-facing error event)
+  - "18-acceptance-tests.s008 (Milestone 6 - replay, rollback, recovery)"
+scope:
+  - Implement server emission of MatchErrorMessage when match encounters a fatal error or crash boundary
+  - Generate a reportToken that can be used to correlate uploaded report artifacts
+  - "Populate lastSafeStateSeq when known (e.g., from last checkpoint)"
+  - Set recoveryOffered when the server has a recovery action available for the match
+  - Ensure error path preserves match context and does not just disconnect clients without message
+non_scope:
+  - Client UI implementation for displaying match errors (server-side emission only)
+  - Definition of match_lost message contract (handled by existing ambiguity story)
+dependencies:
+  - SRV-003
+  - SRV-002
+  - RPL-003
+  - AMB-001
+acceptance_criteria:
+  - "When a match-level error occurs, both players receive a MatchErrorMessage with matchId, message, and reportToken"
+  - "If a last safe state exists, lastSafeStateSeq is included"
+  - "If recovery options exist, recoveryOffered is true; otherwise omitted/false"
+  - Server does not transition clients to lobby without first emitting MatchErrorMessage
+required_tests:
+  - "Integration: induce match error -> expect MatchErrorMessage broadcast before disconnect"
+  - "Integration: error with checkpoint -> includes lastSafeStateSeq"
+repo_rules:
+  - Report tokens must not include hidden information; treat as opaque identifiers
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/LOB-005.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

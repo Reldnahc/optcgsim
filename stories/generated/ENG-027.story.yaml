@@ -1,0 +1,52 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-027
+title: Implement Counter Step legal counter actions with hidden-info safe auto-pass behavior
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Add Counter Step processing to allow defender to use any number of legal counter actions (counter characters from hand and [Counter] Events), with re-checks after each action and optional auto-pass that does not leak whether counters existed.
+spec_refs:
+  - 02-engine-mechanics.s020 (Counter Step)
+  - 03-game-state-events-decisions.s016 (Action envelope inside the engine)
+  - 03-game-state-events-decisions.s015 (Legal actions)
+  - 06-visibility-security.s007 (Legal-action visibility)
+  - 06-visibility-security.s005 (Temporary visibility)
+  - 03-game-state-events-decisions.s005 (Event journal)
+scope:
+  - "Implement battle sub-state progression through Counter Step including: queue defender-side triggered effects for 'being attacked' timing window before ordinary counter actions, resolve them, then allow repeated defender counter actions."
+  - "Support counter actions: (a) trash a Character card with counter value from hand for power; (b) use a [Counter] Event by paying cost and trashing it before resolving its effect (effect runtime integration point)."
+  - "After each counter action and after pass, re-check legality: if attacker or current target left zone or is no longer a legal battle participant, skip to End of Battle (no Damage Step)."
+  - Emit counterUsed and corresponding cardRevealed/cardTrashed/cardMoved events with temporary reveal duration rules (counter card revealed to both players through resolution).
+  - "Implement hidden-info safe auto-pass option: if defender has no legal counter actions and settings allow auto-pass, progress without exposing whether there were zero options vs auto-pass rule; ensure opponent view does not get a legal-actions list revealing defender hand contents."
+non_scope:
+  - "Full effect definitions for specific [Counter] Events beyond paying cost + trashing + queueing effect."
+  - UI selection details for counter choices (engine only emits decisions/actions).
+  - Block Step and Attack Step (handled elsewhere) beyond integration hooks.
+dependencies:
+  - ENG-033
+  - ENG-009
+  - ENG-026
+acceptance_criteria:
+  - "During Counter Step, defender can perform multiple counter actions in sequence until passing."
+  - "Counter-character use reveals the card, trashes it, and grants battle power until end of battle via computed view integration point."
+  - "Counter-event use pays cost, trashes the event before resolving its effect, and emits counterUsed."
+  - "After each counter action and after pass, engine re-checks attacker/target existence and legality; if invalid, it skips Damage Step and proceeds to End of Battle."
+  - "When defender has no legal counter actions, auto-pass progresses without leaking hidden information via opponent-facing legal actions or events."
+required_tests:
+  - "Integration: M2-004 counter character grants battle power until end of battle (18-acceptance-tests.s004)."
+  - "Integration: M2-005 counter event is trashed and effect resolves (18-acceptance-tests.s004) (may use a minimal fixture effect)."
+  - "Integration: M2-018 defender on-opponent-attack effects resolve before ordinary counter actions (18-acceptance-tests.s004)."
+  - "Integration: M2-019 post-counter missing attacker or target skips Damage Step (18-acceptance-tests.s004)."
+  - "Security: legal-action visibility test ensuring opponent cannot infer defender counter options (06-visibility-security.s007)."
+repo_rules:
+  - Temporary visibility must be recorded via RevealRecord with correct duration (06-visibility-security.s005).
+  - Actions are pure data; counter uses Action.useCounter shape (03-game-state-events-decisions.s016).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-027.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

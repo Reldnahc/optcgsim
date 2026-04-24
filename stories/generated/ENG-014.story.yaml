@@ -1,0 +1,47 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-014
+title: "Implement rule-processing checkpoints + exact win/loss conditions (deck-out, 0-life damage loss, concede, draw on double loss)"
+type: implementation
+area: engine
+priority: critical
+status: generated
+summary: >
+  Implement checkRuleProcessing invoked after atomic mutations to enforce defeat conditions and concession behavior.
+spec_refs:
+  - 02-engine-mechanics.s003 (Rule-processing checkpoints)
+  - 02-engine-mechanics.s035 (Exact win/loss conditions)
+  - 02-engine-mechanics.s027 (Impossible actions)
+  - 03-game-state-events-decisions.s023 (Error handling inside the engine)
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 18-acceptance-tests.s003 (Milestone 1 - terminal engine)
+scope:
+  - "Implement checkRuleProcessing(state) that evaluates defeat conditions at rule-processing checkpoints: leader damage at 0 life (when would take damage marker), deck-out, effect-based win/loss hooks, and double loss => draw."
+  - Ensure rule processing runs after every atomic state change (afterAtomicMutation pipeline integration).
+  - Implement Action.concede as immediate and cannot be prevented/replaced; emit gameEnded and set match status accordingly.
+  - Emit ruleProcessingChecked event per checkpoint and gameEnded event when applicable.
+non_scope:
+  - Recovery policy for invariant/effect runtime errors beyond emitting EngineError (engine freezing handled elsewhere).
+  - Full effect-based win/loss implementation beyond a state flag that effects can set later.
+dependencies:
+  - ENG-004
+  - ENG-033
+acceptance_criteria:
+  - "M1-010: leader taking damage at 0 life loses at rule processing checkpoint."
+  - "M1-013: deck-out loses at a rule-processing checkpoint."
+  - "M1-014: concession immediately ends match and cannot be replaced."
+  - "If both players meet defeat conditions at same checkpoint, match ends as draw."
+  - Rule processing occurs after atomic mutations including mid-effect (as applicable in current engine pipeline).
+required_tests:
+  - "Integration: set deck size to 0 and advance through an atomic mutation; assert gameEnded with losing player."
+  - "Integration: attempt concede while a replacement effect would hypothetically apply (not implemented); assert concede still ends match immediately."
+  - "Unit: double-loss scenario yields draw status."
+repo_rules:
+  - Concession must bypass replacement effects.
+  - "Rule processing must be invoked after atomic mutations, not only after player actions."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-014.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

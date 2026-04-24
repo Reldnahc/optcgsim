@@ -1,0 +1,49 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: DB-007
+title: "Persist ranked Elo, rating_history, and disconnect discipline events with ladder scoping"
+type: implementation
+area: database
+priority: high
+status: generated
+summary: >
+  Implement Postgres writes/updates for ladder-scoped ratings, rating history rows per ranked match, and disconnect discipline event records aligned with simple Elo and ranked disconnect discipline policy.
+spec_refs:
+  - 10-database-schema.s013 (Ratings)
+  - 30-formats-and-ranked-competition.s006 (Ladder identity)
+  - 30-formats-and-ranked-competition.s007 (Simple Elo v1 policy)
+  - 30-formats-and-ranked-competition.s008 (Ranked disconnect discipline)
+  - 30-formats-and-ranked-competition.s009 (Disconnect outcome records)
+  - 30-formats-and-ranked-competition.s010 (Persistence and audit requirements)
+  - 18-acceptance-tests.s012 (Milestone 8 - ranked ladder beta)
+  - 22-v6-implementation-tightening.s022 (16. Ranked Elo and disconnect discipline)
+scope:
+  - "Implement transactional persistence for ranked match completion: update/insert ratings(user_id, ladder_id), insert rating_history rows for both players for the match, using simple Elo v1 policy and storing elo_before/elo_after/elo_delta/result/reason."
+  - "Implement persistence of disconnect_discipline_events for ranked grace-expired forfeits, including optional lockout_expires_at based on rolling 30-day offense count."
+  - Ensure unranked and custom matches do not write rating_history and do not update ratings.
+  - "Store/attach ladderId on rated matches using ladderId derivation rule and persist match->ladder association for auditability."
+non_scope:
+  - Matchmaking queue admission lockout checks (server-side gating story).
+  - SeasonId selection mechanism beyond taking a provided seasonId input (derivation story may exist elsewhere).
+  - Admin override workflows and moderation review processes.
+dependencies:
+  - DB-001
+  - CON-005
+acceptance_criteria:
+  - "Ranked win/loss updates Elo for the correct ladderId using K=32 and initial 1200 (M8-002)."
+  - Ranked draw applies 0.5 score to both players (M8-003).
+  - "Ranked grace-expired disconnect counts as loss for disconnected player and win for opponent, and records a discipline event (M8-004)."
+  - Custom and unranked matches never update Elo or create rating_history (M7-004).
+  - "Persisted records can answer audit questions in 30-formats-and-ranked-competition.s010 (before/after, ladderId, penalty/lockout, overrides if present)."
+required_tests:
+  - "Database integration test: ranked match completion writes/updates ratings and inserts rating_history for both players with correct deltas for win/loss/draw."
+  - "Database integration test: unranked/custom match completion does not touch ratings or rating_history."
+  - "Database integration test: ranked grace-expired-forfeit inserts disconnect_discipline_events and applies lockout_expires_at per offense count policy."
+repo_rules:
+  - Use Postgres for durable product data including ratings (10-database-schema.s003).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/DB-007.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

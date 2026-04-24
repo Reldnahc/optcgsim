@@ -1,0 +1,36 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CLI-002
+title: "Client app skeleton: deck builder + queue/lobby/replay viewer navigation shells"
+type: implementation
+area: client
+priority: medium
+status: generated
+summary: >
+  Add @optcg/client application shells/routes for deck builder, queue flows, lobby flows, and replay viewer, aligned to the stated client responsibilities.
+spec_refs:
+  - "01-system-architecture.s011 (`@optcg/client`)"
+scope:
+  - "Create route/page/component shells for: board view, hand view (if separate), deck builder, queue flow, lobby flow, replay viewer."
+  - Wire a REST client stub and WebSocket client stub into the client app architecture (no full protocol implementation required here).
+  - Ensure rendering consumes filtered views (PlayerView/ReplayView) rather than raw GameState.
+non_scope:
+  - Implementing actual match WebSocket protocol and gameplay interactions.
+  - Implementing deck validation rules client-side as authority.
+  - Implementing replay storage or server endpoints.
+dependencies:
+  - CLI-001
+acceptance_criteria:
+  - Client builds and runs with navigable shells for listed areas.
+  - Components accept view-model props that can be satisfied by PlayerView/ReplayView only (no direct GameState dependency).
+required_tests:
+  - "Client unit/smoke test: route renders without crashing for each shell."
+  - "Type-level test (or TS compile check): board renderer does not import/require canonical GameState type directly."
+repo_rules:
+  - Keep UI state derived from server-filtered views; do not introduce hidden-state fields into client models.
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/CLI-002.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

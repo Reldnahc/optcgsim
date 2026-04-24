@@ -1,0 +1,43 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: FMT-006
+title: "Enforce ranked default spectator policy: delayed-filtered with turn+time+minActionDelay constraints"
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Implement spectator policy defaults and delay constraint evaluation for ranked spectating, ensuring delayed modes satisfy all configured constraints (turn delay, wall-clock delay, and minimum server-action delay) before releasing spectator updates.
+spec_refs:
+  - 06-visibility-security.s008 (Spectator modes)
+  - 06-visibility-security.s020 (Original spectator model and v2 hardening)
+  - 12-roadmap.s013 (Open decisions)
+scope:
+  - Implement server-side delay buffer for spectator streams in delayed modes that can store full snapshots internally
+  - "For ranked context, set default SpectatorPolicy to delayed-filtered with delayTurns=3 plus server-configured delayMs and minActionDelay"
+  - "Evaluate release eligibility for each buffered update requiring: delayTurns AND delayMs AND minActionDelay all satisfied"
+  - Ensure public ranked spectating does not expose hidden info (filtered view only) unless explicitly configured for tournament/broadcast (not default)
+  - Provide configuration hooks to set delayMs and minActionDelay for public delayed modes
+non_scope:
+  - Defining tournament/broadcast organizer workflows
+  - Client spectator UI
+dependencies:
+  - FMT-003
+  - SRV-007
+  - SRV-002
+acceptance_criteria:
+  - "Ranked spectator policy default is delayed-filtered with delayTurns=3 and additional time/action delays applied"
+  - A spectator update is not delivered until all configured delay constraints are satisfied
+  - "Delayed buffer may store full snapshots internally, but spectators receive filtered views in delayed-filtered mode"
+  - Unranked default remains live-filtered (per spec defaults table)
+required_tests:
+  - "Integration: ranked spectator receives no updates before min delay thresholds, then receives filtered updates"
+  - "Security: ensure delayed-filtered spectator never receives hidden zones even if buffer stores full snapshots"
+repo_rules:
+  - "Delay evaluation must use server timestamps and serverSeq/action sequencing, not client clocks"
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/FMT-006.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

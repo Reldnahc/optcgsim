@@ -1,0 +1,40 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-033
+title: Implement effect logging events for queue lifecycle and decisions for replay determinism
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Emit structured log events needed for deterministic replay: queued/resolved/cancelled effect IDs, triggering action/decision boundaries, and replacementApplied metadata.
+spec_refs:
+  - 04-effect-runtime.s019 (Effect logging)
+  - 04-effect-runtime.s010 (Queue processing)
+  - 04-effect-runtime.s013 (Replacement effects)
+scope:
+  - "Emit events for effect queued, effect resolving, effect resolved, effect cancelled including queueEntryId, effectBlockId, timingWindowId, generation, causedBy (04-effect-runtime.s019)."
+  - "Ensure decisions (chooseOptionalActivation, chooseTriggerOrder, PayCostDecision, selectTargets/selectCards, chooseReplacement) are logged as public/private decision + response in the event stream (04-effect-runtime.s019)."
+  - "Ensure replacementApplied event includes required hashes and IDs (04-effect-runtime.s013, 04-effect-runtime.s019)."
+non_scope:
+  - Persisting replay artifacts in DB/match server (server/replay stories).
+  - Compression/serialization format details beyond EngineEvent payload correctness.
+dependencies:
+  - ENG-004
+  - EFF-031
+  - EFF-034
+acceptance_criteria:
+  - Effect IDs queued/resolved/cancelled are logged for replay (04-effect-runtime.s019).
+  - Public and private decisions/responses are logged (04-effect-runtime.s019).
+  - "replacementApplied includes original process ID, selected replacement ID, and old/new payload hashes (04-effect-runtime.s013)."
+required_tests:
+  - "Golden: a small scripted effect sequence produces identical event log across runs given same decisions."
+  - "Unit: private decision response events are not visible to opponent via visibility filtering hooks while remaining in replayOnly channel."
+repo_rules:
+  - Do not rely on transient JS behavior for replay; events must carry stable identifiers (04-effect-runtime.s019).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-033.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

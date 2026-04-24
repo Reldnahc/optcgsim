@@ -1,0 +1,47 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-031
+title: Implement effect queue processing loop with pause/cancel/resolve and trigger detection from events
+type: implementation
+area: engine
+priority: critical
+status: generated
+summary: >
+  Implement processEffectQueue() per spec: dequeue/mark resolving, cancel if cannot resolve, execute effect block, rule-processing checkpoint, detect new triggers from resolution events, enqueue with timing rules, and pause on decisions.
+spec_refs:
+  - 04-effect-runtime.s010 (Queue processing)
+  - 04-effect-runtime.s008 (Trigger detection from events)
+  - 04-effect-runtime.s016 (Failure policy)
+  - 00-project-overview.s012 (Effects are event-driven)
+scope:
+  - "Implement processEffectQueue(state) loop that continues until queue empty, gameOver, unrecoverable error, or pending decision pauses resolution (04-effect-runtime.s010)."
+  - Implement markResolving/markResolved/cancelQueuedEffect state transitions and emitted events for cancel/resolve.
+  - "Integrate detectTriggeredEffects(state, events) consumption of event batches (04-effect-runtime.s008) and enqueueTriggeredEffectsRespectingTiming()."
+  - Ensure the runtime calls rule-processing checkpoint after each effect resolution with causedBy referencing the effect queue entry (04-effect-runtime.s010).
+  - Ensure return includes events and stateHash computed from canonical state at exit (04-effect-runtime.s010).
+non_scope:
+  - Full DSL interpreter for executeEffectBlock; may stub to no-op until DSL primitives are implemented.
+  - Replacement-effect interception loop (separate story).
+  - Logging format/transport beyond emitting EngineEvents.
+dependencies:
+  - EFF-030
+  - ENG-004
+  - ENG-006
+  - ENG-014
+acceptance_criteria:
+  - "processEffectQueue has no early return inside the loop except: game ends, unrecoverable error, or pending decision (04-effect-runtime.s010)."
+  - "After each executeEffectBlock, rule-processing checkpoint is invoked and its events are appended (04-effect-runtime.s010)."
+  - "Triggers are detected from the effect resolution event batch and enqueued per timing rules (04-effect-runtime.s008, 04-effect-runtime.s010)."
+  - "If canQueuedEffectResolve fails, the entry is cancelled and emits cancellation events, and processing continues (04-effect-runtime.s010)."
+required_tests:
+  - "Unit: queue processing continues after cancellation and processes remaining entries deterministically."
+  - "Unit: when executeEffectBlock returns a PendingDecision pause, processEffectQueue returns paused state and does not dequeue further entries."
+  - "Golden: event batches produced by queue processing are stable across runs given same input state and decisions."
+repo_rules:
+  - "Trigger detection must consume EngineEvents emitted by atomic mutations, not a single lastAction field (00-project-overview.s012)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-031.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

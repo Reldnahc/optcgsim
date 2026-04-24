@@ -1,0 +1,43 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-006
+title: Implement authoritative per-player game timers and draining-player rules (no per-decision/mulligan timers)
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Implement TimerState with a single primary game timer per player plus disconnect grace timer, and enforce the draining rule: only the player holding up progress loses time; reaching 0 loses immediately.
+spec_refs:
+  - 07-match-server-protocol.s013 (Timers)
+  - 18-acceptance-tests.s006 (Milestone 4 - match server)
+scope:
+  - "Implement TimerState data model (drainingPlayerId, per-player remainingMs/isRunning, optional disconnect timer) as specified."
+  - Implement timer tick/update loop server-side and emit timerUpdate messages when timer ownership or remaining time changes (ordering enforced by SRV-003).
+  - "Determine drainingPlayerId based on match progress: player currently holding up progress drains; mandatory engine work drains neither; if neither holds up, none drains; mulligan example behavior."
+  - "When a player's remainingMs reaches 0, immediately end match awarding loss to that player and broadcast matchEnded with committed stateSeq."
+  - Ensure no separate mulligan timer or decision timer is created.
+non_scope:
+  - Precise UI display formatting of timers.
+  - Network time sync algorithms (server is authoritative).
+  - Ranked disconnect discipline policy application (separate story).
+dependencies:
+  - SRV-002
+  - SRV-003
+  - ENG-001
+acceptance_criteria:
+  - Only the player currently holding up progress has remainingMs decreasing (M4-008).
+  - "If neither player is holding up progress (including initial mulligan when both undecided), no timer drains; once one decides, only the other drains (spec example)."
+  - "When a player's timer hits 0, they lose immediately and matchEnded is sent."
+  - No additional timer types exist beyond game timers and disconnect grace timer.
+required_tests:
+  - "Protocol test covering M4-008: simulate a mulligan/decision hold-up and assert only one timer drains at a time."
+  - "Protocol test: timer reaching 0 triggers immediate loss and matchEnded broadcast in correct order (integrate with SRV-003 ordering)."
+repo_rules:
+  - "Timers are owned by match-server session logic, not engine-core rules (01-system-architecture.s009)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-006.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

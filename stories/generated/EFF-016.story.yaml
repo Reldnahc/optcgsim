@@ -1,0 +1,49 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-016
+title: "Add DSL primitives required for OP01-060: revealTop + selectFromSet + playSelected + returnUnselectedToDeck + attachedDonCount condition"
+type: implementation
+area: engine
+priority: critical
+status: generated
+summary: >
+  Extend the DSL runtime (and fixtures/schema usage) with transient reveal/select/play/return primitives and attached-don condition to implement Doflamingo's whenAttacking effect without a custom handler.
+spec_refs:
+  - 20-card-implementation-examples.s006 (Required DSL support)
+  - 20-card-implementation-examples.s015 (DSL additions required by these examples)
+  - 05-effect-dsl-reference.s012 (Effects)
+  - 05-effect-dsl-reference.s006 (Conditions)
+  - 22-v6-implementation-tightening.s007 (3. DSL schema)
+  - 18-acceptance-tests.s013 (v3 OP01-060 Donquixote Doflamingo tests)
+  - 04-effect-runtime.s017 (Transient reveal and selection sets)
+scope:
+  - "Implement Condition: attachedDonCount(target, op, value) evaluated on the source/target (20-card-implementation-examples.s006, 20-card-implementation-examples.s015)."
+  - "Implement Effect primitives: revealTop (public transient set), selectFromSet, playSelected (enterRested, ignoreCost), returnUnselectedToDeck (original order, faceDown) (20-card-implementation-examples.s006, 20-card-implementation-examples.s015)."
+  - Ensure revealTop uses transient set framework and enforces visibility and redaction on face-down return (04-effect-runtime.s017).
+  - Ensure playSelected removes the chosen card from transient set and does not also return it to deck (20-card-implementation-examples.s005).
+  - Ensure DSL fixtures comply with canonical schema conventions (22-v6-implementation-tightening.s007).
+non_scope:
+  - Implementing the entire OP01-060 card definition/fixture record itself (separate story).
+  - Search/lookAtTop/revealFromZone primitives outside revealTop.
+dependencies:
+  - EFF-014
+  - EFF-035
+  - ENG-011
+  - ENG-009
+acceptance_criteria:
+  - "Revealed top card is publicly visible during reveal but if returned face-down to top of deck, opponent PlayerView does not retain card ID (04-effect-runtime.s017, 18-acceptance-tests.s013 DOFFY-008)."
+  - "Eligible selected revealed card can be played rested with ignoreCost, and does not also return to deck (20-card-implementation-examples.s005, 18-acceptance-tests.s013 DOFFY-005/DOFFY-009)."
+  - "If ineligible or declined, the card returns to top face-down preserving order (20-card-implementation-examples.s005, 18-acceptance-tests.s013 DOFFY-006/DOFFY-007/DOFFY-009)."
+  - "attachedDonCount checks attached DON!! on source leader (18-acceptance-tests.s013 DOFFY-001/DOFFY-002)."
+required_tests:
+  - "Integration: DOFFY-004/DOFFY-006/DOFFY-008 branches validate reveal visibility and redaction behavior."
+  - "Integration: DOFFY-005/DOFFY-009 validate playSelected removes from set and ignores cost, enters rested."
+  - "Unit: attachedDonCount uses attached state semantics (ENG-011) and comparator evaluation."
+repo_rules:
+  - "Transient reveal/selection primitives are canonical runtime concepts, not UI concepts (22-v6-implementation-tightening.s007, 04-effect-runtime.s017)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-016.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

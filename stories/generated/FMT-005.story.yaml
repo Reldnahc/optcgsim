@@ -1,0 +1,57 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: FMT-005
+title: Implement rollback authorization gating by mode + hidden-information exposure class (block or judge-only in ranked)
+type: implementation
+area: server
+priority: critical
+status: generated
+summary: >
+  Add match-server rollback request handling that computes rollbackClass, checks match spectator/competition policy, and enforces hidden-information rollback restrictions (especially ranked). Supports mutual/judge/auto rollback modes and ensures only judge/admin can initiate judge rollbacks, with consent flow for mutual.
+spec_refs:
+  - 06-visibility-security.s018 (Hidden-information rollback policy)
+  - 08-replay-rollback-recovery.s011 (Judge-only)
+  - 08-replay-rollback-recovery.s013 (Rollback modes)
+  - 08-replay-rollback-recovery.s014 (Rollback flow)
+  - "18-acceptance-tests.s008 (Milestone 6 - replay, rollback, recovery)"
+scope:
+  - Expose a match-server command/API to request rollback with RollbackMode payload
+  - Validate rollback target checkpoint index exists
+  - Compute rollback class (as required by rollback flow) and use it for authorization decisions
+  - "Enforce: judge/admin only can initiate judge rollback, and it must be logged"
+  - "Enforce: ranked matches block rollback after hidden-info exposure unless judge/admin (per M6-004)"
+  - "Enforce: unranked/custom allow rollback before hidden-info exposure (per M6-003)"
+  - "For mutual rollback: request opponent consent and freeze actions while awaiting consent"
+  - "On approval: set state to target snapshot, truncate/branch history after target, emit new filtered views"
+non_scope:
+  - UI for judges/admins beyond the command/API surface
+  - Defining the exact RollbackClass taxonomy and detection algorithm if not already specified elsewhere (escalate if missing)
+  - Implementing replay checkpointing itself (handled by existing replay stories)
+dependencies:
+  - RPL-003
+  - SRV-001
+  - SRV-003
+  - SRV-004
+  - SRV-002
+  - AMB-005
+acceptance_criteria:
+  - "Given a rollback request with a non-existent targetIndex, the server rejects it without mutating match state"
+  - "Given a mutual rollback request, the opponent is prompted for consent and no further actions are accepted until consent is resolved"
+  - "Given a judge rollback request from a non-admin/non-judge, the server rejects it and logs the rejection"
+  - "Given a ranked match where hidden information has been exposed since target, a mutual rollback request is rejected and a judge rollback is the only allowed path (M6-004)"
+  - "Given an unranked/custom match with target prior to hidden-info exposure, rollback can proceed after any required consent (M6-003)"
+  - "After an approved rollback, the server emits a new stateSync/view consistent with the rolled-back state and the post-target history is not applied"
+  - All rollback requests and outcomes are recorded for audit (see rollback record persistence story)
+required_tests:
+  - "Integration: mutual rollback freezes actions and resumes after accept/decline"
+  - "Integration: ranked blocks mutual rollback after hidden-info exposure; judge path allowed"
+  - "Integration: unranked allows rollback before hidden-info exposure"
+  - "Security: ensure no hidden-info leaks in post-rollback views beyond policy"
+repo_rules:
+  - Prefer fail_and_escalate if rollbackClass computation depends on unspecified hidden-info exposure rules
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/FMT-005.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

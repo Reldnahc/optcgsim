@@ -1,0 +1,43 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-008
+title: Implement deck CRUD endpoints backed by decks table
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Add @optcg/api REST endpoints for creating, reading, updating, and deleting decks persisted in the decks table, including format_id, visibility, and cosmetic IDs on the deck record.
+spec_refs:
+  - "01-system-architecture.s010 (`@optcg/api`)"
+  - 10-database-schema.s007 (Decks)
+  - "12-roadmap.s009 (Milestone 5: deck builder and card data)"
+scope:
+  - "DB model + queries for decks table as provided (id, user_id, name, leader_card_id, format_id, is_public, playmat_id, sleeve_id, icon_id, created_at, updated_at)."
+  - "REST endpoints: create deck, list my decks, get deck by id (owned), update deck fields, delete deck."
+  - "Respect ownership: only owner can update/delete; optionally allow reading public decks by id if is_public=true."
+non_scope:
+  - Main-deck card list storage (not present in provided excerpts).
+  - Deck validation logic (separate story).
+  - Loadouts (separate story).
+  - Client deck builder UI.
+dependencies:
+  - SRV-013
+acceptance_criteria:
+  - Creating a deck persists a row with correct user_id and returns its id.
+  - Updating a deck updates updated_at.
+  - Deleting a user cascades deletion of their decks.
+  - format_id defaults to 'standard-bo1' when not provided.
+  - Unauthorized access to another user's private deck is rejected.
+required_tests:
+  - "Integration: create/list/get/update/delete deck for authenticated user."
+  - "Integration: access control for private decks."
+  - "Integration: DB default for format_id is applied."
+repo_rules:
+  - Do not add columns beyond the cited schema in this story.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-008.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

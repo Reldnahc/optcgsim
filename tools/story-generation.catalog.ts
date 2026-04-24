@@ -76,9 +76,7 @@ export const INITIAL_BACKLOG_SEEDS: StorySeed[] = [
       "match-server transport handling",
       "browser view helpers"
     ],
-    dependencies: [
-      "INF-001"
-    ],
+    dependencies: ["INF-001"],
     acceptanceCriteria: [
       "packages/types exports the shared ids, DTOs, and view contracts required by the kickoff spec",
       "the canonical contract compiles through the repo toolchain without undefined symbols",
@@ -118,10 +116,7 @@ export const INITIAL_BACKLOG_SEEDS: StorySeed[] = [
       "websocket room management",
       "browser-safe presentation helpers"
     ],
-    dependencies: [
-      "INF-001",
-      "CON-001"
-    ],
+    dependencies: ["INF-001", "CON-001"],
     acceptanceCriteria: [
       "packages/engine-core exports the canonical engine entry points named in the kickoff contract",
       "hashGameState is stable across repeated runs with the same seed and action log",
@@ -138,7 +133,8 @@ export const INITIAL_BACKLOG_SEEDS: StorySeed[] = [
   },
   {
     id: "CAR-001",
-    title: "Add a fixture-backed @optcg/cards adapter for Poneglyph-shaped records",
+    title:
+      "Add a fixture-backed @optcg/cards adapter for Poneglyph-shaped records",
     type: "implementation",
     area: "cards",
     priority: "high",
@@ -162,10 +158,7 @@ export const INITIAL_BACKLOG_SEEDS: StorySeed[] = [
       "deck builder UI work",
       "unsupported-card full policy automation"
     ],
-    dependencies: [
-      "INF-001",
-      "CON-001"
-    ],
+    dependencies: ["INF-001", "CON-001"],
     acceptanceCriteria: [
       "packages/cards can load the provided fixture card ids through a typed adapter",
       "normalized card records expose canonical engine-facing fields without handing the raw payload directly to the engine",
@@ -181,7 +174,8 @@ export const INITIAL_BACKLOG_SEEDS: StorySeed[] = [
   },
   {
     id: "CON-002",
-    title: "Validate effect-definition fixtures against the canonical DSL schema",
+    title:
+      "Validate effect-definition fixtures against the canonical DSL schema",
     type: "tooling",
     area: "contracts",
     priority: "high",
@@ -203,9 +197,7 @@ export const INITIAL_BACKLOG_SEEDS: StorySeed[] = [
       "broad card handler automation",
       "browser-side effect authoring workflows"
     ],
-    dependencies: [
-      "INF-001"
-    ],
+    dependencies: ["INF-001"],
     acceptanceCriteria: [
       "a schema-validation command exists for effect-definition fixtures",
       "invalid DSL fixtures fail verification",
@@ -243,12 +235,7 @@ export const INITIAL_BACKLOG_SEEDS: StorySeed[] = [
       "matchmaking or Redis-backed sessions",
       "ranked queue or spectator support"
     ],
-    dependencies: [
-      "INF-001",
-      "CON-001",
-      "ENG-001",
-      "CAR-001"
-    ],
+    dependencies: ["INF-001", "CON-001", "ENG-001", "CAR-001"],
     acceptanceCriteria: [
       "the CLI supports the canonical command set needed for local two-sided play",
       "state sequence, phase, pending decision, legal actions, and state hash are visible after every action",
@@ -286,10 +273,7 @@ export const INITIAL_BACKLOG_SEEDS: StorySeed[] = [
       "public replay browser work",
       "match-server reconnect behavior"
     ],
-    dependencies: [
-      "INF-001",
-      "ENG-001"
-    ],
+    dependencies: ["INF-001", "ENG-001"],
     acceptanceCriteria: [
       "hidden-information regressions fail if filtered views expose protected data",
       "replay drift checks fail on unexpected checkpoint-hash changes",

@@ -1,0 +1,40 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-012
+title: Expose loadout persistence API endpoints (decklist + cosmetics + variant selections)
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Add @optcg/api REST endpoints for account-level saved loadouts, storing gameplay decklist plus cosmetic selections and variant selections, with all cosmetics globally unlocked.
+spec_refs:
+  - "01-system-architecture.s010 (`@optcg/api`)"
+  - 03-game-state-events-decisions.s024 (Account-level saved loadouts)
+  - 10-database-schema.s020 (Loadouts instead of local saved decks)
+  - 18-acceptance-tests.s015 (v6 replay and loadout tests)
+scope:
+  - Implement REST endpoints to create/update/list/delete a user's saved loadouts.
+  - "Loadout payload includes: gameplay decklist, DON!! deck selection, sleeves, playmat, icon, and cosmetic variant selections when related image asset is available."
+  - "Ensure loadouts are account-level (tied to authenticated user), not browser-local."
+non_scope:
+  - Cosmetic inventory/ownership or unlock progression (explicitly out of scope).
+  - Deck legality validation beyond ensuring loadout references are well-formed (deck legality can be checked via deck validation endpoint separately).
+  - Replay behavior beyond loadout data storage.
+dependencies:
+  - SRV-013
+  - DB-005
+acceptance_criteria:
+  - Loadout persistence stores decklist plus icon/playmat/sleeves/don-deck/variant selections (RPL-003).
+  - All cosmetics are treated as globally unlocked (no ownership checks or inventory tables).
+required_tests:
+  - "Integration: create loadout and retrieve it returns identical payload fields (decklist + cosmetics)."
+  - "Integration: loadouts are scoped to user; other users cannot read/modify them."
+repo_rules:
+  - "If the DB schema details for loadouts are owned by DB story CAR-010, do not re-declare schema here; use its model."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-012.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

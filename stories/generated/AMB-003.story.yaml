@@ -1,0 +1,40 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: AMB-003
+title: "Ambiguity: define exact EngineEvent payload contracts for phaseStarted/phaseEnded and battle-step transitions"
+type: ambiguity
+area: contracts
+priority: medium
+status: generated
+summary: >
+  The spec lists EngineEvent types including phaseStarted/phaseEnded but does not define required payload shape (e.g., phase name, player, battle step). This must be specified to ensure deterministic replay and consistent filtering.
+spec_refs:
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 02-engine-mechanics.s010 (Turn structure)
+  - 02-engine-mechanics.s014 (Main Phase)
+  - 02-engine-mechanics.s017 (Battle sequence)
+scope:
+  - "Enumerate required payload fields for phaseStarted/phaseEnded events, including phase identifiers and any turn/battle context."
+  - "Define whether battle step transitions (attack/block/counter/damage/endOfBattle) are represented as phaseStarted payload, separate event types, or turn.step changes only."
+  - Define visibility expectations for these events (public vs private) during live play and replay.
+  - Update canonical contract types to match resolved decision.
+non_scope:
+  - Implementing the phase/battle engine itself.
+  - Defining event payloads for unrelated EngineEvent types beyond phase/battle transitions.
+dependencies:
+acceptance_criteria:
+  - A single canonical TypeScript interface (or discriminated union) exists for phaseStarted/phaseEnded payloads and is referenced by EngineEvent payload typing.
+  - The contract specifies how battle step transitions are represented and guarantees sufficient information for replay determinism without leaking hidden information.
+  - At least one example event instance per phase/battle transition is included in docs/tests to validate serialization.
+required_tests:
+  - "Contract test: JSON serialization round-trip for phase/battle events with the new payload types."
+  - Replay determinism test fixture validates event payload stability across runs with same seed.
+repo_rules:
+  - Official rules and authoritative engine behavior must be implementable without guessing payloads (00-project-overview.s009).
+  - All events must be JSON-serializable (00-project-overview.s010).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/AMB-003.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

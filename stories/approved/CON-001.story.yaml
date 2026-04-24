@@ -6,7 +6,7 @@ title: "Bootstrap @optcg/types from the canonical contract bundle"
 type: implementation
 area: contracts
 priority: critical
-status: generated
+status: approved
 summary: >
   Create the shared types package from the canonical contract so IDs, DTOs, views, and action contracts have one compile-checked source of truth.
 spec_refs:
@@ -39,6 +39,6 @@ repo_rules:
   - must not introduce hidden-information leakage
 ambiguity_policy: implement_if_clearly_implied
 agent:
-  packet_path: agent-packets/generated/CON-001.packet.md
+  packet_path: agent-packets/approved/CON-001.packet.md
   implementation_skill: spec-story-implementation
   review_skill: spec-story-review

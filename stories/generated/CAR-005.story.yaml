@@ -1,0 +1,41 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CAR-005
+title: "Implement @optcg/cards read-through Redis cache keying and failure behaviors"
+type: implementation
+area: cards
+priority: high
+status: generated
+summary: >
+  Implement Redis read-through cache integration, canonical cache key construction using versioning, and required downtime/failure behaviors for Poneglyph unavailability.
+spec_refs:
+  - 09-card-data-and-support-policy.s005 (Read-through cache flow)
+  - 09-card-data-and-support-policy.s019 (Failure behavior)
+  - "09-card-data-and-support-policy.s004 (Package responsibility: `@optcg/cards`)"
+  - 18-acceptance-tests.s007 (Milestone 5 - Poneglyph and deck builder)
+scope:
+  - "Implement Redis cache key: card:{cardDataVersion}:{effectDefinitionsVersion}:{overlayVersion}:{cardId} (09-card-data-and-support-policy.s005)."
+  - "On cache hit: validate cached shape/version and return resolved card; on miss: fetch from Poneglyph, Zod-validate, merge overlay, write to Redis with TTL (09-card-data-and-support-policy.s005, 09-card-data-and-support-policy.s004)."
+  - Implement default TTL recommendation as a configurable value (default 24h) (09-card-data-and-support-policy.s005).
+  - "Implement failure behaviors for Poneglyph downtime at the adapter boundary: start from cache if all cards cached; fail start if uncached required; reject ranked if cannot resolve all (09-card-data-and-support-policy.s019)."
+non_scope:
+  - Implementing Poneglyph OpenAPI parsing and DTO normalization acceptance tests (covered by existing adapter story CAR-001 or separate).
+  - Match server behavior beyond consuming adapter errors (separate).
+dependencies:
+  - CAR-001
+acceptance_criteria:
+  - Redis hit returns validated cached Poneglyph card data (18-acceptance-tests.s007 M5-002).
+  - "If match start requires uncached card and Poneglyph unavailable, fail to start with clear error (09-card-data-and-support-policy.s019)."
+  - In-progress match continues from match snapshot and never refetches rules mid-match (09-card-data-and-support-policy.s019).
+required_tests:
+  - "Integration: M5-002 cache hit path validated and returned shape verified."
+  - "Integration: downtime simulation—uncached card causes match start failure with clear error; all cached allows start (09-card-data-and-support-policy.s019)."
+  - "Unit: cache key includes all version components exactly as specified (09-card-data-and-support-policy.s005)."
+repo_rules:
+  - Validate every Poneglyph response before cache/write/use (09-card-data-and-support-policy.s004).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/CAR-005.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

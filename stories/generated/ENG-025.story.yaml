@@ -1,0 +1,39 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-025
+title: Add EngineEvent visibility taxonomy including serverOnly and ensure replayOnly storage is supported without live emission
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Align EngineEvent visibility with canonical categories (public/private/replayOnly/serverOnly), ensuring live filtering and replay storage can diverge safely.
+spec_refs:
+  - 03-game-state-events-decisions.s006 (Event visibility)
+  - 03-game-state-events-decisions.s018 (Canonical event visibility)
+scope:
+  - "Extend/normalize EngineEvent visibility union to include: public, private(playerIds), replayOnly, serverOnly."
+  - Update event journal emission API to require a visibility field per event (no default).
+  - Update view projection hooks so replayOnly/serverOnly are never emitted in live PlayerView; replayOnly may be written to replay artifact later (not implemented here).
+  - Add minimal documentation and examples in code for event authors.
+non_scope:
+  - Replay artifact writer implementation (handled by replay stories).
+  - Defining every EngineEvent payload schema; only visibility handling.
+dependencies:
+  - ENG-004
+acceptance_criteria:
+  - EngineEvent requires explicit visibility and supports the four canonical categories.
+  - Live view projection filters out replayOnly and serverOnly events.
+  - Private events are visible only to specified playerIds.
+required_tests:
+  - "Unit test: event with replayOnly does not appear in PlayerView event list for either player."
+  - "Unit test: event with serverOnly does not appear in any external projection output."
+  - "Type-level test (tsd or compile check): cannot construct EngineEvent without visibility field."
+repo_rules:
+  - "Do not downgrade visibility (e.g., treat replayOnly as public) to satisfy UI needs."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-025.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

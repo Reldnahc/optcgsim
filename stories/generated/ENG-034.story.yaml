@@ -1,0 +1,44 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-034
+title: Implement phaseStarted(main) gating with start-of-main trigger window before action priority
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Ensure Main Phase begins by emitting phaseStarted(main), collecting/queuing Start of Main Phase triggers, resolving required autos, and blocking player action priority until pending decisions/queues complete.
+spec_refs:
+  - 02-engine-mechanics.s014 (Main Phase)
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 03-game-state-events-decisions.s009 (Pending decisions)
+scope:
+  - "On entering Main Phase, emit EngineEvent phaseStarted with payload indicating main phase."
+  - "Collect [Start of Main Phase] triggers (as represented in engine trigger system) and queue required automatic effects."
+  - Resolve required automatic effects before allowing any legal phase actions by turn player.
+  - "If any PendingDecision is created during this window, do not begin Main Phase action priority until the decision is answered and any resulting effect queue is fully processed."
+  - Record sequencing in event journal for deterministic replay ordering.
+non_scope:
+  - Full effect runtime implementation; only the phase gating behavior and event emission.
+  - Client-side UI handling of phase transitions.
+  - Specific card trigger definitions.
+dependencies:
+  - ENG-010
+  - ENG-004
+  - ENG-015
+acceptance_criteria:
+  - "Immediately upon entering Main Phase, a phaseStarted(main) event is emitted before any Main Phase player actions are legal."
+  - "If a start-of-main trigger creates a pending decision, getLegalActions during that time returns only legal responses to that decision (not main-phase actions)."
+  - "After the pending decision and any resulting queued effects resolve, main-phase actions become legal for the turn player."
+required_tests:
+  - "Integration: M1-019 start-of-main trigger window resolves before Main Phase action priority (18-acceptance-tests.s003)."
+  - "Unit: phaseStarted(main) event precedes any playCard/attachDon/declareAttack legal actions in journal order."
+repo_rules:
+  - "Events must be emitted from atomic mutations, not inferred from lastAction (00-project-overview.s012)."
+  - All state/events/decisions must be JSON-serializable (00-project-overview.s010).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-034.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

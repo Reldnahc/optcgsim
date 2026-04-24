@@ -1,0 +1,42 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-004
+title: Add match-server full PlayerView stateSync and client resync request handling
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Implement correctness-first state synchronization: send full filtered PlayerView after accepted actions/decisions and support explicit client resync requests while ensuring clients can discard stale views by stateSeq.
+spec_refs:
+  - 07-match-server-protocol.s009 (State sync)
+  - 07-match-server-protocol.s008 (Broadcast ordering)
+  - 18-acceptance-tests.s006 (Milestone 4 - match server)
+scope:
+  - Implement stateSync message containing full filtered PlayerView for each player recipient after accepted action/decision when state changed.
+  - Include committed stateSeq in every stateSync message.
+  - "Implement a server handler for client resync request (message type defined in @optcg/types) that responds with current filtered PlayerView and current stateSeq."
+  - Ensure server never sends full GameState to clients; always filtered view from engine-core visibility filters.
+non_scope:
+  - Diff-based syncs and patch application.
+  - Spectator sync specifics (handled elsewhere).
+  - Replay generation (separate stories).
+dependencies:
+  - CON-001
+  - SRV-001
+  - ENG-001
+acceptance_criteria:
+  - "After an accepted action/decision that changes state, each player receives a stateSync containing a full filtered PlayerView and the committed stateSeq."
+  - Resync request returns the current filtered PlayerView and current stateSeq.
+  - Server does not emit unfiltered hidden zones in PlayerView (filtered by engine-core).
+required_tests:
+  - "Protocol test: reconnect/resync sends current filtered PlayerView (covers M4-003 expectation pathway)."
+  - Hidden-information regression test ensuring stateSync does not leak opponent hidden zones (tie-in with SEC-001 lane).
+repo_rules:
+  - "@optcg/types defines message contracts; match-server uses them without redefining (01-system-architecture.s004, 07-match-server-protocol.s002)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-004.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

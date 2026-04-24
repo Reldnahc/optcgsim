@@ -17,7 +17,12 @@ function main(): void {
   const sectionLookup = buildSectionLookup(sectionIndex);
   const includeApproved = Boolean(args.get("include-approved"));
   const targets = includeApproved
-    ? [...new Set([...listStoryFiles("stories/generated"), ...listStoryFiles("stories/approved")])]
+    ? [
+        ...new Set([
+          ...listStoryFiles("stories/generated"),
+          ...listStoryFiles("stories/approved")
+        ])
+      ]
     : listStoryFiles("stories/generated");
   const normalized: string[] = [];
 
@@ -27,7 +32,9 @@ function main(): void {
       const sectionRef = normalizeSpecRef(specRef);
       const section = sectionLookup.get(sectionRef);
       if (!section) {
-        throw new Error(`Missing section ref ${sectionRef} referenced by ${storyPath}`);
+        throw new Error(
+          `Missing section ref ${sectionRef} referenced by ${storyPath}`
+        );
       }
       return `${sectionRef} (${section.heading})`;
     });

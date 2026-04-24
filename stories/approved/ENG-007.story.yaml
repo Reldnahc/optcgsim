@@ -1,0 +1,50 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-007
+title: "Implement setup sequence: validate stubs, first/second selection, start-of-game shuffle/draw/mulligan/life placement"
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement the deterministic setup flow including initial GameState construction, recorded RNG shuffles, opening draws, mulligan decision routing, and canonical life orientation algorithm.
+spec_refs:
+  - 02-engine-mechanics.s008 (Setup sequence)
+  - 02-engine-mechanics.s009 (Canonical Life orientation)
+  - 03-game-state-events-decisions.s009 (Pending decisions)
+  - 03-game-state-events-decisions.s017 (Canonical decision routing)
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 18-acceptance-tests.s003 (Milestone 1 - terminal engine)
+  - 00-project-overview.s010 (State is serializable)
+scope:
+  - Implement engine entrypoint to create initial GameState and run setup steps 2-9 (selection of first/second; build state; start-of-game effects hook point; shuffle; draw 5; mulligan; life placement; begin first refresh phase).
+  - Implement deterministic first/second selection using RNG (or deterministic input) and record via events.
+  - "Implement mulligan as PendingDecision (MulliganDecision) in first-player-then-second-player order; each player may keep or return all 5, reshuffle, redraw 5 once."
+  - "Implement life placement using canonical orientation algorithm (deck[0]=top; life[0]=top; original deck top becomes bottom life)."
+  - "Emit events for shuffle(s), card draws, mulligan decisions, and life placement (without leaking secret order)."
+non_scope:
+  - Deck legality validation against format/banlist beyond a stub that can raise illegalAction/unsupportedCard in later milestones (step 1 placeholder behavior should be explicit).
+  - Start-of-game effects implementation (only provide hook point and event).
+dependencies:
+  - ENG-005
+  - ENG-004
+  - ENG-003
+acceptance_criteria:
+  - M1-001 starting state is legal per zone invariants and has correct initial hands/life counts.
+  - M1-002 opening hand draw follows deterministic deck order after shuffle.
+  - M1-003 mulligan supports keep or redraw-five once per player in correct player order.
+  - "M1-017 life setup orientation matches provided algorithm (original top deck card becomes bottom life; damage takes life[0])."
+  - "After setup, turn phase is at first player's Refresh Phase (step 9)."
+required_tests:
+  - "Integration: setup with fixed RNG produces deterministic deck shuffle event and opening hands."
+  - "Integration: mulligan keep/redo flows update deck/hand counts correctly and reshuffle occurs on redo."
+  - "Unit: setupLifeFromDeck algorithm matches example and preserves ordering requirements."
+repo_rules:
+  - Setup must be fully deterministic given initial RNG state and inputs.
+  - Do not leak secret deck order in events or decisions shown to opponent.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/ENG-007.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

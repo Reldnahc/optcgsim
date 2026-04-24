@@ -1,0 +1,41 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-028
+title: Implement legal-action visibility redaction so opponent cannot infer hidden counter availability
+type: implementation
+area: engine
+priority: critical
+status: generated
+summary: >
+  Ensure legalActions exposed in PlayerView are recipient-filtered to avoid leaking hidden information (especially counter windows), following the legal-action visibility policy.
+spec_refs:
+  - 06-visibility-security.s007 (Legal-action visibility)
+  - 06-visibility-security.s004 (PlayerView shape)
+  - 01-system-architecture.s014 (Client prediction policy)
+scope:
+  - "Add a filtering layer that takes internal legal-action candidates and returns PublicLegalAction[] tailored to a recipient."
+  - "In counter windows, ensure the non-acting player does not receive legal-action details that reveal whether counters exist vs auto-pass (only sees progression/phase changes as applicable)."
+  - Ensure the acting player can see their own legal counter cards/actions when entitled.
+  - Document the redaction rules in code comments and keep them localized to a single policy module.
+non_scope:
+  - Implementing the full Counter Step rules and timing (handled by SEC-008).
+  - Adding new action types beyond those already modeled in engine/server.
+  - Client-side inference prevention beyond what server sends.
+dependencies:
+  - ENG-026
+  - ENG-009
+acceptance_criteria:
+  - Opponent-facing PlayerView during counter window does not include information that distinguishes (a) no counters exist from (b) counters exist but auto-pass is enabled.
+  - Acting player's PlayerView contains sufficient legalActions to choose among their own counter options when present.
+  - No hidden-zone card identities are introduced via legalActions for the wrong recipient.
+required_tests:
+  - "Unit test: given internal legal actions including specific counter-card options for player B, player A's projected legalActions is empty/abstracted per policy."
+  - "Regression test: ensure a state transition that auto-passes counter window does not emit any extra opponent-visible legalActions/events that encode hidden availability."
+repo_rules:
+  - Treat legalActions as a security boundary; do not add debug fields to PublicLegalAction in production paths.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-028.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

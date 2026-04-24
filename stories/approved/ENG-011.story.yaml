@@ -1,0 +1,45 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-011
+title: "Implement DON!! mechanics: attach during Main, attached-state semantics, refresh return/rest rules"
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement DON!! attachment action and refresh-phase return rules, including attached state semantics and event emission.
+spec_refs:
+  - "02-engine-mechanics.s036 (DON!! card mechanics)"
+  - 03-game-state-events-decisions.s016 (Action envelope inside the engine)
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 18-acceptance-tests.s003 (Milestone 1 - terminal engine)
+  - 02-engine-mechanics.s006 (Zone transition rules)
+scope:
+  - "Implement Action.attachDon with legality: controller's Main Phase; source must be active DON!! in cost area; target must be controller's Leader or Character."
+  - "Update CardInstance for DON!! to have state:'attached' and be tracked in host.attachedDon list; while attached it is neither active nor rested."
+  - Emit donAttached event and maintain causality from playerAction.
+  - "Implement Refresh Phase rule: all attached DON!! return to cost area rested before un-resting Leader/Characters/Stage and DON!! in cost area; emit donReturned events."
+  - "Implement zone transition rule: when host leaves field, attached DON!! return to owner's cost area rested (emit donReturned)."
+non_scope:
+  - "DON!! xX keyword evaluation in computed view."
+  - "DON!! -X costs beyond legality note (handled with cost system)."
+dependencies:
+  - ENG-010
+  - ENG-004
+acceptance_criteria:
+  - "M1-007: active DON!! can be attached during Main Phase."
+  - "M1-008: attached DON!! returns rested during Refresh Phase."
+  - "M1-018: attached DON!! has attached state and no active/rested state while attached."
+  - "If a host card leaves the field, all attached DON!! return to owner's cost area rested."
+required_tests:
+  - "Integration: attach DON!! then advance to Refresh; assert DON!! moved back rested and host.attachedDon cleared."
+  - "Unit: attaching requires DON!! to be active and in cost area and target controlled by player."
+  - "Integration: move host from field to trash and assert attached DON!! returned rested."
+repo_rules:
+  - "Attached DON!! must not exist in multiple locations; must satisfy attached-don invariants."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/ENG-011.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

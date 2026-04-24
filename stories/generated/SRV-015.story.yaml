@@ -1,0 +1,48 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-015
+title: Implement Redis crash persistence and recovery for live matches (snapshot + actions + decisions + meta + locks)
+type: implementation
+area: server
+priority: critical
+status: generated
+summary: >
+  Persist in-progress match state to Redis for crash recovery using the specified keys and recovery flow; restore match including timers and pending decision after reconnect or process restart.
+spec_refs:
+  - 08-replay-rollback-recovery.s022 (Process crash persistence)
+  - 07-match-server-protocol.s011 (Reconnection)
+  - 08-replay-rollback-recovery.s025 (Replay storage)
+  - 10-database-schema.s017 (Redis keys)
+  - "18-acceptance-tests.s008 (Milestone 6 - replay, rollback, recovery)"
+scope:
+  - "Write Redis persistence for active matches using keys: match:{matchId}:state, :meta, :actions, :decisions, :locks (and/or :owner if used) with TTL refresh while active."
+  - "Persist last clean snapshot at recommended points: start of match, start of each turn, after successful rollback (baseline); store actions/decisions since snapshot separately."
+  - "Implement recovery lock/owner semantics sufficient to prevent double-ownership during recovery (use match:{matchId}:locks)."
+  - "On reconnect, if in-memory match missing, attempt Redis recovery: load snapshot, apply actions/decisions to reconstruct current state, restore timers, restore pending decision, then send current filtered view and decisionRequired if applicable."
+  - "If recovery data unavailable, send match_lost (per acceptance test list) or an equivalent terminal outcome message defined in @optcg/types."
+non_scope:
+  - Full rollback policy matrix (ranked vs unranked vs custom) beyond persistence hooks.
+  - Postgres completed replay write path (handled by DB-001/RPL stories).
+  - Optimizations such as pre-action snapshots for complex effects.
+dependencies:
+  - DB-001
+  - SRV-002
+  - SRV-004
+  - RPL-001
+acceptance_criteria:
+  - "After simulated process restart, the server can recover a match from Redis snapshot and action/decision logs and resume (M6-005)."
+  - "Reconnect attempt for a match not in memory triggers Redis recovery and returns current filtered view, restores pending decision, and restores timer state (07-match-server-protocol.s011)."
+  - Active match Redis keys use the specified naming and are TTL-refreshed while match remains active (10-database-schema.s017).
+  - "If recovery data is missing/unreadable, the server emits match_lost (M6-007)."
+required_tests:
+  - "Recovery test: start match, apply actions, persist, discard in-memory, recover from Redis, assert stateSeq and filtered view delivered."
+  - "Recovery test: pending decision exists at crash time; after recovery and reconnect, decisionRequired is resent to required player (M4-004 linkage + M6-005)."
+  - "Failure-mode test: missing Redis keys causes match_lost message to reconnecting client (M6-007)."
+repo_rules:
+  - Redis is for ephemeral/high-write live state; Postgres is for durable completed matches (10-database-schema.s003).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-015.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

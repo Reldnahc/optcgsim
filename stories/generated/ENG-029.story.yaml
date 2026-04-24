@@ -1,0 +1,41 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-029
+title: Implement loop detection signatures and declare-loop-count decision path (draw resolution baseline)
+type: implementation
+area: engine
+priority: medium
+status: generated
+summary: >
+  Implement loop detection on repeated state/effect/decision signatures and resolve unstoppable loops as draw; provide decision path for stoppable loops per spec.
+spec_refs:
+  - 02-engine-mechanics.s033 (Infinite loops)
+  - 03-game-state-events-decisions.s023 (Error handling inside the engine)
+  - 03-game-state-events-decisions.s020 (State hashing)
+  - 03-game-state-events-decisions.s009 (Pending decisions)
+scope:
+  - "Define LoopSignature as per spec (stateHash, pendingQueueHash, optional decisionHash)."
+  - Track recent signatures during effect resolution / rule processing loop (where applicable) and detect repeats.
+  - "If loop detected and neither player can stop (engine cannot find available player breakpoints), end match as draw and emit loopDetected EngineError and gameEnded event."
+  - "Provide DeclareLoopCountDecision hook for stoppable loops (even if initial engine cannot yet classify stoppable vs unstoppable, the decision plumbing should exist)."
+non_scope:
+  - Full classification of 'can stop loop' based on complex effect runtime (may require later effect system).
+  - UI presentation of loop choices.
+dependencies:
+  - ENG-006
+  - ENG-015
+acceptance_criteria:
+  - "Engine can surface EngineError {type:'loopDetected', signature} when identical signatures repeat beyond a configured threshold."
+  - "For loops deemed unstoppable by current engine, match ends in draw deterministically."
+  - Loop detection uses deterministic hashes (no nondeterministic counters except those derived from state).
+required_tests:
+  - "Unit: feed a contrived loop by repeatedly applying a no-op effect resolution step that keeps stateHash constant; assert loopDetected triggers."
+  - "Integration: loopDetected ends match as draw when no decision breakpoint exists."
+repo_rules:
+  - Loop detection must be deterministic and not rely on wall-clock time.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-029.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

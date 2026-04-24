@@ -1,0 +1,45 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-005
+title: Implement deterministic RNG state + shuffle event emission (no Math.random)
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement canonical RngState, deterministic draw/shuffle utilities, and ensure shuffles emit events without revealing secret order.
+spec_refs:
+  - 03-game-state-events-decisions.s019 (Deterministic RNG)
+  - 00-project-overview.s010 (State is serializable)
+  - 02-engine-mechanics.s008 (Setup sequence)
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 03-game-state-events-decisions.s006 (Event visibility)
+scope:
+  - "Implement RngState model with algorithm, internalState, callCount (and optional seedCommitment)."
+  - "Add deterministic RNG step function(s) for supported algorithms (pcg32, xoshiro256ss, test-fixed) and a typed draw API returning nextRng + EngineEvent."
+  - "Implement deterministic shuffle(list, rng) -> {shuffled,nextRng,event} used by setup sequence."
+  - Ensure shuffle emits an EngineEvent with visibility that does not expose resulting order to players (payload must not contain full ordered card IDs for secret zones).
+non_scope:
+  - Cryptographic commitments/seed commitment verification beyond storing seedCommitment if present.
+  - Match-server seed negotiation or anti-cheat beyond engine guarantees.
+  - Public-view hashing strategy (separate story).
+dependencies:
+  - ENG-004
+  - ENG-003
+acceptance_criteria:
+  - Engine code path uses RNG utilities; no Math.random usage in engine-core (enforced by lint/test as appropriate).
+  - Shuffle of a deck is deterministic given identical RngState and input list; callCount advances consistently.
+  - Shuffle event is emitted and does not expose secret deck order in a public event payload.
+required_tests:
+  - "Unit: RNG draw determinism for each supported algorithm (golden vectors or snapshot)."
+  - "Unit: shuffle determinism and permutation validity."
+  - "Static/lint/test: fail if Math.random is referenced in engine-core package."
+repo_rules:
+  - All RNG state must be stored in GameState.rng and remain JSON-serializable.
+  - Events for shuffles must not leak secret order.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/ENG-005.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

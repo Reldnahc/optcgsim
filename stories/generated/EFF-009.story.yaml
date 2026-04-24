@@ -1,0 +1,43 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-009
+title: Implement PayCostDecision creation + atomic cost payment events
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Implement the cost pipeline: create PayCostDecision when choices are required, pay costs atomically, emit costPaid events, and integrate with effect commitment rules.
+spec_refs:
+  - 04-effect-runtime.s011 (Conditions and costs)
+  - 05-effect-dsl-reference.s007 (Costs)
+  - 04-effect-runtime.s012 (Player choices during effect resolution)
+scope:
+  - "Define PayCostDecision shape within PendingDecision framework and validate responses server-side (04-effect-runtime.s012, 04-effect-runtime.s011)."
+  - "Implement cost evaluation for DSL Cost primitives needed by fixtures: restDon, sequence, chooseOne, trashFromHand/discard (05-effect-dsl-reference.s007)."
+  - "When paying a cost requires choice, pause with PayCostDecision; otherwise pay automatically if deterministic (05-effect-dsl-reference.s007)."
+  - Apply costs as atomic state mutations and emit costPaid events (04-effect-runtime.s011).
+  - Integrate with once-per-turn commitment point (04-effect-runtime.s011).
+non_scope:
+  - Full implementation of every cost variant (custom cost excluded).
+  - Card play cost computation outside cost payment itself.
+dependencies:
+  - ENG-015
+  - ENG-011
+  - EFF-037
+acceptance_criteria:
+  - "Costs that require choosing cards or DON!! create a PayCostDecision (05-effect-dsl-reference.s007)."
+  - Costs are paid atomically and emit costPaid events (04-effect-runtime.s011).
+  - "If cost payment fails or is impossible, effect does not resolve and does not consume once-per-turn (04-effect-runtime.s011)."
+required_tests:
+  - "Integration: M2-016 once-per-turn failed cost does not consume use (requires cost decision)."
+  - "Unit: restDon cost rests exactly count active DON!! chosen by chooser and emits costPaid."
+  - "Unit: sequence cost applies components in order atomically or fails according to cost rules."
+repo_rules:
+  - Decision responses must be validated by the engine (04-effect-runtime.s012).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-009.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

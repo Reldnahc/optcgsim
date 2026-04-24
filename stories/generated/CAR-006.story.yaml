@@ -1,0 +1,37 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CAR-006
+title: Implement Poneglyph text hash tracking and stale-card review enforcement for tested implementations
+type: tooling
+area: cards
+priority: medium
+status: generated
+summary: >
+  Add sourceTextHash generation tracking and CI enforcement so Poneglyph printed-text changes mark implementations stale and prevent 'tested' from remaining without review.
+spec_refs:
+  - 09-card-data-and-support-policy.s015 (Poneglyph text hash and stale-card review)
+  - 05-effect-dsl-reference.s003 (Top-level definition)
+scope:
+  - Generate and store sourceTextHash for supported cards based on Poneglyph printed text (09-card-data-and-support-policy.s015).
+  - "On detected Poneglyph text hash change for a card, mark implementation stale and fail CI if the card remains tested without review (09-card-data-and-support-policy.s015)."
+  - Require reviewer metadata update when updating sourceTextHash for a tested card (05-effect-dsl-reference.s003).
+non_scope:
+  - Behavior hash definition beyond acknowledging it exists in examples; only enforce sourceTextHash and tested/reviewer gate as specified.
+  - Ranked eligibility enforcement based on stale status (only tooling/metadata here).
+dependencies:
+  - CAR-001
+  - EFF-001
+acceptance_criteria:
+  - Every supported card stores a hash of its Poneglyph printed text (09-card-data-and-support-policy.s015).
+  - CI fails if a stale card remains marked tested without review after Poneglyph text changes (09-card-data-and-support-policy.s015).
+required_tests:
+  - "Tooling test: simulate text hash change for a tested effect definition and verify CI check fails until reviewer/sourceTextHash updated."
+  - "Unit: sourceTextHash changes when Poneglyph printed text changes (aligns with PON-008 intent, but only enforce per provided section 09-card-data-and-support-policy.s015)."
+repo_rules:
+  - "Do not treat Poneglyph as rules authority; hashes are used to detect drift needing review (00-project-overview.s020, 09-card-data-and-support-policy.s015)."
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/CAR-006.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

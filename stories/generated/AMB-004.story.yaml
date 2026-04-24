@@ -1,0 +1,34 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: AMB-004
+title: "Ambiguity: define exact expiration semantics for RevealRecord.expires and required cleanup checkpoint timing"
+type: ambiguity
+area: contracts
+priority: high
+status: generated
+summary: >
+  The spec states RevealRecords expire and must be removed as part of effect cleanup, but does not define the concrete expiration model (e.g., end of resolution segment, end of window, stateSeq boundary, turn/phase-based expirations). Clarify to avoid leaks and replay drift.
+spec_refs:
+  - 06-visibility-security.s005 (Temporary visibility)
+  - 03-game-state-events-decisions.s003 (Base state vs. computed view)
+scope:
+  - Enumerate all RevealExpiration variants intended by the spec and define when each is evaluated.
+  - "Define whether expiration evaluation is tied to effect queue segments, decision resolution boundaries, phase transitions, or explicit cleanup events."
+  - Define interaction with replayOnly reveals and post-game replay reconstruction requirements.
+non_scope:
+  - Implementing effect DSL to create reveal records.
+  - Spectator delay policy semantics.
+dependencies:
+acceptance_criteria:
+  - A written contract update (or approved story file) defines RevealExpiration variants and the exact engine checkpoint(s) that perform cleanup.
+  - "The definition includes at least: play/counter/trigger reveal durations; search/look at deck durations; effect-specified durations; trash-from-hidden permanence."
+required_tests:
+  - Contract test cases added to validate expiration timing against sample flows once clarified.
+repo_rules:
+  - "Until clarified, implement conservatively (do not reveal longer than necessary) and gate with tests once contract is updated."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/AMB-004.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

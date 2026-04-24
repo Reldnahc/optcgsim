@@ -1,0 +1,37 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CLI-004
+title: "Client-side stateSeq handling: discard stale PlayerView updates and prevent rollback glitches in UI"
+type: implementation
+area: client
+priority: high
+status: generated
+summary: >
+  Ensure the browser client applies only monotonic PlayerView updates by stateSeq and discards stale/out-of-order updates, matching Milestone 3 acceptance behavior.
+spec_refs:
+  - 06-visibility-security.s004 (PlayerView shape)
+  - 18-acceptance-tests.s005 (Milestone 3 - browser prototype)
+scope:
+  - Implement a client-side store (or reducer) that tracks latest PlayerView.stateSeq per matchId/playerId stream.
+  - "On receiving a PlayerView update with stateSeq < current, discard it without updating UI state."
+  - Optionally track actionSeq similarly for client-originated actions (if present in PlayerView).
+  - Expose debug logging (dev-only) for discarded updates.
+non_scope:
+  - Server-side broadcast ordering guarantees and seq assignment.
+  - Rollback/recovery protocol and resync mechanics.
+dependencies:
+  - CLI-001
+acceptance_criteria:
+  - "M3-003: client discards stale stateSeq updates (verified by test using out-of-order updates)."
+  - UI remains stable when receiving stale updates (no visible state regression).
+required_tests:
+  - "Unit test: reducer/store applies stateSeq=10 then receives stateSeq=9 and asserts state remains at 10."
+  - "Integration test: component subscribed to store does not re-render older view when stale update is dispatched."
+repo_rules:
+  - Do not silently merge stale data; strict discard only.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/CLI-004.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

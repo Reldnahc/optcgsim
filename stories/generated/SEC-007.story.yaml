@@ -1,0 +1,48 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SEC-007
+title: Add PlayerView filter checklist assertions and fixtures for hidden-zone + RNG/effectQueue redaction
+type: verification
+area: security
+priority: critical
+status: generated
+summary: >
+  Implement automated verification that PlayerView filtering satisfies the required anti-leak checklist (deck contents, opponent hand, face-down life, RNG, effectQueue, private decision candidates, reveal record recipient filtering, and legal-action non-leak).
+spec_refs:
+  - 00-project-overview.s011 (Hidden information is a security boundary)
+  - 06-visibility-security.s017 (Filter checklist)
+  - 06-visibility-security.s003 (Player zone visibility)
+  - 18-acceptance-tests.s009 (Global invariants)
+  - 03-game-state-events-decisions.s020 (State hashing)
+scope:
+  - Create test helpers that run the filter checklist assertions against produced PlayerViews in engine tests.
+  - "Add fixture GameStates covering: non-empty deck/hand/life, active RevealRecords, pendingDecision with private candidates, rng state populated, effectQueue populated."
+  - Verify PlayerView omits/aggregates hidden zones per zone table (counts only) and removes rng/effectQueue internals.
+  - Verify reveal records are filtered per recipient and expire handling is respected where applicable.
+  - "Verify legal actions returned/sent to the non-owner do not leak opponent hidden information (at minimum: counter window autopass does not expose absence/presence details)."
+non_scope:
+  - SpectatorView and ReplayView filtering (separate views) beyond ensuring PlayerView category behavior.
+  - Rollback implementation policies beyond test coverage.
+  - Match-server transport-level filtering.
+dependencies:
+  - ENG-009
+  - ENG-026
+  - ENG-005
+acceptance_criteria:
+  - All checklist assertions in 06-visibility-security.s017 pass for each PlayerView fixture.
+  - "Opponent PlayerView never contains deck contents, opponent hand contents, or face-down life identities; only counts and allowed face-up cards are present."
+  - PlayerView contains no rng or effectQueue internal fields.
+  - PendingDecision candidates that are private are only present in the choosing player’s view.
+  - "A public-view state hash (includeHidden=false) can be computed without hidden fields appearing (no accidental inclusion of rng/secret zones)."
+required_tests:
+  - "Security: implement tests covering G-007..G-010 invariants for views (18-acceptance-tests.s009)."
+  - "Unit: assertNoDeckContents/assertNoOpponentHandContents/assertNoFaceDownLifeContents/assertNoRngState/assertNoEffectQueueInternals/assertNoPrivateDecisionCandidates/assertRevealRecordsAreRecipientFiltered/assertLegalActionsDoNotLeakOpponentHiddenInfo executed for each fixture."
+repo_rules:
+  - Hidden information is a security boundary; default hidden until explicitly exposed (00-project-overview.s011).
+  - State hashing uses canonical JSON normalization inputs (03-game-state-events-decisions.s020).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SEC-007.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

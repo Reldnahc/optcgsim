@@ -1,0 +1,45 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-015
+title: Implement PendingDecision framework + resumeDecision validation and single-use IDs
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement pending decision creation, storage, and resumeDecision validation so all player choices route through respondToDecision with strict response checking.
+spec_refs:
+  - 03-game-state-events-decisions.s009 (Pending decisions)
+  - 03-game-state-events-decisions.s017 (Canonical decision routing)
+  - 03-game-state-events-decisions.s023 (Error handling inside the engine)
+  - 03-game-state-events-decisions.s016 (Action envelope inside the engine)
+  - 03-game-state-events-decisions.s022 (Internal state sequencing)
+  - 00-project-overview.s010 (State is serializable)
+scope:
+  - "Implement decision creation helpers that set id, causedBy, visibility, defaultResponse (if any), and emit decisionCreated events."
+  - "Implement resumeDecision(state, decisionResponse) / Action.respondToDecision application path: validate decisionId matches current pendingDecision, validate response shape, apply atomic mutation(s), clear pendingDecision, emit decisionResolved, increment state.seq once per resolved decision."
+  - "Enforce single-use decision IDs: once resolved, old decisionId is invalid (engine returns invalidDecisionResponse)."
+  - "Implement decision types needed by implemented flows: MulliganDecision, PayCostDecision, ConfirmLifeTriggerDecision, OrderCardsDecision (for simultaneous zone ordering when implemented), and a generic plumbing for others."
+non_scope:
+  - Match-server idempotent retry semantics (server-side); engine only validates current pendingDecision.
+  - Per-decision timers.
+dependencies:
+  - ENG-004
+  - ENG-003
+acceptance_criteria:
+  - All choice points implemented in engine create a PendingDecision and block other actions until resolved.
+  - "resumeDecision rejects mismatched or stale decisionId with EngineError {type:'invalidDecisionResponse'}."
+  - state.seq increments after each resolved decision and after each accepted action (per spec sequencing).
+  - decisionCreated/decisionResolved events emitted with correct visibility/causality.
+required_tests:
+  - "Integration: create mulligan decision then submit wrong decisionId and assert error and state unchanged."
+  - "Integration: submit valid response and assert pendingDecision cleared and state.seq incremented."
+  - "Unit: decision IDs are unique across multiple decisions in a match."
+repo_rules:
+  - Do not allow clients to submit raw target IDs/payment choices outside active decision context.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/ENG-015.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

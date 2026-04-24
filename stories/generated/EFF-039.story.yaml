@@ -1,0 +1,54 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-039
+title: "BRIDGE: Implement PendingDecision projection/redaction in PlayerView without leaking privateToChooser candidates"
+type: implementation
+area: engine
+priority: critical
+status: generated
+summary: >
+  Close the visibility contract gap by implementing a per-player projection of `pendingDecision` inside `filterStateForPlayer` such that (a) `EventVisibility` is enforced, and (b) private-to-chooser target/candidate lists are never exposed to the non-chooser. This unblocks ENG-015/ENG-009 wiring and allows EFF-010/EFF-030/EFF-034 to safely create decisions with private visibility.
+spec_refs:
+  - 00-project-overview.s010 (State is serializable)
+  - "01-system-architecture.s005 (`@optcg/engine-core`)"
+  - 03-game-state-events-decisions.s006 (Event visibility)
+  - 03-game-state-events-decisions.s009 (Pending decisions)
+  - 03-game-state-events-decisions.s017 (Canonical decision routing)
+  - 03-game-state-events-decisions.s018 (Canonical event visibility)
+  - 04-effect-runtime.s012 (Player choices during effect resolution)
+  - 05-effect-dsl-reference.s008 (Targets)
+scope:
+  - "Add `filterPendingDecisionForPlayer(pendingDecision, viewerPlayerId)` in `@optcg/engine-core` and call it from `filterStateForPlayer` so `PlayerView.pendingDecision` is filtered consistently with other hidden info constraints (01-system-architecture.s005, 03-game-state-events-decisions.s006, 00-project-overview.s010)."
+  - "Enforce `BaseDecision.visibility: EventVisibility` (03-game-state-events-decisions.s009, 03-game-state-events-decisions.s006) for projection: if visibility is `{type:'public'}` include the decision for both players; if `{type:'private', playerId:X}` include the decision only when `viewerPlayerId===X`; if `{type:'hidden'}` or `{type:'replayOnly'}` omit from both players’ live `PlayerView` (03-game-state-events-decisions.s006, 03-game-state-events-decisions.s018)."
+  - "For decisions that carry candidate lists for selection (created by effect runtime per 04-effect-runtime.s012 and `TargetRequest.visibility` per 05-effect-dsl-reference.s008), guarantee that when the decision is not visible to the viewer, no candidate IDs or other decision payload fields are included in that viewer’s `PlayerView` (00-project-overview.s010 security boundary, 03-game-state-events-decisions.s006). Concretely: do not return a “stub” object that could leak via shape/length; return `undefined`/omit the field entirely."
+  - "Define (in code, not spec) a narrow helper `isVisibleToPlayer(visibility, viewerPlayerId): boolean` implementing only the spec-listed policies from `EventVisibility` (03-game-state-events-decisions.s006)."
+  - "Keep `PendingDecision` JSON-serializable after filtering (00-project-overview.s010): ensure filtered result is either `undefined` or a plain JSON object (no functions/Set/Map)."
+non_scope:
+  - "Do not define new gameplay rules for which decision types are public vs private; assume `PendingDecision.visibility` is already set correctly by decision creators (ENG-015 / effect runtime) and only enforce it at projection time (03-game-state-events-decisions.s009)."
+  - "Do not implement spectator views, replay full-information projection, or event-journal filtering beyond what ENG-009 already covers (ENG-009 non-scope; 03-game-state-events-decisions.s018)."
+  - "Do not add new decision types or change resume/validation semantics (03-game-state-events-decisions.s017, ENG-015 scope)."
+  - "Do not implement transient set behavior; only ensure that if a decision references transient candidates and is private, it is not leaked via `PlayerView.pendingDecision` (04-effect-runtime.s017 is downstream)."
+dependencies:
+  - CON-001
+  - ENG-009
+  - ENG-015
+acceptance_criteria:
+  - "`filterStateForPlayer` produces a `PlayerView` whose `pendingDecision` presence is governed solely by `PendingDecision.visibility` using `EventVisibility` (03-game-state-events-decisions.s006, 03-game-state-events-decisions.s009)."
+  - "If `pendingDecision.visibility` is `{type:'private', playerId:X}`, then `filterStateForPlayer(state, X)` includes the full `pendingDecision`, while `filterStateForPlayer(state, otherPlayer)` omits `pendingDecision` entirely (no stub), preventing leaks of candidate arrays/IDs for private-to-chooser target selection (00-project-overview.s010, 05-effect-dsl-reference.s008)."
+  - "If `pendingDecision.visibility` is `{type:'public'}`, both players’ views include the same `pendingDecision` object (03-game-state-events-decisions.s006)."
+  - "If `pendingDecision.visibility` is `{type:'hidden'}` or `{type:'replayOnly'}`, neither player receives `pendingDecision` in live `PlayerView` (03-game-state-events-decisions.s006, 03-game-state-events-decisions.s018)."
+  - "The returned `PlayerView` remains JSON-serializable and continues to exclude forbidden internals (rng/effectQueue/deferredTriggers/replacementState) as required by ENG-009 and global invariants (00-project-overview.s010, 18-acceptance-tests.s009 G-009..G-010)."
+required_tests:
+  - "Unit: `filterPendingDecisionForPlayer` with `{type:'public'}` returns decision for both viewer IDs; with `{type:'private', playerId:A}` returns decision for A and `undefined` for B; with `{type:'hidden'}` and `{type:'replayOnly'}` returns `undefined` for both (03-game-state-events-decisions.s006, 03-game-state-events-decisions.s018)."
+  - "Integration/security: construct a `GameState` with `pendingDecision` shaped like a selection decision containing a `candidates: [InstanceId...]` array and `visibility: {type:'private', playerId:A}`; assert `filterStateForPlayer(state, B)` has no `pendingDecision` key at all and does not contain any of the candidate IDs anywhere in the serialized JSON string (00-project-overview.s010)."
+  - "Integration/regression: ensure ENG-009’s existing hidden-zone filtering still passes when a public pendingDecision exists (e.g., `visibility:{type:'public'}`), and that the PlayerView still does not contain keys `rng`, `effectQueue`, `deferredTriggers`, `replacementState` (18-acceptance-tests.s009 G-009..G-010)."
+repo_rules:
+  - "Use contract types from `@optcg/types` once available (03-game-state-events-decisions.s002 v6 contract via CON-001)."
+  - "Filtering must be a pure function of `(state, viewerPlayerId)` and must not mutate `state` (01-system-architecture.s005, 00-project-overview.s010)."
+  - Do not introduce non-serializable structures in PlayerView (00-project-overview.s010).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-039.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,45 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: RPL-002
+title: Implement replay header + deterministic log writer in match-server with version and RNG metadata
+type: implementation
+area: replay
+priority: high
+status: generated
+summary: >
+  Generate and attach MatchReplayHeader and DeterministicReplayEntry logs for each match, recording required version metadata, RNG algorithm/seed requirements, and excluding non-deterministic transport metadata from deterministic entries.
+spec_refs:
+  - 08-replay-rollback-recovery.s002 (Replay goals)
+  - 08-replay-rollback-recovery.s003 (Replay header)
+  - 08-replay-rollback-recovery.s004 (Replay log)
+  - "18-acceptance-tests.s008 (Milestone 6 - replay, rollback, recovery)"
+scope:
+  - "Implement replay header construction per MatchReplayHeader, including engine/rules/card/effect/customHandler/banlist/protocol versions and rngAlgorithm, plus manifestHash/initialStateHash."
+  - "Implement deterministic entry logging: action entries for applied actions, decision entries for decision responses, optional system entries for server events; ensure ordered seq and stateSeqBefore/stateSeqAfter and resultingStateHash when available."
+  - "Ensure deterministic entries exclude transport timestamps, connection IDs, signatures; store these only in audit entries if enabled."
+  - "Enforce replay validity rule: a replay artifact is invalid if it contains only rngSeedCommitment without either rngSeed or initialSnapshot (validate at write-time)."
+non_scope:
+  - Checkpoint creation policy and snapshotRefs (separate story).
+  - Replay compression and Postgres storage integration (DB-001 covers durable persistence baseline; separate integration story may be needed if not included).
+  - Engine state hash implementation details (engine-core story).
+dependencies:
+  - RPL-001
+  - SRV-001
+  - ENG-001
+  - DB-001
+acceptance_criteria:
+  - Replay header includes all required version fields and RNG metadata (M6-001).
+  - Deterministic replay entries store only deterministic inputs (M6-009).
+  - Replay writer rejects/flags artifacts that have only rngSeedCommitment without rngSeed or initialSnapshot (M6-008).
+required_tests:
+  - "Replay unit test: build header and verify required fields present and match configured versions (M6-001)."
+  - "Replay unit test: deterministic entries do not include transport metadata fields (M6-009)."
+  - "Replay validation test: artifact with only rngSeedCommitment is rejected as invalid (M6-008)."
+repo_rules:
+  - "Replay DTOs live in @optcg/types; engine-core provides state hashes; match-server orchestrates persistence (01-system-architecture.s004, 01-system-architecture.s005, 01-system-architecture.s009)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/RPL-002.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

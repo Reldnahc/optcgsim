@@ -1,0 +1,45 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-017
+title: Implement continuous-effects computed view skeleton (power/cost/keywords) without mutating canonical state
+type: implementation
+area: engine
+priority: medium
+status: generated
+summary: >
+  Implement ComputedGameView derivation that recomputes current power/cost/keywords and restrictions from base state + continuousEffects records, without persisting derived values into GameState.
+spec_refs:
+  - 00-project-overview.s013 (Continuous effects are derived)
+  - 03-game-state-events-decisions.s003 (Base state vs. computed view)
+  - 03-game-state-events-decisions.s002 (Canonical state model)
+  - 02-engine-mechanics.s032 (Base power/cost setters)
+  - 02-engine-mechanics.s031 (Rest vs. active conflict)
+  - 18-acceptance-tests.s009 (Global invariants)
+scope:
+  - "Implement computeGameView(state) -> ComputedGameView with required fields: seq, turnPlayerId, cards views, legalAttackTargets index stub, restrictions stub."
+  - "Support baseline layers: basePower/baseCost from card metadata, attached DON!! power bonus during controller's turn (+1000 per attached DON!!) and rest-vs-active conflict rule (rest wins)."
+  - Implement base power/cost setters resolution policy hooks (layering) for future effects (no full DSL needed now).
+  - Ensure recomputation does not grow duplicate modifiers (G-012) and does not mutate canonical state.
+non_scope:
+  - "Full restrictions model, protection model, replacement candidate derivation."
+  - "All keywords beyond those needed for Milestone 1 gating (e.g., Rush)."
+dependencies:
+  - CAR-001
+  - ENG-003
+acceptance_criteria:
+  - ComputedGameView derives currentPower/currentCost and keywords without writing them into GameState.
+  - "Attached DON!! power bonus applies only during controller's turn."
+  - Rest-vs-active conflict resolves to rested in computed view when simultaneous markers exist.
+  - "G-012: recomputing multiple times does not accumulate duplicate modifiers."
+required_tests:
+  - "Unit: computeGameView applies +1000 per attached DON!! only on controller's turn."
+  - "Unit: recompute twice yields identical output (deep equality) given same state."
+  - "Unit: rest-vs-active conflict returns rested."
+repo_rules:
+  - Continuous effects must be derived; do not repeatedly mutate canonical state to apply them.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-017.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

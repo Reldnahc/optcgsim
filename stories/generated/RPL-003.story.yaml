@@ -1,0 +1,42 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: RPL-003
+title: "Add replay checkpoints with state hashes at recommended boundaries (start, turn start, rollback, end)"
+type: implementation
+area: replay
+priority: medium
+status: generated
+summary: >
+  Record ReplayCheckpoint entries periodically with stateSeq/actionSeq/turnNumber/fullStateHash and optional publicViewHashes, following the recommended checkpoint policy.
+spec_refs:
+  - 08-replay-rollback-recovery.s006 (Checkpoints)
+  - 11-testing-quality.s010 (Golden replay tests)
+  - 11-testing-quality.s012 (Replay drift tests)
+  - "18-acceptance-tests.s008 (Milestone 6 - replay, rollback, recovery)"
+scope:
+  - "Implement ReplayCheckpoint generation and append to replay artifact at: start of match, start of each turn, end of match (baseline)."
+  - "Include required fields: stateSeq, actionSeq, turnNumber, fullStateHash; include publicViewHashes if available from engine visibility filter hashing."
+  - Provide hooks so rollback code path can append a checkpoint after rollback (even if rollback not fully implemented yet).
+  - Expose checkpoint list for CI drift verification and golden replay checks.
+non_scope:
+  - SnapshotRef/object storage for large snapshots.
+  - Full rollback implementation and policy enforcement.
+  - Event feed storage beyond optional testing needs.
+dependencies:
+  - RPL-001
+  - RPL-002
+  - ENG-001
+acceptance_criteria:
+  - "Replay contains checkpoints at match start, each turn start, and match end with correct hashes."
+  - Golden replay test harness can compare checkpoint hashes and fail on drift (11-testing-quality.s010/s012).
+required_tests:
+  - Golden replay test executing fixture replay(s) and asserting checkpoint hashes match expected (11-testing-quality.s010).
+  - Replay drift CI test that replays prior golden logs and fails on unexpected checkpoint hash changes (11-testing-quality.s012).
+repo_rules:
+  - Hashing must be deterministic and derived from engine-core authoritative state/view filtering (01-system-architecture.s005).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/RPL-003.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

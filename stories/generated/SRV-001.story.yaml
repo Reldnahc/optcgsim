@@ -1,0 +1,51 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-001
+title: Implement the match-server action envelope and idempotent sequencing baseline
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Build the first @optcg/match-server protocol path around canonical client envelopes, idempotent action handling, committed-state broadcast ordering, and actor-specific filtered results.
+spec_refs:
+  - "01-system-architecture.s009 (`@optcg/match-server`)"
+  - 07-match-server-protocol.s002 (Purpose)
+  - 07-match-server-protocol.s004 (Client action envelope)
+  - 07-match-server-protocol.s005 (Server action result)
+  - 07-match-server-protocol.s007 (Action application flow)
+  - 07-match-server-protocol.s008 (Broadcast ordering)
+  - 18-acceptance-tests.s006 (Milestone 4 - match server)
+scope:
+  - create the client action envelope and server action result contracts used by live match transport
+  - enforce clientActionId plus actionHash idempotency and expectedStateSeq validation
+  - commit state before per-recipient broadcasts and include monotonic serverSeq values on non-heartbeat messages
+  - route respondToDecision through resumeDecision instead of applyAction
+non_scope:
+  - queue entry and lobby creation flows before a match exists
+  - spectator policy tuning beyond the protocol defaults required for accepted action broadcasts
+  - full process-crash recovery and persisted replay storage
+dependencies:
+  - INF-001
+  - CON-001
+  - ENG-001
+acceptance_criteria:
+  - duplicate clientActionId with the same actionHash returns the stored result without reapplying the action
+  - duplicate clientActionId with a different actionHash is rejected as idempotencyConflict
+  - all non-heartbeat server messages include monotonic serverSeq and committed stateSeq where applicable
+  - decision responses resume the engine through the decision path instead of the normal action path
+required_tests:
+  - protocol test covering duplicate clientActionId idempotency
+  - protocol test covering stale expectedStateSeq rejection
+  - protocol test covering monotonic serverSeq ordering
+  - protocol test covering respondToDecision routing
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

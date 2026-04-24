@@ -67,18 +67,15 @@
       ]
     },
     "priority": {
-      "enum": [
-        "critical",
-        "high",
-        "medium",
-        "low"
-      ]
+      "enum": ["critical", "high", "medium", "low"]
     },
     "status": {
       "enum": [
         "generated",
         "approved",
         "in_progress",
+        "in_review",
+        "changes_requested",
         "blocked",
         "done",
         "replaced"
@@ -144,10 +141,7 @@
       }
     },
     "ambiguity_policy": {
-      "enum": [
-        "fail_and_escalate",
-        "implement_if_clearly_implied"
-      ]
+      "enum": ["fail_and_escalate", "implement_if_clearly_implied"]
     },
     "board": {
       "type": "object",
@@ -163,10 +157,7 @@
           "type": "string"
         },
         "estimate": {
-          "type": [
-            "string",
-            "number"
-          ]
+          "type": ["string", "number"]
         },
         "labels": {
           "type": "array",

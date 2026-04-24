@@ -1,0 +1,46 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: QUE-002
+title: "Enforce ranked queue eligibility: rating-eligible + queue-eligible formats and active disconnect lockouts"
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Gate ranked queue entry so only formats marked queue-eligible and rating-eligible are admitted, sandbox formats are excluded, and users under active ranked disconnect lockout are rejected.
+spec_refs:
+  - 29-game-types-queues-and-lobbies.s005 (Queue-backed game types)
+  - 30-formats-and-ranked-competition.s011 (Launch constraints)
+  - 30-formats-and-ranked-competition.s004 (Canonical format shape)
+  - 30-formats-and-ranked-competition.s005 (Initial supported format profiles)
+  - 30-formats-and-ranked-competition.s008 (Ranked disconnect discipline)
+  - 18-acceptance-tests.s012 (Milestone 8 - ranked ladder beta)
+scope:
+  - "On ranked queue ticket submission, validate formatId exists in registry and includes 'ranked' in queueEligibleGameTypes and ratingEligible=true; reject otherwise."
+  - Ensure sandbox-open is never admitted to ranked or unranked queues (format registry check).
+  - "Check for active disconnect lockout for the user (via latest disconnect_discipline_events with lockout_expires_at > now) and reject ranked queue entry if active."
+  - Ensure unranked queue ignores rating eligibility but still requires queue eligibility for 'unranked'.
+non_scope:
+  - Full matchmaking pairing algorithm details beyond admission validation.
+  - RegionHint matchmaking.
+  - Deck validation (referenced as required elsewhere but not specified in these excerpts).
+dependencies:
+  - QUE-001
+  - CON-005
+  - DB-007
+acceptance_criteria:
+  - Ranked queue only admits queue-eligible and rating-eligible formats (M8-001).
+  - Ranked queue rejects player during an active disconnect lockout (M8-006).
+  - sandbox-open is never admitted to ranked or unranked queues (30-formats-and-ranked-competition.s011).
+required_tests:
+  - "Protocol/server test: ranked queue ticket with non-rating-eligible formatId is rejected (M8-001)."
+  - "Protocol/server test: ranked queue ticket rejected when user has active lockout_expires_at (M8-006)."
+  - "Protocol/server test: unranked queue ticket accepts queue-eligible format even if ratingEligible=false, but rejects non-queue-eligible formats."
+repo_rules:
+  - "Queue tickets keyed by gameType+formatId; clients do not create queue matches directly (29-game-types-queues-and-lobbies.s005, 29-game-types-queues-and-lobbies.s006)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/QUE-002.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,39 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: DB-006
+title: Add users/sessions/player_settings/decks/friendships migrations and DB access layer
+type: implementation
+area: database
+priority: high
+status: generated
+summary: >
+  Create migrations (or equivalent schema management) for core v6 tables used by @optcg/api: users, sessions, player_settings, decks, friendships.
+spec_refs:
+  - 10-database-schema.s005 (Users and sessions)
+  - 10-database-schema.s006 (Player settings)
+  - 10-database-schema.s007 (Decks)
+  - 10-database-schema.s014 (Social)
+scope:
+  - Write SQL migrations for the cited tables exactly as specified.
+  - Add minimal DB access layer/repository helpers for CRUD operations required by API stories.
+  - "Ensure indices/constraints from schema (PKs, FKs, UNIQUE) are applied."
+non_scope:
+  - auth_accounts table definition (referenced but not included in provided excerpt).
+  - "Ratings, matches, replays, Redis keys (covered by other stories)."
+dependencies:
+acceptance_criteria:
+  - Migrations apply cleanly on an empty database.
+  - FKs and cascade behaviors function as specified for all included tables.
+  - sessions.token_hash unique constraint is present and enforced.
+  - "friendships has UNIQUE(requester_id, addressee_id) and enforced."
+required_tests:
+  - "Migration test: apply/rollback (if supported) in CI."
+  - "Integration: verify cascade delete users->sessions/player_settings/decks/friendships."
+repo_rules:
+  - Do not add columns not present in cited schema sections.
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/DB-006.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,42 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-006
+title: Implement deterministic state hashing with canonical JSON normalization
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement stable deterministic state hashing for GameState, with options for includeHidden and transient-id normalization as per spec.
+spec_refs:
+  - 03-game-state-events-decisions.s020 (State hashing)
+  - 00-project-overview.s010 (State is serializable)
+  - "12-roadmap.s005 (Milestone 1: terminal engine)"
+  - 18-acceptance-tests.s003 (Milestone 1 - terminal engine)
+  - 18-acceptance-tests.s009 (Global invariants)
+scope:
+  - Implement canonical JSON serializer with stable object-key ordering and stable array ordering (do not reorder semantic arrays).
+  - "Implement hashState({state, includeHidden, normalizeTransientIds}) producing a stable string hash."
+  - Ensure timestamps are excluded unless explicitly part of replay logic (do not include wall-clock times in canonical state hashing).
+  - "Wire EngineResult.stateHash to hashState(includeHidden:true, normalizeTransientIds:false) for authoritative use in tests/CLI."
+non_scope:
+  - Replay checkpointing/storage.
+  - Client-sync public hash unless needed later (optional output not required).
+dependencies:
+  - ENG-003
+acceptance_criteria:
+  - Same seed + same action log yields identical final stateHash across runs (M1-015).
+  - Hashing function is stable across node runs/platforms for the same input JSON structure.
+  - Hashing includes hidden data when includeHidden is true.
+required_tests:
+  - "Integration: run a short deterministic sequence twice and assert final stateHash matches."
+  - "Unit: canonical JSON serialization produces identical output for objects with differing key insertion orders."
+repo_rules:
+  - Do not use nondeterministic JSON stringify output without key sorting for hashing.
+  - "Do not incorporate process-unique data (timestamps, random UUIDs) into state hashing inputs."
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/approved/ENG-006.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

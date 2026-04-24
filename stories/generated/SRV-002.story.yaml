@@ -1,0 +1,48 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-002
+title: "Add reconnect, timer ownership, and spectator subscription handling"
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Extend the match-server baseline with reconnect recovery, holding-player timer drainage, and spectator subscriptions that obey configured visibility policy.
+spec_refs:
+  - 07-match-server-protocol.s011 (Reconnection)
+  - 07-match-server-protocol.s012 (Disconnect handling)
+  - 07-match-server-protocol.s013 (Timers)
+  - 07-match-server-protocol.s017 (Spectator subscriptions)
+  - 18-acceptance-tests.s006 (Milestone 4 - match server)
+  - 22-v6-implementation-tightening.s014 (10. Spectator policy)
+scope:
+  - "implement reconnect requests that restore the current filtered view, pending decision, and timer state"
+  - enforce one primary game timer per player plus disconnect grace behavior
+  - drain time only for the player currently holding up game progress
+  - add spectator subscription handling that selects an allowed mode from match configuration and policy
+non_scope:
+  - ranked queue creation
+  - historical replay export
+  - tournament-only spectator policies
+dependencies:
+  - SRV-001
+acceptance_criteria:
+  - reconnect returns the current filtered PlayerView and pending decision when one exists
+  - only the player currently holding up progress loses timer time
+  - disconnect grace and forfeit behavior follows the configured policy without requiring a separate decision timer
+  - spectators receive filtered views only under allowed subscription modes
+required_tests:
+  - protocol test covering reconnect sends current filtered PlayerView
+  - protocol test covering pending decision restoration after reconnect
+  - protocol test covering timer drainage ownership
+  - spectator policy regression covering delayed-filtered delivery without early leakage
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-002.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

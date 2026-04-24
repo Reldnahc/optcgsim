@@ -1,0 +1,51 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: RPL-001
+title: Define the replay artifact contract and checkpoint drift verification lane
+type: implementation
+area: replay
+priority: high
+status: generated
+summary: >
+  Build the replay header, deterministic log, checkpoint model, and golden-drift verification lane so matches can be reconstructed and regression-checked against pinned runtime versions.
+spec_refs:
+  - 08-replay-rollback-recovery.s002 (Replay goals)
+  - 08-replay-rollback-recovery.s003 (Replay header)
+  - 08-replay-rollback-recovery.s004 (Replay log)
+  - 08-replay-rollback-recovery.s005 (Card manifest snapshot)
+  - 08-replay-rollback-recovery.s006 (Checkpoints)
+  - 08-replay-rollback-recovery.s007 (Replay drift)
+  - 11-testing-quality.s010 (Golden replay tests)
+  - 11-testing-quality.s012 (Replay drift tests)
+  - "18-acceptance-tests.s008 (Milestone 6 - replay, rollback, recovery)"
+scope:
+  - define replay header and reconstruction-source contracts with pinned runtime versions and manifest hash
+  - record deterministic entries separately from audit envelopes
+  - store replay checkpoints and compare checkpoint hashes in CI
+  - reject replay artifacts that cannot reconstruct from either an initial snapshot or a revealed seed plus deck orders
+non_scope:
+  - judge rollback administration
+  - public replay browser UI
+  - cross-version migration tooling for intentional drift
+dependencies:
+  - ENG-001
+  - SEC-001
+acceptance_criteria:
+  - "replay artifacts include the required version bundle, manifestHash, and reconstruction source"
+  - deterministic replay entries exclude audit-only transport metadata
+  - golden replay checks fail on unexpected checkpoint hash drift
+  - replay artifacts without a valid reconstruction source are rejected
+required_tests:
+  - golden replay regression comparing checkpoint hashes
+  - contract test rejecting a replay artifact missing both initialSnapshot and seed-plus-deck-orders
+  - replay serialization test proving audit-only metadata does not affect deterministic entries
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/RPL-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

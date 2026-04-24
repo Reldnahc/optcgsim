@@ -1,0 +1,39 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-038
+title: Implement card support status enforcement (reject unsupported non-vanilla outside dev/sandbox)
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Enforce explicit card support statuses and prevent missing implementations from silently behaving as vanilla in normal play; allow only dev/sandbox override.
+spec_refs:
+  - 00-project-overview.s014 (Card support is explicit)
+  - 04-effect-runtime.s005 (Card implementation support)
+  - 18-acceptance-tests.s004 (Milestone 2 - first effect runtime)
+scope:
+  - Represent CardSupportStatus on resolved cards/effect definitions and require effect definitions load only from supported implementation records (04-effect-runtime.s005).
+  - "At match start / deck validation boundary within engine entry, reject non-vanilla cards with missing/unsupported implementation in normal play (00-project-overview.s014, 04-effect-runtime.s005)."
+  - Allow a clearly-labeled dev/sandbox mode to permit unsupported cards (04-effect-runtime.s005).
+non_scope:
+  - Ranked vs unranked format policy enforcement (server/format stories).
+  - Banlist enforcement details beyond the status field presence.
+dependencies:
+  - EFF-001
+  - CAR-001
+acceptance_criteria:
+  - A missing effect definition for a non-vanilla card is an error in normal play (04-effect-runtime.s005).
+  - Unsupported non-vanilla card is rejected outside dev sandbox (18-acceptance-tests.s004 M2-015).
+  - "Card support statuses include vanilla-confirmed, implemented-dsl, implemented-custom, unsupported, banned-in-simulator (04-effect-runtime.s005, 00-project-overview.s014)."
+required_tests:
+  - "Integration: M2-015 unsupported card rejected outside dev/sandbox mode."
+  - "Unit: dev/sandbox mode permits unsupported card with clear flag and does not silently mark it supported."
+repo_rules:
+  - Do not silently allow missing implementations in normal play (00-project-overview.s014).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-038.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

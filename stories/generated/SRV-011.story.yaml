@@ -1,0 +1,35 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-011
+title: "Implement deck validation: variant split counting up to base-card limit"
+type: implementation
+area: server
+priority: medium
+status: generated
+summary: >
+  Add deck validation rule that allows splitting counts across variants of the same base card, enforcing limits at the base-card level.
+spec_refs:
+  - "12-roadmap.s009 (Milestone 5: deck builder and card data)"
+  - 18-acceptance-tests.s007 (Milestone 5 - Poneglyph and deck builder)
+scope:
+  - Define and implement a mechanism in deck validation that groups variants by base card identity (as provided by card metadata) and enforces max-per-card based on base card.
+  - Return errors referencing base-card aggregation when exceeded.
+non_scope:
+  - "Defining exact deck construction limits (e.g., 4 copies) if not derivable from provided sections; this story focuses on the variant aggregation mechanism."
+  - UI display/authoring tools for variants.
+dependencies:
+  - CAR-001
+acceptance_criteria:
+  - A decklist that includes multiple variants of the same base card is permitted as long as the summed count does not exceed the base-card limit (M5-006).
+  - "If the summed count exceeds the base-card limit, validation fails and indicates the base-card group involved."
+required_tests:
+  - "Integration: a decklist with 2+2 across two variants passes where base limit is 4 (use fixture metadata that supplies base identity + limit)."
+  - "Integration: a decklist with 3+2 across two variants fails and returns a grouped error."
+repo_rules:
+  - "If base-card identity or limit is not present in current fixtures, add an ambiguity story rather than inventing fields."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-011.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

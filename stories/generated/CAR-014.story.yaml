@@ -1,0 +1,41 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CAR-014
+title: Add initial fixture slice implementation records and ensure each fixture has at least one test
+type: implementation
+area: cards
+priority: high
+status: generated
+summary: >
+  Create/commit the tighter first fixture slice with implementation records and at least one test per fixture, including OP01-060 and OP05-091 after required DSL support lands.
+spec_refs:
+  - 17-first-card-fixtures.s008 (Updated first fixture slice)
+  - 17-first-card-fixtures.s003 (Fixture policy)
+  - 17-first-card-fixtures.s005 (Minimal implementation records)
+  - 17-first-card-fixtures.s007 (Real Poneglyph-backed fixtures added in v3)
+scope:
+  - "Add fixture IDs: FX-LEADER-VANILLA, FX-CHAR-VANILLA, FX-BLOCKER, FX-ONPLAY-DRAW, OP01-060, OP05-091 (17-first-card-fixtures.s008)."
+  - Ensure each non-vanilla fixture has an implementation record with status/effectDefinitionId/tested/rulesVersion/cardDataVersion/sourceTextHash (17-first-card-fixtures.s005).
+  - Ensure each fixture has at least one test (17-first-card-fixtures.s003).
+  - Include real Poneglyph-backed fixture payloads for OP01-060 and OP05-091 per spec paths (17-first-card-fixtures.s007).
+non_scope:
+  - Full 20-card coverage set beyond the initial slice (17-first-card-fixtures.s004).
+  - Deck builder UX for fixtures.
+dependencies:
+  - CAR-001
+  - EFF-001
+acceptance_criteria:
+  - First fixture slice exists exactly as listed and is used for first sprint coverage (17-first-card-fixtures.s008).
+  - "Each non-vanilla fixture has an implementation record (17-first-card-fixtures.s003, 17-first-card-fixtures.s005)."
+  - Each fixture has at least one test (17-first-card-fixtures.s003).
+required_tests:
+  - "Fixture validation: implementation records conform to minimal record expectations (17-first-card-fixtures.s005)."
+  - "Smoke: load fixtures and run at least one test per fixture ID."
+repo_rules:
+  - Use real-looking Poneglyph base IDs for real fixtures and clear prefixes for fake fixtures (17-first-card-fixtures.s003).
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/CAR-014.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

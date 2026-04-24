@@ -1,0 +1,44 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-034
+title: Implement replacement process execution loop + chooseReplacement decisions + one-apply-per-process rule
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement replacement-effect runtime: represent replaceable processes, find/apply replacements with priority ordering and decisions, prevent multiple application to the same process, and emit replacementApplied events for replay.
+spec_refs:
+  - 04-effect-runtime.s013 (Replacement effects)
+  - 04-effect-runtime.s019 (Effect logging)
+  - 18-acceptance-tests.s004 (Milestone 2 - first effect runtime)
+scope:
+  - Define ReplacementProcess shape and integrate into engine execution for replaceable processes (04-effect-runtime.s013).
+  - "Implement executeReplaceableProcess loop: findApplicableReplacements, filter out usedReplacementIds, canApplyReplacement, chooseReplacementByPriorityOrDecision, transformProcessByReplacement (04-effect-runtime.s013)."
+  - Implement PendingDecision.chooseReplacement for controller-chosen replacement ordering (04-effect-runtime.s013).
+  - "Enforce: a replacement cannot apply twice to the same process.id, even if transformed (04-effect-runtime.s013)."
+  - "Emit replacementApplied event with original process ID, selected replacement ID, old/new payload hashes; at least replayOnly visibility (04-effect-runtime.s013, 04-effect-runtime.s019)."
+non_scope:
+  - Defining all replaceable process types across the engine (only wire the framework and at least one process for tests).
+  - UI display of replacement decisions.
+dependencies:
+  - ENG-015
+  - ENG-004
+acceptance_criteria:
+  - "Processing order: card/process being replaced first (if applicable), then turn player chosen order, then non-turn player chosen order (04-effect-runtime.s013)."
+  - Optional replacements may be declined; mandatory replacements cannot be declined unless ordering among mandatory replacements is required (04-effect-runtime.s013).
+  - "Replacement cannot apply twice to the same process.id (04-effect-runtime.s013, 18-acceptance-tests.s004 M2-021)."
+  - Replacement choice uses chooseReplacement decision and logs replacementApplied (18-acceptance-tests.s004 M2-020).
+  - Replacement effect applies once per process (18-acceptance-tests.s004 M2-012).
+required_tests:
+  - "Integration: M2-020 replacement choice pauses with chooseReplacement and emits replacementApplied."
+  - "Integration: M2-021 attempt to reapply same replacement is prevented even across transformed process shapes."
+  - "Golden: replacementApplied payload hashes are deterministic across runs."
+repo_rules:
+  - "replacementApplied must be logged for replay determinism (04-effect-runtime.s013, 04-effect-runtime.s019)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/EFF-034.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

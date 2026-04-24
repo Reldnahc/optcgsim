@@ -1,0 +1,43 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-028
+title: Implement source presence policy checks for queueing and resolution
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Implement SourcePresencePolicy semantics: validate before queueing and again at resolution, enabling on-field triggers to resolve after zone moves (e.g., On K.O.).
+spec_refs:
+  - 04-effect-runtime.s007 (Source presence policy)
+  - 04-effect-runtime.s008 (Trigger detection from events)
+  - 04-effect-runtime.s006 (Effect queue entry)
+  - 18-acceptance-tests.s004 (Milestone 2 - first effect runtime)
+scope:
+  - Represent SourcePresencePolicy on EffectBlock (defaulting behavior may be per effect definition) and persist in EffectQueueEntry (04-effect-runtime.s006).
+  - "Implement checkSourcePresenceBeforeQueueing(state, candidate) and canQueuedEffectResolve(entry, state) policy evaluation steps (04-effect-runtime.s008)."
+  - "Implement policies: mustRemainInSameZone, resolveFromDestinationZone, resolveFromLastKnownInformation, noSourceRequired (04-effect-runtime.s007)."
+  - "Store/consume sourceSnapshot/last-known info as needed to support resolveFromLastKnownInformation (04-effect-runtime.s006, 04-effect-runtime.s007)."
+non_scope:
+  - Defining the full set of zone transition events (owned by engine mechanics stories).
+  - Implementing specific On K.O. DSL cards beyond validating the policy mechanism.
+dependencies:
+  - ENG-003
+  - ENG-004
+  - EFF-030
+acceptance_criteria:
+  - Engine checks source presence before queueing and applies the entry’s policy again before resolution (04-effect-runtime.s008).
+  - A simple 'cancel if source moved' rule is not used as the only behavior; policies allow On K.O. to trigger on field and resolve after moving (04-effect-runtime.s007).
+  - "Milestone 2 item M2-006 passes once an On K.O. fixture exists: effect activates on field and resolves from trash or last known information (18-acceptance-tests.s004)."
+required_tests:
+  - "Unit: mustRemainInSameZone cancels resolution if source leaves required zone before resolving."
+  - "Unit: resolveFromLastKnownInformation allows resolution when source is no longer in any zone, using snapshot/last-known metadata as needed."
+  - "Integration: On K.O. fixture test aligned with M2-006 once fixture/effect exists."
+repo_rules:
+  - Hidden-information correctness must be preserved when using last-known information (04-effect-runtime.s007).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-028.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

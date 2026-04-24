@@ -1,0 +1,55 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-032
+title: Implement life trigger decision flow during damage processing (ConfirmLifeTriggerDecision + no-zone handling)
+type: implementation
+area: engine
+priority: critical
+status: generated
+summary: >
+  During leader damage, process life one card at a time and implement trigger reveal/activate vs add-to-hand decision, with the life trigger card in no zone during resolution and default trash after resolution unless replaced; ensure banish path bypasses trigger/hand.
+spec_refs:
+  - 02-engine-mechanics.s023 (Damage processing)
+  - 02-engine-mechanics.s039 (Damage-processing deferral)
+  - 02-engine-mechanics.s040 (Trigger card zone)
+  - 03-game-state-events-decisions.s014 (Life trigger)
+  - 03-game-state-events-decisions.s009 (Pending decisions)
+  - 02-engine-mechanics.s025 (Keyword behavior)
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 06-visibility-security.s005 (Temporary visibility)
+scope:
+  - "When dealing damage to a Leader, process each damage point sequentially: take top life card, and if it has [Trigger], create ConfirmLifeTriggerDecision (activateTrigger vs addToHand)."
+  - "If trigger activated: emit triggerActivated; move the card to no zone context for the duration of trigger resolution; after resolution trash it unless trigger/replacement changes destination; emit cardMoved/cardTrashed as applicable."
+  - "If trigger declined or unavailable: add the life card to hand hidden; emit lifeTaken and cardMoved/cardDrawn (or appropriate hand-add event if distinct) without revealing the card."
+  - "Implement [Banish] keyword replacement: life card is trashed instead of trigger/hand path; ensure no ConfirmLifeTriggerDecision is created for banished life."
+  - "Ensure damage-processing deferral: triggers that occur during damage processing are deferred until damage processing completes (integration point: deferredTriggers bucket)."
+  - "Maintain RevealRecord behavior for activated triggers: both players see the revealed card through trigger resolution window; declined trigger is never shown."
+non_scope:
+  - Implementing actual trigger effects beyond the decision flow and zone handling.
+  - Replacement effect system details beyond allowing replacement to override the default trigger trash destination.
+  - Full hidden-info rollback policy implementation.
+dependencies:
+  - ENG-033
+  - ENG-015
+  - ENG-009
+acceptance_criteria:
+  - "For each damage point, exactly one life card is taken from top of life if life > 0; if life==0, defeat is marked and rule processing runs."
+  - "If the life card has [Trigger], the engine pauses with ConfirmLifeTriggerDecision offering activateTrigger/addToHand."
+  - "If activateTrigger chosen, the card is revealed to both players and treated as in no zone until trigger resolution completes, then moved to trash by default."
+  - "If addToHand chosen (or trigger unavailable), the card is added to hand without revealing to opponent."
+  - "If attacker has Banish, the life card is trashed directly and no trigger decision is offered."
+  - "When damage > 1, the above repeats one point at a time; any effects triggered during damage are deferred until all points complete."
+required_tests:
+  - "Integration: M2-007 life Trigger resolves from no zone then moves to trash unless replaced (18-acceptance-tests.s004)."
+  - "Integration: M2-010 damage-processing triggers wait until all damage points complete (18-acceptance-tests.s004)."
+  - "Unit: declined trigger never creates a RevealRecord visible to either player (06-visibility-security.s005)."
+  - "Unit: banish damage creates lifeTaken + cardTrashed and skips confirmLifeTrigger decision."
+repo_rules:
+  - "Hidden info is a security boundary; default hidden unless exposed via RevealRecord (00-project-overview.s011, 06-visibility-security.s005)."
+  - "All decisions must route through PendingDecision and respondToDecision (03-game-state-events-decisions.s009, 03-game-state-events-decisions.s017)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-032.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

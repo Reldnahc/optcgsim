@@ -1,0 +1,40 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-017
+title: Add DSL primitive selectCards (zone-based) with public/private visibility support
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Implement selectCards DSL effect to create selection decisions from real zones (trash/hand/etc) with visibility control, used by OP05-091 Rebecca and fixture suite.
+spec_refs:
+  - 20-card-implementation-examples.s013 (Draft effect definition)
+  - 20-card-implementation-examples.s015 (DSL additions required by these examples)
+  - 05-effect-dsl-reference.s008 (Targets)
+  - 04-effect-runtime.s012 (Player choices during effect resolution)
+scope:
+  - "Implement Effect primitive: selectCards(request) where request includes zone, player, chooser, min/max, allowFewerIfUnavailable, filter, saveAs, visibility (20-card-implementation-examples.s013, 20-card-implementation-examples.s015)."
+  - "Persist selection results in effect execution context keyed by SelectionId, for later moveSelected/playSelected steps (20-card-implementation-examples.s015)."
+  - "Enforce visibility: public vs privateToChooser candidate lists and selection results visibility consistent with request (05-effect-dsl-reference.s008, 04-effect-runtime.s012)."
+non_scope:
+  - Implementing all CardFilter fields; only what Rebecca needs (categories/colorsAny/cost/nameNot).
+  - Movement and play primitives (moveSelected/playSelected handled in other stories).
+dependencies:
+  - EFF-010
+acceptance_criteria:
+  - "selectCards creates a selection decision when choice required, validated by engine (04-effect-runtime.s012)."
+  - Private hand candidate list is visible only to chooser; opponent cannot see private candidate IDs (20-card-implementation-examples.s014 REBECCA-009).
+  - Selection result is saved and can be referenced by later DSL steps (20-card-implementation-examples.s015).
+required_tests:
+  - "Integration: REBECCA-009 private hand selection candidates visible only to Rebecca controller."
+  - "Unit: allowFewerIfUnavailable permits selecting 0..max without error when min=0."
+  - "Unit: invalid selection (card not in zone or not matching filter) is rejected."
+repo_rules:
+  - "Decision responses are validated by the engine, not the client (04-effect-runtime.s012)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-017.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

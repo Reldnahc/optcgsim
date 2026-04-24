@@ -1,0 +1,41 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: LOB-003
+title: "Add @optcg/api endpoints for custom lobby creation/join/leave and queue control (API layer)"
+type: implementation
+area: server
+priority: medium
+status: generated
+summary: >
+  Implement the API-layer REST endpoints that control ranked/unranked queues and custom lobby creation/join/leave, as described for @optcg/api platform services.
+spec_refs:
+  - "01-system-architecture.s010 (`@optcg/api`)"
+  - "12-roadmap.s011 (Milestone 7: public unranked alpha and custom lobbies)"
+scope:
+  - "Add REST endpoints in @optcg/api for: entering/leaving unranked queue, creating a custom lobby, joining a lobby, leaving a lobby."
+  - Endpoint handlers delegate to existing server-side queue/lobby services (or stubs) without embedding match-server logic in the API layer.
+  - "Return clear errors for invalid operations (e.g., join non-existent lobby)."
+non_scope:
+  - Match-server WebSocket flows and in-match actions.
+  - Password hashing implementation (already covered by LOB-002).
+  - Ranked rating eligibility enforcement (covered by QUE-002/FMT stories).
+dependencies:
+  - SRV-013
+  - LOB-001
+  - QUE-001
+acceptance_criteria:
+  - "API exposes endpoints covering queue control and lobby create/join/leave consistent with @optcg/api responsibilities."
+  - Requests require a valid session.
+  - Successful calls result in corresponding queue/lobby state changes via delegated services.
+required_tests:
+  - "Integration: authenticated user can create lobby and then leave it via API layer."
+  - "Integration: authenticated user can enter and leave unranked queue via API layer."
+  - "Integration: unauthenticated requests are rejected."
+repo_rules:
+  - Keep API layer stateless; do not persist lobby state in API DB tables unless specified elsewhere.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/LOB-003.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,46 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-024
+title: Implement OrderCardsDecision for simultaneous multi-card zone placement with secret-zone non-leak rules
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  When multiple cards are placed into a zone simultaneously, require the owner to choose order via OrderCardsDecision, while preventing opponent from learning the chosen order if destination is secret unless explicitly revealed.
+spec_refs:
+  - 02-engine-mechanics.s006 (Zone transition rules)
+  - 03-game-state-events-decisions.s009 (Pending decisions)
+  - 06-visibility-security.s003 (Player zone visibility)
+  - 06-visibility-security.s007 (Legal-action visibility)
+scope:
+  - "Introduce OrderCardsDecision creation when an engine operation places multiple cards into an ordered zone simultaneously (e.g., to deck, life, trash if applicable)."
+  - Apply chosen ordering deterministically to the destination zone order in canonical state.
+  - "Ensure visibility: if destination is secret (Deck, Life when face-down), the opponent must not receive information implying the chosen order (events and legal actions filtered accordingly)."
+  - "Emit decisionCreated/decisionResolved events with correct visibility; ensure opponent sees only that an ordering occurred when required, without card identity leakage for secret zones."
+  - Integrate with move/zone-transition primitives so multi-move operations can request ordering decision instead of silently ordering.
+non_scope:
+  - Defining specific gameplay effects that cause simultaneous moves; only the generic ordering decision mechanism.
+  - Client presentation of the ordering UI.
+dependencies:
+  - ENG-015
+  - ENG-009
+  - ENG-022
+acceptance_criteria:
+  - "When an operation would place N>1 cards into an ordered zone simultaneously, the engine pauses with an OrderCardsDecision for the owning player."
+  - "After respondToDecision, the destination zone order matches the chosen order exactly."
+  - "If the destination is a secret zone, opponent-facing views and events do not reveal the chosen card identities or order beyond allowed counts/face-up exceptions."
+  - getLegalActions for the non-choosing player does not leak candidate identities for the ordering decision.
+required_tests:
+  - "Unit: ordering decision required and applied for a synthetic multi-move into deck."
+  - "Security: opponent PlayerView for secret destination shows only counts, not identities/order (06-visibility-security.s003)."
+  - "Security: legal-action visibility does not leak that only one particular ordering is legal beyond what is inherent (06-visibility-security.s007)."
+repo_rules:
+  - All decision candidates must be recipient-filtered; private decision candidates never appear in opponent views (06-visibility-security.s017).
+  - "State and decisions must be JSON-serializable arrays; no JS Set usage (03-game-state-events-decisions.s002, 00-project-overview.s010)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-024.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,40 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-012
+title: Implement continuous effect records + modifier layer application in computed view
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Add ContinuousEffectRecord storage and computed view modifier layering that applies active continuous effects without mutating canonical state.
+spec_refs:
+  - 04-effect-runtime.s014 (Continuous effects as computed view)
+  - 00-project-overview.s013 (Continuous effects are derived)
+  - 18-acceptance-tests.s004 (Milestone 2 - first effect runtime)
+scope:
+  - "Add ContinuousEffectRecord array to GameState with fields per spec (id/source/sourceSnapshot/controller/modifier/duration/condition?/createdBy/createdAtStateSeq) (04-effect-runtime.s014)."
+  - Implement collectActiveContinuousEffects(state) honoring duration + condition (04-effect-runtime.s014).
+  - "Implement applyModifierLayers(baseView, modifiers, turnPlayerId) in layer order defined by ModifierLayer (04-effect-runtime.s014)."
+  - Ensure recomputation does not write into canonical state; computed view is derived (00-project-overview.s013).
+non_scope:
+  - Fixed-point iteration for complex permanent dependencies unless required by a fixture; add later if needed (04-effect-runtime.s014).
+  - "All modifier operations/targets beyond power/cost/keyword/restriction/protection placeholders. "
+dependencies:
+  - ENG-017
+acceptance_criteria:
+  - "Continuous modifiers are derived into ComputedGameView and do not mutate canonical state during recomputation (00-project-overview.s013, 04-effect-runtime.s014)."
+  - Modifier layers exist and are applied in a deterministic layered manner (04-effect-runtime.s014).
+  - "Milestone 2 item M2-011 passes: continuous +1000 modifier does not mutate base state (18-acceptance-tests.s004)."
+required_tests:
+  - "Integration: M2-011 continuous +1000 does not stack due to recomputation and does not mutate base power in canonical state."
+  - "Unit: multiple modifiers in different layers apply in correct layer ordering (basePowerSet before powerAdd, etc.)."
+  - "Property: recomputing view multiple times yields identical canonical state hashes."
+repo_rules:
+  - "Continuous effects must be computed views, not repeated mutations (00-project-overview.s013)."
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/EFF-012.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

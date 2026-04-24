@@ -1,0 +1,42 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-022
+title: Implement card instance identity reset on zone transitions + simultaneous ordering decision for multi-move
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Implement zone transition rules where field-to-zone moves create a new card instance and strip applied effects; implement owner-chosen ordering when multiple cards enter a zone simultaneously without leaking order for secret zones.
+spec_refs:
+  - 02-engine-mechanics.s006 (Zone transition rules)
+  - 02-engine-mechanics.s005 (Zones)
+  - 03-game-state-events-decisions.s009 (Pending decisions)
+  - 00-project-overview.s010 (State is serializable)
+scope:
+  - "Implement a moveCard primitive that (a) moves card between zones, (b) resets instance identity when moving from field to another zone per spec, (c) strips applied effects/attachments appropriately (DON!! returned handled elsewhere)."
+  - "Implement handling for multiple cards placed into same zone simultaneously: create OrderCardsDecision for owner to choose order; ensure opponent cannot see chosen order for secret destination zones."
+  - Ensure zone ordering rules are followed (Trash top placement default; Deck ordered; Life ordered).
+non_scope:
+  - Card-specific exceptions to instance reset not described in provided sections.
+  - Full replacement effects affecting moves.
+dependencies:
+  - ENG-015
+  - ENG-003
+  - ENG-004
+acceptance_criteria:
+  - "When a card moves from field to another zone, resulting card in destination has a new instanceId and cleared transient fields (e.g., turnPlayed, attachedDon) as appropriate."
+  - "When multiple cards are placed simultaneously into an ordered zone, owner is prompted to choose order via PendingDecision; chosen order is not revealed to opponent for secret zones."
+  - CardMoved events emitted for each move with correct visibility.
+required_tests:
+  - "Unit: move from character area to trash results in new instanceId and no attachedDon."
+  - "Integration: simultaneous move of two cards to trash prompts OrderCardsDecision and applies chosen order."
+  - "Security: ordering decision for secret zone does not reveal card IDs to opponent."
+repo_rules:
+  - Instance identity resets are required for correctness and to avoid stale once-per-turn/effect bindings.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-022.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,57 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CON-005
+title: "Implement the format registry, ladderId derivation, and simple Elo policy baseline"
+type: implementation
+area: contracts
+priority: high
+status: generated
+summary: >
+  Define the first format registry and ranked-policy contract so queue eligibility, ladder identity, Elo updates, and disconnect discipline are driven by explicit profiles instead of loose strings.
+spec_refs:
+  - 22-v6-implementation-tightening.s021 (15. Format profiles and ladders)
+  - 22-v6-implementation-tightening.s022 (16. Ranked Elo and disconnect discipline)
+  - 30-formats-and-ranked-competition.s003 (Format profile model)
+  - 30-formats-and-ranked-competition.s004 (Canonical format shape)
+  - 30-formats-and-ranked-competition.s005 (Initial supported format profiles)
+  - 30-formats-and-ranked-competition.s006 (Ladder identity)
+  - 30-formats-and-ranked-competition.s007 (Simple Elo v1 policy)
+  - 30-formats-and-ranked-competition.s008 (Ranked disconnect discipline)
+  - 30-formats-and-ranked-competition.s009 (Disconnect outcome records)
+  - 30-formats-and-ranked-competition.s010 (Persistence and audit requirements)
+  - 30-formats-and-ranked-competition.s011 (Launch constraints)
+  - 10-database-schema.s013 (Ratings)
+  - 18-acceptance-tests.s012 (Milestone 8 - ranked ladder beta)
+scope:
+  - define the canonical FormatProfile registry and ladderId derivation rule for the first ranked wave
+  - implement simple Elo calculations with the specified launch defaults
+  - classify grace-expired disconnect outcomes and compute ranked lockout escalation policy
+  - keep ranked eligibility tied to explicit queueEligible and ratingEligible format flags
+non_scope:
+  - "rank tiers, decay, placements, or bonus systems beyond simple Elo v1"
+  - tournament-specific ladder overlays
+  - custom and unranked rating updates
+dependencies:
+  - CON-001
+  - QUE-001
+  - DB-001
+acceptance_criteria:
+  - format profiles drive queue eligibility and rating eligibility rather than ad hoc string checks
+  - "ladderId derives as ranked:formatId:seasonId for the initial ranked wave"
+  - simple Elo updates use the canonical formula and launch defaults
+  - grace-expired ranked disconnects classify correctly and feed disconnect discipline escalation
+required_tests:
+  - contract test covering canonical FormatProfile shape and ladderId derivation
+  - service or unit test covering simple Elo update math
+  - policy test covering ranked disconnect strike escalation and lockout mapping
+  - service test proving unranked and custom do not update Elo
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/CON-005.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

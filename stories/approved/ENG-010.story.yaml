@@ -1,0 +1,45 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-010
+title: Implement turn engine skeleton with phases + first-turn restrictions (draw/don/attack)
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement phase progression (refresh/draw/don/main/end) with first-turn restrictions: first player skips first draw, DON!! placement limits, and no attacks on either player's first turn.
+spec_refs:
+  - 02-engine-mechanics.s010 (Turn structure)
+  - 02-engine-mechanics.s037 (First-turn restrictions)
+  - 03-game-state-events-decisions.s022 (Internal state sequencing)
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 18-acceptance-tests.s003 (Milestone 1 - terminal engine)
+scope:
+  - "Implement TurnState tracking: globalTurn, playerTurnCounts, turnPlayerId, phase, and battle step placeholder."
+  - Implement phase transitions and emit phaseStarted/phaseEnded events.
+  - Implement Draw Phase behavior including first-player first turn 'no draw'.
+  - "Implement DON!! Phase behavior including placing 1 DON!! for first player's first turn, 2 DON!! for second player's first turn if available (from DON!! deck)."
+  - Implement baseline 'cannot attack' restriction for both players on their first turn; wire into legal actions for declareAttack.
+non_scope:
+  - Detailed battle step sub-structure beyond gating attack legality.
+  - Card-specific effects that modify turn structure.
+dependencies:
+  - ENG-007
+  - ENG-004
+acceptance_criteria:
+  - "M1-004: first player skips first draw."
+  - "M1-005: first player gains only one DON!! on first turn."
+  - "M1-006: second player cannot attack on their first turn (and first player also cannot attack on their first turn per table)."
+  - TurnState.playerTurnCounts increments correctly per player turn.
+  - Phase events are emitted in order.
+required_tests:
+  - "Integration: simulate two turns and assert draw counts and DON!! placements match first-turn restriction table."
+  - "Integration: getLegalActions does not include declareAttack on either player’s first turn."
+repo_rules:
+  - Phase progression must be deterministic and driven by state (no wall clock).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/ENG-010.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

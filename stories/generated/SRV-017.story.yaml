@@ -1,0 +1,51 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-017
+title: Implement crash recovery mode selection and safe restart behavior (no blind replay)
+type: implementation
+area: server
+priority: critical
+status: generated
+summary: >
+  Implement match crash recovery controller that selects among recovery modes (replay-through, rollback-to-pre-action, freeze-for-review, no-contest) and ensures the server does not blindly replay a crash-causing action.
+spec_refs:
+  - 08-replay-rollback-recovery.s016 (Crash recovery modes)
+  - 08-replay-rollback-recovery.s017 (replay-through)
+  - 08-replay-rollback-recovery.s018 (rollback-to-pre-action)
+  - 08-replay-rollback-recovery.s019 (freeze-for-review)
+  - 08-replay-rollback-recovery.s020 (no-contest)
+  - "18-acceptance-tests.s008 (Milestone 6 - replay, rollback, recovery)"
+scope:
+  - Add a recovery decision point on process restart or engine crash detection to select RecoveryMode
+  - Implement replay-through when crash is infra-related and action log is deemed safe
+  - Implement rollback-to-pre-action when last action may have crashed but previous state is clean
+  - "Implement freeze-for-review when hidden-info exposure, effect runtime error, or invariant violation makes automatic continuation unsafe"
+  - Implement no-contest when match integrity cannot be preserved
+  - Ensure recovery does not automatically re-execute the suspected crash-causing action without explicit selection of replay-through
+  - Wire recovery mode outcomes into match continuation / freezing / termination paths
+non_scope:
+  - Defining the full taxonomy for 'infra-related' vs 'effect runtime error' vs 'invariant violation' detection if not present elsewhere
+  - Judge/admin UI for unfreezing or adjudicating freeze-for-review
+dependencies:
+  - SRV-015
+  - RPL-003
+  - SRV-002
+  - AMB-001
+acceptance_criteria:
+  - "On restart, if the last recorded action is flagged as potentially crash-causing, the server does not automatically replay it; it selects rollback-to-pre-action or freeze-for-review (M6-006)"
+  - "If crash is classified as infrastructure-related, recovery can use replay-through (s017)"
+  - "If hidden-info exposure or invariant violation is detected, recovery selects freeze-for-review (s019)"
+  - "If integrity cannot be preserved, recovery selects no-contest (s020)"
+  - Recovery outcomes are logged for audit and surfaced to clients via matchError event when applicable
+required_tests:
+  - "Integration: simulate crash on last action -> server chooses rollback-to-pre-action or freeze-for-review and does not replay crashing action"
+  - "Integration: simulate infra crash without engine error -> replay-through successfully resumes"
+  - "Integration: invariant violation -> freeze-for-review"
+repo_rules:
+  - Prefer fail_and_escalate when classification cannot be determined safely; default to freeze-for-review
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-017.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

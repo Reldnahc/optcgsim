@@ -1,0 +1,52 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: QUE-001
+title: Implement queue tickets and queue-created match stamping for ranked and unranked
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Add the queue-backed session-entry contracts that validate gameType and format pairing, require ladder identity for ranked, and stamp immutable queue context onto created matches.
+spec_refs:
+  - 29-game-types-queues-and-lobbies.s002 (Purpose)
+  - 29-game-types-queues-and-lobbies.s004 (Canonical public game types)
+  - 29-game-types-queues-and-lobbies.s005 (Queue-backed game types)
+  - 29-game-types-queues-and-lobbies.s006 (Queue ticket contract)
+  - 29-game-types-queues-and-lobbies.s009 (Match creation requirements)
+  - 29-game-types-queues-and-lobbies.s010 (Launch defaults)
+  - 30-formats-and-ranked-competition.s005 (Initial supported format profiles)
+  - 30-formats-and-ranked-competition.s011 (Launch constraints)
+  - 18-acceptance-tests.s010 (Milestone 7 - public unranked alpha and custom lobbies)
+  - 18-acceptance-tests.s012 (Milestone 8 - ranked ladder beta)
+scope:
+  - implement queue tickets keyed by gameType and formatId for ranked and unranked entry
+  - require ladderId for ranked tickets and omit it for unranked tickets
+  - create matches only through validated server-side queue flow rather than client-constructed match payloads
+  - "stamp created matches with immutable gameType, formatId, ladderId when applicable, and queue provenance"
+non_scope:
+  - custom lobby creation and password handling
+  - Elo update calculations
+  - tournament organizer flows
+dependencies:
+  - SRV-001
+  - DB-001
+acceptance_criteria:
+  - ranked queue admits only queue-eligible and rating-eligible formats
+  - unranked queue-created matches stamp gameType and formatId correctly without ladder updates
+  - queue-created matches do not expose host-tunable fairness knobs such as arbitrary spectator settings
+  - clients cannot bypass server validation by constructing a match directly
+required_tests:
+  - protocol or service test covering ranked queue eligibility by format
+  - protocol or service test covering queue-created unranked match stamping
+  - service test covering ladderId presence for ranked and absence for unranked
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/QUE-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

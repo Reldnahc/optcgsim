@@ -1,0 +1,47 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-018
+title: "Implement report creation pipeline that bundles replay, action log, rejected actions, rollback history, and state hashes"
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Implement server-side generation and persistence of reports such that each report attaches required forensic artifacts (replay reference/data, action log, rejected actions, rollback history, state hashes) for moderation and debugging.
+spec_refs:
+  - "06-visibility-security.s015 (Layer 6: moderation and reports)"
+  - 10-database-schema.s015 (Reports and moderation)
+  - "12-roadmap.s011 (Milestone 7: public unranked alpha and custom lobbies)"
+scope:
+  - "Add @optcg/api endpoint to create a report against target_type with optional match_id/target_user_id payload"
+  - Persist report row in reports table per schema constraints
+  - "On report creation, collect and attach (via target_payload JSONB or linked storage references): replay reference/artifact id, action log, rejected actions, rollback history, and state hashes"
+  - Ensure report payload does not leak hidden info to the reporting client (server stores full artifacts; client receives only report id/token)
+  - "Support report status lifecycle fields (open, reviewed_by, resolved_at) at least as storable fields"
+non_scope:
+  - Moderator UI for reviewing/triaging reports
+  - Ban enforcement behavior beyond DB persistence (separate story)
+  - Defining exact schemas for action log / rejected actions beyond what is already stored elsewhere; store references if needed
+dependencies:
+  - DB-001
+  - RPL-002
+  - RPL-003
+  - DB-009
+acceptance_criteria:
+  - Creating a report inserts a row into reports with valid target_type and constraint satisfaction
+  - "If target_type='user', target_user_id is required and enforced; otherwise it is optional per check constraint"
+  - "For reports with match_id, the stored payload includes references (or embedded snapshots) for: replay, action log, rejected actions, rollback history, and state hashes (06-visibility-security.s015)"
+  - API response to reporter does not include opponent hidden information (only report id/status metadata)
+  - Reports can be created for each enumerated target_type value in the reports CHECK constraint
+required_tests:
+  - "API: create report (target_type=user) without target_user_id fails"
+  - "API: create report with match_id stores required artifact references in target_payload"
+  - "Security: report creation response contains no hidden-zone data"
+repo_rules:
+  - "Prefer storing references to existing persisted replay/log data rather than duplicating blobs, unless persistence layer requires JSONB first"
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-018.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,40 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CAR-015
+title: Implement OP05-091 Rebecca effect definition + acceptance tests
+type: implementation
+area: cards
+priority: high
+status: generated
+summary: >
+  Add schema-valid DSL definition for OP05-091 including permanent Blocker keyword and On Play sequence (trash-to-hand then hand-to-field), with nameNot exclusion and private hand selection visibility.
+spec_refs:
+  - 20-card-implementation-examples.s013 (Draft effect definition)
+  - 18-acceptance-tests.s014 (v3 OP05-091 Rebecca tests)
+  - 17-first-card-fixtures.s007 (Real Poneglyph-backed fixtures added in v3)
+scope:
+  - Commit OP05-091 effect definition with permanent giveKeyword blocker whileSourceOnField and auto onPlay sequence per draft (20-card-implementation-examples.s013).
+  - "Ensure CardFilter uses nameNot to exclude 'Rebecca' in trash selection (20-card-implementation-examples.s011, 20-card-implementation-examples.s013)."
+  - Add tests for REBECCA-001..REBECCA-010 acceptance list (18-acceptance-tests.s014).
+non_scope:
+  - Implementing generic blocker rules beyond keyword exposure; battle/block window enforcement is engine mechanics (already planned elsewhere).
+  - Custom handler path for Rebecca.
+dependencies:
+  - EFF-012
+  - EFF-017
+  - ENG-030
+  - CAR-001
+acceptance_criteria:
+  - REBECCA-001..REBECCA-010 pass (18-acceptance-tests.s014).
+  - "[Blocker] appears in computed view while Rebecca is on field via permanent effect + whileSourceOnField duration (18-acceptance-tests.s014 REBECCA-002)."
+  - On Play excludes cards named Rebecca from trash selection using nameNot (18-acceptance-tests.s014 REBECCA-003/004).
+required_tests:
+  - "Integration: REBECCA-001..REBECCA-010 as listed (18-acceptance-tests.s014)."
+repo_rules:
+  - "Use canonical filter fields (nameNot/colorsAny/cost) and avoid deprecated aliases (05-effect-dsl-reference.s010, 22-v6-implementation-tightening.s007)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/CAR-015.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

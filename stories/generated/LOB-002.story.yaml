@@ -1,0 +1,40 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: LOB-002
+title: Implement lobby password hashing and ensure plaintext password is never persisted or logged
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Store and compare lobby passwords as hashes, enforce passwordRequired behavior on join, and prevent plaintext password leakage into durable logs, replay artifacts, or telemetry.
+spec_refs:
+  - 29-game-types-queues-and-lobbies.s008 (Lobby configuration contract)
+  - 11-testing-quality.s013 (Protocol tests)
+  - 18-acceptance-tests.s006 (Milestone 4 - match server)
+scope:
+  - Implement password hash creation and verification for LobbyConfig.passwordRequired/passwordHash.
+  - Ensure join flow rejects incorrect password (M4-014).
+  - "Audit/logging guardrails: sanitize inbound join requests so plaintext password is not written to durable logs, replay artifacts, or client telemetry fields under server control."
+  - Add tests to prevent regression where plaintext password appears in persisted lobby meta or server logs captured by tests.
+non_scope:
+  - "Choice of specific hashing algorithm parameters beyond 'hash' requirement (if not specified elsewhere, escalate if security review needed)."
+  - User account auth/session token flows.
+  - Lobby invite/share code generation details.
+dependencies:
+  - LOB-001
+acceptance_criteria:
+  - Lobby join rejects incorrect password (M4-014).
+  - Lobby password is stored only as a hash; plaintext is not persisted in Redis/Postgres or replay artifacts.
+  - Server-side request logging/redaction prevents plaintext password exposure.
+required_tests:
+  - "Protocol test: custom lobby join with wrong password is rejected (11-testing-quality.s013, M4-014)."
+  - "Security regression test: inspect persisted lobby meta and replay/audit outputs in test run to assert plaintext password not present."
+repo_rules:
+  - "Security-sensitive data must not be written to replay artifacts; replays store deterministic inputs and optional audit metadata only (08-replay-rollback-recovery.s004, 29-game-types-queues-and-lobbies.s008)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/LOB-002.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

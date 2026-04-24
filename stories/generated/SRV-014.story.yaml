@@ -1,0 +1,38 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-014
+title: Implement player settings persistence endpoints and DB model
+type: implementation
+area: server
+priority: medium
+status: generated
+summary: >
+  Add @optcg/api endpoints to fetch/update player_settings per user, persisted in the player_settings table with defaults.
+spec_refs:
+  - "01-system-architecture.s010 (`@optcg/api`)"
+  - 10-database-schema.s006 (Player settings)
+scope:
+  - Create DB access layer for player_settings with upsert semantics keyed by user_id.
+  - "REST endpoints: GET player settings for current user; PATCH/PUT to update fields."
+  - Ensure unspecified settings use DB defaults from schema.
+non_scope:
+  - Client UI toggles and UX behavior.
+  - Any gameplay-side enforcement of these flags (engine behavior).
+dependencies:
+  - SRV-013
+acceptance_criteria:
+  - "For an authenticated user with no settings row, GET returns values consistent with schema defaults (auto_draw_turn=true, auto_draw_don=true, confirm_attach_don=true, confirm_end_turn=true, confirm_counter=true)."
+  - PATCH updates only provided fields and updates updated_at.
+  - Deleting a user cascades deletion of player_settings row.
+required_tests:
+  - "Integration: GET with no row returns defaults (via inserted row on read or explicit default projection)."
+  - "Integration: PATCH updates a subset of fields and persists them."
+  - "Integration: unauthorized requests are rejected."
+repo_rules:
+  - Keep request/response DTOs stable and versionable; prefer Zod validation if already used in API package.
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/SRV-014.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,49 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-031
+title: Implement playing a card action skeleton with cost computation + overflow/stage replacement rule trashing
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Implement Action.playCard pipeline steps: reveal, compute/clamp cost, pay via decision when needed, overflow character trashing and stage replacement as rule processes, zone placement, and event emission.
+spec_refs:
+  - 02-engine-mechanics.s016 (Playing a card)
+  - 02-engine-mechanics.s005 (Zones)
+  - 02-engine-mechanics.s038 (Rule-process trashing is not effect trashing)
+  - 03-game-state-events-decisions.s016 (Action envelope inside the engine)
+  - 03-game-state-events-decisions.s009 (Pending decisions)
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 03-game-state-events-decisions.s012 (Cost payment)
+scope:
+  - "Implement Action.playCard handling for Character/Stage/Event card categories at skeleton level: reveal from hand, compute total cost (base + continuous modifiers placeholder), clamp negative to 0."
+  - "Represent choosing specific DON!! for payment as PayCostDecision when multiple payment options exist; rest selected DON!! and emit costPaid."
+  - "Implement Character overflow rule: if would play a 6th character, force choose an existing Character to trash as rule process before playing new one; emit cardTrashed with causality ruleProcess; do not queue KO/trash triggers for this trash."
+  - "Implement Stage replacement rule: if stage exists, trash existing stage first as rule process before placing new stage; same trigger suppression policy."
+  - "Place Event into trash before resolving (effect runtime later), and emit cardPlayed/cardMoved events accordingly."
+non_scope:
+  - "Effect runtime resolution for [On Play] and Event text (only queue placeholder events)."
+  - Continuous modifiers computation beyond a stub (computed view story).
+  - Counter step / using counters.
+dependencies:
+  - ENG-011
+  - ENG-004
+  - ENG-026
+acceptance_criteria:
+  - Playing a card from hand emits cardRevealed then cardPlayed/cardMoved events in correct order.
+  - "Final cost is clamped to >= 0 before payment selection."
+  - "If payment requires choice, engine produces PayCostDecision and only commits play after successful respondToDecision."
+  - Character overflow trash and stage replacement trash are treated as rule processes and do not generate ordinary KO/trash triggers (per spec policy).
+required_tests:
+  - "Integration: play a 6th character creates a decision (or enforced selection) to choose one existing character to trash before new enters; ensure trashed card is not marked KO and no KO-trigger events are queued."
+  - "Integration: playing a stage when one exists trashes old stage first with ruleProcess causality."
+  - "Unit: cost clamp from negative to 0."
+repo_rules:
+  - Rule-process trashing must be distinguishable from effect trashing in events/causality.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-031.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

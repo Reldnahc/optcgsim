@@ -1,0 +1,43 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-007
+title: "Add visibility-category filter functions: PlayerView vs SpectatorView vs ReplayView serializers kept separate"
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Implement separate filtering/serialization functions for PlayerView, SpectatorView, and ReplayView instead of a single generic serializer, preserving distinct hidden-info policies.
+spec_refs:
+  - 06-visibility-security.s021 (Original state-filtering categories preserved)
+  - 06-visibility-security.s004 (PlayerView shape)
+  - 03-game-state-events-decisions.s006 (Event visibility)
+  - 03-game-state-events-decisions.s018 (Canonical event visibility)
+scope:
+  - "Create dedicated modules/functions: toPlayerView(recipientPlayerId), toSpectatorView(policy, now), toReplayView(afterCompletion) with distinct codepaths."
+  - "Ensure PlayerView serializer enforces forbidden fields list (no deck order, opponent hand card IDs, face-down life card IDs, RNG, effect queue internals, private decision candidates)."
+  - Ensure Event visibility filtering respects EngineEvent visibility categories when projecting into effectEvents/event log for views.
+  - Plumb these serializers into match-server broadcast pipeline (or stubs if server not yet wired) with clear TODOs.
+non_scope:
+  - Defining full wire protocol messages for server/client; focus is view projection/filtering.
+  - Implementing delayed spectator buffer storage (handled in a separate story).
+  - Implementing replay artifact format (handled by replay stories).
+dependencies:
+  - ENG-004
+  - ENG-009
+acceptance_criteria:
+  - Codebase contains distinct filter functions per view category; they are not thin aliases of a single generic serializer.
+  - PlayerView output excludes all forbidden fields listed in PlayerView shape section.
+  - "Engine events are filtered by visibility policy: public to both, private only to the listed player, replayOnly suppressed in live PlayerView, serverOnly never included."
+required_tests:
+  - "Unit test: PlayerView projection from a synthetic state containing opponent hand card IDs produces only counts."
+  - "Unit test: event filtering - private event appears only for owner player view; replayOnly absent from both live player views."
+  - "Unit test: serverOnly events never appear in any view projection outputs."
+repo_rules:
+  - Hidden-information filtering must be test-covered; failing tests are preferred to permissive behavior.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-007.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

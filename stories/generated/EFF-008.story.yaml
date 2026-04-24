@@ -1,0 +1,42 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-008
+title: Implement optional effect activation decisions (chooseOptionalActivation)
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Support optional triggered effects by pausing with a chooseOptionalActivation decision at the point an optional effect would enter or begin resolution, and ensure declining does not consume once-per-turn or costs.
+spec_refs:
+  - 04-effect-runtime.s009 (Queue ordering)
+  - 04-effect-runtime.s011 (Conditions and costs)
+  - 18-acceptance-tests.s004 (Milestone 2 - first effect runtime)
+scope:
+  - "Introduce PendingDecision.chooseOptionalActivation including playerId, effect queue entry reference, and causedBy."
+  - "Trigger optional decision at the point specified: when the effect would enter or begin resolution according to timing rule (04-effect-runtime.s009)."
+  - "If declined, cancel the queue entry without paying cost and without consuming once-per-turn usage (04-effect-runtime.s011)."
+  - "If accepted, proceed into cost/target selection and commitment pipeline."
+non_scope:
+  - UI implementation; only engine decision structures and validation.
+  - Optional replacement-effect decline (handled in replacement story).
+dependencies:
+  - ENG-015
+  - EFF-030
+  - EFF-037
+acceptance_criteria:
+  - Optional triggered effects create chooseOptionalActivation decisions (18-acceptance-tests.s004 M2-013).
+  - Declining an optional effect results in no cost paid events and does not consume once-per-turn usage (04-effect-runtime.s011).
+  - "Accepted optional effects proceed and, upon commitment, can consume once-per-turn according to rules (04-effect-runtime.s011)."
+required_tests:
+  - "Integration: M2-013 optional trigger produces chooseOptionalActivation and declines cleanly."
+  - "Unit: decline path does not emit costPaid and does not create OncePerTurnRecord."
+  - "Unit: accept path proceeds to cost decision when required."
+repo_rules:
+  - "Decisions are validated by engine, not client (04-effect-runtime.s012)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-008.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

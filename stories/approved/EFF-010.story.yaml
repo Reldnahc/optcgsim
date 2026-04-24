@@ -1,0 +1,42 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-010
+title: Implement effect-time target selection decisions with visibility constraints
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement selectTargets/selectCards decision flow for TargetRequest timing (onActivation/onResolution), candidate resolution, visibility gating, and validation of chosen targets.
+spec_refs:
+  - 04-effect-runtime.s012 (Player choices during effect resolution)
+  - 05-effect-dsl-reference.s008 (Targets)
+  - 18-acceptance-tests.s004 (Milestone 2 - first effect runtime)
+  - 04-effect-runtime.s017 (Transient reveal and selection sets)
+scope:
+  - "Implement resolveTargetCandidates(state, request, context) for TargetRequest.zone/player/filter/min/max and return candidates filtered by legal/visible rules (05-effect-dsl-reference.s008)."
+  - Add PendingDecision.selectTargets/selectCards with candidates and request metadata; validate selected IDs are subset and satisfy min/max/allowFewerIfUnavailable (04-effect-runtime.s012).
+  - "Enforce TargetRequest.timing: create decision at activation or resolution as specified (05-effect-dsl-reference.s008)."
+  - "Enforce TargetRequest.visibility: public vs privateToChooser candidate list behavior; ensure opponent cannot see private candidate IDs (05-effect-dsl-reference.s008, 04-effect-runtime.s017)."
+non_scope:
+  - Implementing every CardFilter field; only those required by fixtures used in tests (typesAny/colorsAny/cost/nameNot/categories).
+  - Transient reveal set selection (separate story for revealTop/selectFromSet).
+dependencies:
+  - ENG-009
+  - ENG-015
+acceptance_criteria:
+  - "Decision responses are validated by engine, not client (04-effect-runtime.s012)."
+  - Target selection respects visibility and legal candidates (18-acceptance-tests.s004 M2-014).
+  - Private-to-chooser candidate sets do not leak to opponent view (05-effect-dsl-reference.s008).
+required_tests:
+  - "Integration: M2-014 visibility and legal candidates respected for a hand-selection private decision vs public trash selection."
+  - "Unit: invalid decision response (includes card not in candidates) is rejected."
+  - "Security/regression: opponent PlayerView never includes private candidate IDs for privateToChooser selection decisions."
+repo_rules:
+  - "Hidden-information must not leak through decision candidate lists (04-effect-runtime.s012, 04-effect-runtime.s017)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/EFF-010.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

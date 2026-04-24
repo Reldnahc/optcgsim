@@ -1,0 +1,43 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-030
+title: Implement moveSelected and playSelected execution with board-cap rule-processing integration
+type: implementation
+area: engine
+priority: critical
+status: generated
+summary: >
+  Execute selection-based movement and effect-play: moveSelected between zones and playSelected from hand/transient sets with enterRested/ignoreCost, including forced-trash decisions when board is full.
+spec_refs:
+  - 05-effect-dsl-reference.s012 (Effects)
+  - 20-card-implementation-examples.s012 (Required DSL support)
+  - 20-card-implementation-examples.s014 (Acceptance tests)
+  - 22-v6-implementation-tightening.s007 (3. DSL schema)
+scope:
+  - "Implement moveSelected {selection, from, to, position?} with the single canonical signature (22-v6-implementation-tightening.s007)."
+  - "Implement playSelected {selection, enterRested?, ignoreCost?} supporting play from hand (Rebecca) and from transient set (Doflamingo) (20-card-implementation-examples.s006, 20-card-implementation-examples.s012)."
+  - "When playSelected would exceed character-area capacity, create the correct forced-trash PendingDecision before effect-play completes (20-card-implementation-examples.s014 REBECCA-008)."
+  - Emit cardMoved and any relevant play events with correct visibility.
+non_scope:
+  - Full general 'play' effect from deck/trash (05-effect-dsl-reference.s012 play) unless needed by fixtures beyond Rebecca/Doflamingo.
+  - Implementing stage replacement and general play rules beyond what engine already provides.
+dependencies:
+  - ENG-031
+  - ENG-015
+  - EFF-014
+acceptance_criteria:
+  - "moveSelected uses the canonical single signature and functions for from Zone or SelectionSetId (22-v6-implementation-tightening.s007, 20-card-implementation-examples.s015)."
+  - "REBECCA-008 passes: when character area is full, engine creates forced-trash decision before effect-play completes (20-card-implementation-examples.s014)."
+  - "playSelected supports enterRested and ignoreCost for Rebecca and Doflamingo behavior (20-card-implementation-examples.s005, 20-card-implementation-examples.s012)."
+required_tests:
+  - "Integration: REBECCA-008 forced-trash decision is created and validated."
+  - "Integration: REBECCA-007 played card enters rested and ignores cost payment."
+  - "Unit: moveSelected from trash to hand emits cardMoved and updates visibility appropriately."
+repo_rules:
+  - Canonical DSL signature for moveSelected must be enforced (22-v6-implementation-tightening.s007).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-030.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

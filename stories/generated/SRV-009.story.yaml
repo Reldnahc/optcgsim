@@ -1,0 +1,39 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-009
+title: Implement social friendships endpoints backed by friendships table
+type: implementation
+area: server
+priority: low
+status: generated
+summary: >
+  Add @optcg/api endpoints for basic social features using friendships table: send request, accept/decline, list friendships/requests.
+spec_refs:
+  - "01-system-architecture.s010 (`@optcg/api`)"
+  - 10-database-schema.s014 (Social)
+scope:
+  - "DB access for friendships table as provided (requester_id, addressee_id, status, timestamps, unique pair)."
+  - "REST endpoints: POST friend request, POST accept, POST decline/cancel, GET list friends/requests."
+  - Enforce uniqueness constraint behavior and proper error mapping.
+non_scope:
+  - "Chat, presence, matchmaking based on friends."
+  - Blocking/reporting/moderation flows.
+dependencies:
+  - SRV-013
+acceptance_criteria:
+  - Sending a friend request creates a pending row unless one already exists for the pair (unique constraint enforced).
+  - Accepting updates status from pending to accepted.
+  - Users cannot create duplicate requests for the same pair.
+  - Deleting a user cascades deletion of related friendship rows.
+required_tests:
+  - "Integration: create request, accept, list."
+  - "Integration: duplicate request returns a clear error and does not create a second row."
+  - "Integration: unauthorized requests are rejected."
+repo_rules:
+  - Do not add additional social tables beyond friendships in this story.
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/SRV-009.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

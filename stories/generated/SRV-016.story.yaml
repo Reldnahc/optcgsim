@@ -1,0 +1,38 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-016
+title: "Implement match-time card manifest snapshot creation from resolved @optcg/cards data"
+type: implementation
+area: server
+priority: critical
+status: generated
+summary: >
+  At match creation, resolve all deck card IDs via @optcg/cards, merge overlays, and snapshot a MatchCardManifest used by engine and replay instead of live Poneglyph data.
+spec_refs:
+  - 09-card-data-and-support-policy.s006 (Why the match server fetches card data)
+  - 09-card-data-and-support-policy.s013 (Match-time card manifest)
+  - 01-system-architecture.s023 (Poneglyph-centered card-data topology)
+  - 18-acceptance-tests.s007 (Milestone 5 - Poneglyph and deck builder)
+scope:
+  - "Implement server-side deck resolution flow: for each unique CardId in both decks, call @optcg/cards to fetch+validate+overlay-merge resolved card records (09-card-data-and-support-policy.s006, 01-system-architecture.s023)."
+  - "Build and persist/attach MatchCardManifest with manifestHash, source, cardDataVersion, effectDefinitionsVersion, customHandlerVersion, banlistVersion, cards map, createdAt (09-card-data-and-support-policy.s013)."
+  - Ensure engine consumes this manifest for all card metadata during match; no live Poneglyph fetch during effect resolution (09-card-data-and-support-policy.s006).
+non_scope:
+  - "Redis read-through cache implementation inside @optcg/cards (separate)."
+  - Deck builder UI behavior.
+dependencies:
+  - CAR-001
+acceptance_criteria:
+  - "Match creation snapshots resolved card data versions and implementation data into MatchCardManifest (09-card-data-and-support-policy.s013, 18-acceptance-tests.s007 M5-007)."
+  - "Client-fetched Poneglyph display data has no gameplay authority; server resolves cards itself (09-card-data-and-support-policy.s006, 18-acceptance-tests.s007 M5-008)."
+required_tests:
+  - "Integration: M5-007 manifest snapshot includes versions and cards map and is used for engine start."
+  - "Integration: M5-008 ensure server ignores any client-supplied card metadata and uses @optcg/cards resolution."
+repo_rules:
+  - "Server never trusts Poneglyph data supplied by the client (01-system-architecture.s023, 09-card-data-and-support-policy.s006)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-016.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

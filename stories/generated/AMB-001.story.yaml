@@ -1,0 +1,37 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: AMB-001
+title: "Ambiguity: define match_lost message contract and terminal handling when recovery data is unavailable"
+type: ambiguity
+area: contracts
+priority: high
+status: generated
+summary: >
+  The acceptance tests require a match_lost message when recovery data is unavailable, but the provided protocol excerpts do not define the message shape or when it is sent relative to reconnect. Clarify the exact contract and sequencing.
+spec_refs:
+  - "18-acceptance-tests.s008 (Milestone 6 - replay, rollback, recovery)"
+  - 07-match-server-protocol.s011 (Reconnection)
+scope:
+  - "Identify/confirm the canonical @optcg/types message contract for 'match_lost' (fields, error codes, includes matchId/stateSeq/serverSeq?)."
+  - "Clarify when server sends match_lost: only on reconnect, also to active connections when ownership lost, and whether it is terminal (connection close)."
+  - "Clarify whether match_lost counts as matchEnded vs separate message type for client UI, and how it interacts with stateSync/broadcast ordering requirements."
+non_scope:
+  - Implementing recovery itself (covered by SRV-007).
+  - General reconnect authentication/session handling beyond message contract.
+dependencies:
+  - CON-001
+  - SRV-015
+acceptance_criteria:
+  - A written decision (spec update or approved story file) defines the match_lost message structure and required sending conditions sufficient to implement M6-007 without guessing.
+  - Decision includes how match_lost is sequenced with serverSeq/stateSeq (if applicable) to remain consistent with broadcast ordering.
+required_tests:
+  - "Contract test verifying the match_lost message type exists in @optcg/types and is serializable/validated."
+  - Protocol test updated/added after clarification to assert correct match_lost emission for missing recovery data (M6-007).
+repo_rules:
+  - Prefer fail-and-escalate for fairness/persistence and terminal outcomes (project ambiguity policy).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/AMB-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

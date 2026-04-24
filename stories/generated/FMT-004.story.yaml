@@ -1,0 +1,39 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: FMT-004
+title: "Implement ranked deck validation: reject unsupported non-vanilla cards"
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Extend deck validation for ranked contexts to reject unsupported effect cards while allowing supported/vanilla cards, making unsupported cards user-visible in validation results.
+spec_refs:
+  - "01-system-architecture.s010 (`@optcg/api`)"
+  - "12-roadmap.s009 (Milestone 5: deck builder and card data)"
+  - "12-roadmap.s011 (Milestone 7: public unranked alpha and custom lobbies)"
+  - 18-acceptance-tests.s007 (Milestone 5 - Poneglyph and deck builder)
+scope:
+  - Add validation mode/context parameter (ranked vs unranked) to deck validation endpoint or provide a ranked-specific endpoint.
+  - "If validating for ranked: reject any card marked unsupported non-vanilla by engine/card support registry policy."
+  - Return user-visible error details indicating which cards are unsupported.
+non_scope:
+  - Engine-side runtime enforcement during match (handled elsewhere).
+  - Policies for what constitutes 'vanilla' beyond existing support registry outputs.
+dependencies:
+  - SRV-010
+  - EFF-038
+acceptance_criteria:
+  - Ranked validation rejects an unsupported effect card (M5-005).
+  - Validation response identifies unsupported cards clearly enough for a user to act on (12-roadmap.s011 exit criteria).
+required_tests:
+  - "Integration: ranked validation fails for a decklist including an unsupported non-vanilla card."
+  - "Integration: ranked validation succeeds for the same list when unsupported card is removed."
+repo_rules:
+  - "Validation must be derived from authoritative server-side support registry, not client display data."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/FMT-004.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

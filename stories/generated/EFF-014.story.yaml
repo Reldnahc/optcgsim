@@ -1,0 +1,44 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-014
+title: Implement transient reveal/selection set framework with cleanup and visibility redaction
+type: implementation
+area: engine
+priority: critical
+status: generated
+summary: >
+  Add transient sets as effect-execution context objects (not zones) to support reveal/select/return patterns with strict visibility and cleanup rules, including opponent redaction after face-down return.
+spec_refs:
+  - 04-effect-runtime.s017 (Transient reveal and selection sets)
+  - 20-card-implementation-examples.s005 (Implementation consequences)
+  - 18-acceptance-tests.s004 (Milestone 2 - first effect runtime)
+scope:
+  - "Introduce transient set model in effect execution context: origin, visibility, cleanup policy, and membership distinct from zones (04-effect-runtime.s017)."
+  - "Enforce: cards in transient set are not simultaneously in any real zone (04-effect-runtime.s017)."
+  - Implement movement from transient set to a real zone emitting cardMoved with appropriate visibility (04-effect-runtime.s017).
+  - Implement cleanup policy that runs when an effect exits early before queue continues (04-effect-runtime.s017).
+  - "Implement visibility redaction: if a revealed card returns face-down to a hidden zone, opponent views must not retain its ID (04-effect-runtime.s017)."
+non_scope:
+  - Specific DSL primitives (revealTop/selectFromSet/returnUnselectedToDeck) execution; covered in next stories.
+  - Client rendering; engine only.
+dependencies:
+  - ENG-009
+  - ENG-004
+  - EFF-031
+acceptance_criteria:
+  - Transient sets are not normal zones; cards are not simultaneously in hand/deck/trash/life while in a transient set (04-effect-runtime.s017).
+  - "cardMoved events are emitted when moving from transient set to real zone, with correct visibility (04-effect-runtime.s017)."
+  - "On early exit, cleanup runs before effect queue continues (04-effect-runtime.s017)."
+  - "Milestone 2 item M2-022 passes once reveal primitive is used: opponent PlayerView does not retain card ID after it returns face-down (18-acceptance-tests.s004)."
+required_tests:
+  - "Integration: reveal-and-return scenario ensures opponent sees revealed card only temporarily and ID is not retained after face-down return (M2-022)."
+  - "Unit: transient set cleanup executes on effect cancellation/early exit and restores cards to correct destination deterministically."
+  - "Security: PlayerView snapshots after redaction do not contain previously revealed card IDs in hidden zones."
+repo_rules:
+  - Hidden-information must not leak via transient sets; returned face-down cards must be redacted from opponent views (04-effect-runtime.s017).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-014.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

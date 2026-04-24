@@ -6,7 +6,7 @@ title: Bootstrap the root monorepo workspace and verification baseline
 type: tooling
 area: infra
 priority: critical
-status: generated
+status: done
 summary: >
   Establish the root monorepo workspace, verification command, and CI enforcement baseline required before package work scales.
 spec_refs:
@@ -42,6 +42,6 @@ repo_rules:
   - must not introduce hidden-information leakage
 ambiguity_policy: implement_if_clearly_implied
 agent:
-  packet_path: agent-packets/generated/INF-001.packet.md
+  packet_path: agent-packets/approved/INF-001.packet.md
   implementation_skill: spec-story-implementation
   review_skill: spec-story-review

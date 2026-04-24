@@ -1,0 +1,36 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-006
+title: Implement conditionTiming + re-check conditions at activation vs resolution
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Support condition evaluation timing semantics ('activation'|'resolution'|'both') and integrate into effect execution pipeline.
+spec_refs:
+  - 05-effect-dsl-reference.s004 (Effect block)
+  - 04-effect-runtime.s011 (Conditions and costs)
+scope:
+  - "Add conditionTiming handling to effect execution: evaluate at activation and/or resolution based on EffectBlock.conditionTiming (05-effect-dsl-reference.s004)."
+  - "Implement condition evaluation hooks used by canTriggerNow / canQueuedEffectResolve (04-effect-runtime.s008, 04-effect-runtime.s011)."
+  - Ensure 'condition-on-resolution' re-check is performed before resolving an effect block when specified (04-effect-runtime.s011).
+non_scope:
+  - Implementing all Condition variants; this story adds timing plumbing and may support a minimal subset for tests.
+  - Optional activation decisions (separate story).
+dependencies:
+  - EFF-031
+acceptance_criteria:
+  - "If conditionTiming includes resolution, the condition is re-checked immediately before resolution (04-effect-runtime.s011)."
+  - "If conditionTiming is activation-only, resolution does not re-check unless the effect is configured to do so (05-effect-dsl-reference.s004)."
+required_tests:
+  - "Unit: an effect with conditionTiming='resolution' is cancelled when condition becomes false after queueing but before resolving."
+  - "Unit: an effect with conditionTiming='activation' remains eligible to resolve even if condition becomes false later (unless other rules cancel it)."
+repo_rules:
+  - Condition checks must be deterministic and server-validated; no client authority (04-effect-runtime.s012).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-006.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

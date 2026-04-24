@@ -3,9 +3,7 @@
   "labels": {
     "ensure": true,
     "include_status": false,
-    "defaults": [
-      "story"
-    ]
+    "defaults": ["story"]
   },
   "project": {
     "owner": "Reldnahc",
@@ -17,6 +15,8 @@
           "generated": "Backlog",
           "approved": "Todo",
           "in_progress": "In Progress",
+          "in_review": "In Review",
+          "changes_requested": "Changes Requested",
           "blocked": "Blocked",
           "done": "Done",
           "replaced": "Canceled"

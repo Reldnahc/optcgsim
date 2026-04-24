@@ -1,0 +1,50 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: DB-001
+title: "Implement the durable match, replay, and Redis recovery persistence baseline"
+type: implementation
+area: database
+priority: high
+status: generated
+summary: >
+  Create the first persistence slice for active-match Redis state and durable Postgres match and replay records so live orchestration has canonical storage contracts before ranked or recovery work expands.
+spec_refs:
+  - 10-database-schema.s002 (v5 database contract)
+  - 10-database-schema.s003 (Storage split)
+  - 10-database-schema.s010 (Matches)
+  - 10-database-schema.s011 (Replays)
+  - 10-database-schema.s017 (Redis keys)
+  - 08-replay-rollback-recovery.s022 (Process crash persistence)
+  - 08-replay-rollback-recovery.s025 (Replay storage)
+scope:
+  - implement the durable match and match_replays persistence contract from contracts/database-schema-v6.sql
+  - "persist active-match state, metadata, action logs, and decision logs under canonical Redis keys"
+  - "store gameType, formatId, ladderId, runtime versions, manifest hash, and spectator policy with match records"
+  - store replay reconstruction source and checkpoints in durable replay rows
+non_scope:
+  - full auth and social schema implementation
+  - moderation dashboards
+  - object-storage offloading for large snapshots
+dependencies:
+  - INF-001
+  - RPL-001
+  - SRV-001
+acceptance_criteria:
+  - "match rows preserve gameType, formatId, optional ladderId, runtime versions, and manifest snapshot fields"
+  - replay rows require a valid reconstruction source and persist checkpoints and deterministic entries
+  - Redis active-match keys match the canonical naming and recovery payload split
+  - "queue, lobby, and recovery code consume the shared persistence contract instead of ad hoc record shapes"
+required_tests:
+  - database contract test covering required match columns and ranked ladderId constraint
+  - database contract test covering replay reconstruction-source constraint
+  - "Redis key-shape regression covering state, meta, actions, and decisions payloads"
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/DB-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

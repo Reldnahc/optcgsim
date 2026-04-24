@@ -1,0 +1,42 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-003
+title: Implement match-server broadcast ordering with monotonic serverSeq and committed stateSeq
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  Enforce the required per-recipient message ordering for accepted actions/decisions, ensure state is committed before any broadcast, and include monotonic serverSeq on all non-heartbeat messages with committed stateSeq on stateful messages.
+spec_refs:
+  - 07-match-server-protocol.s008 (Broadcast ordering)
+  - 18-acceptance-tests.s006 (Milestone 4 - match server)
+scope:
+  - Add serverSeq counter per connection or per match-recipient stream and include it on all non-heartbeat outbound messages.
+  - "Implement the per-recipient broadcast sequence: actionResult -> stateSync (if state changed) -> decisionRequired (if visible) -> timerUpdate (if changed) -> matchEnded (if completed)."
+  - Ensure state commit (match.currentState update + stateSeq) occurs before any broadcasts for accepted actions/decisions.
+  - Ensure stateSync/decisionRequired/timerUpdate/matchEnded include committed stateSeq.
+  - Prevent event/animation feed messages from overtaking the committed state message they describe (gate/queue until after stateSync with same/greater serverSeq).
+non_scope:
+  - Client-side handling of serverSeq ordering.
+  - Signature enablement (explicitly not used in MVP).
+  - Diff-based state sync optimizations.
+dependencies:
+  - SRV-001
+  - ENG-001
+acceptance_criteria:
+  - "For an accepted action, recipients observe outbound messages in the exact order defined by the spec for their recipient stream."
+  - "All non-heartbeat server messages include a monotonically increasing serverSeq per recipient stream (no duplicates, no decreases)."
+  - stateSync/decisionRequired/timerUpdate/matchEnded carry the committed stateSeq corresponding to the committed state.
+  - No outbound message describing state N is delivered with serverSeq less than the stateSync for state N.
+required_tests:
+  - Protocol test covering M4-010 monotonic serverSeq on all non-heartbeat server messages.
+  - "Protocol test asserting broadcast order per recipient for an accepted action that triggers: state change + decisionRequired + timerUpdate + matchEnded (can be composed via test engine stubs)."
+repo_rules:
+  - "Follow package boundary: match-server owns transport/session; engine-core owns rules and state transitions (01-system-architecture.s005, 01-system-architecture.s009)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-003.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

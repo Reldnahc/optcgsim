@@ -1,0 +1,53 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-033
+title: "Implement battle + damage processing for vanilla cards (life to hand, banish, KO rested character)"
+type: implementation
+area: engine
+priority: critical
+status: generated
+summary: >
+  Implement battle declaration and vanilla resolution path including damage processing steps, life triggers prompt, banish replacement baseline, and KO of attacked rested characters.
+spec_refs:
+  - 02-engine-mechanics.s017 (Battle sequence)
+  - 02-engine-mechanics.s023 (Damage processing)
+  - 02-engine-mechanics.s039 (Damage-processing deferral)
+  - 02-engine-mechanics.s025 (Keyword behavior)
+  - 03-game-state-events-decisions.s014 (Life trigger)
+  - 03-game-state-events-decisions.s016 (Action envelope inside the engine)
+  - 03-game-state-events-decisions.s005 (Event journal)
+  - 18-acceptance-tests.s003 (Milestone 1 - terminal engine)
+  - 02-engine-mechanics.s035 (Exact win/loss conditions)
+scope:
+  - Implement Action.declareAttack with legality checks (including first-turn no-attack restriction hook and rested/active requirements as needed for vanilla).
+  - Implement battle sub-state placeholder in GameState.battle sufficient to track attacker/target and steps for damage processing.
+  - "Implement damage processing per point: take life[0], create ConfirmLifeTriggerDecision if card has [Trigger] (card metadata stub), handle activate vs addToHand paths; if activated, card is in 'no zone' during resolution then trashed unless replaced."
+  - "Implement banish keyword baseline: when attacker has [Banish], life card is trashed instead of trigger/hand path."
+  - "Implement attacking rested character can K.O. it (M1-011) using power comparison baseline or vanilla rule (as supported by spec excerpt: 'attacking rested character can K.O. it')."
+  - "Implement damage deferral: when damage >1, process one point at a time; defer triggers during damage processing until complete except [Trigger] interrupt path (tracked via deferredTriggers bucket)."
+non_scope:
+  - "Full counter step, blocker step, unblockable, double attack, rush rules beyond what is needed for vanilla acceptance tests."
+  - Effect runtime for triggers beyond prompting and trashing (no trigger effects executed yet).
+dependencies:
+  - ENG-010
+  - ENG-004
+  - ENG-026
+acceptance_criteria:
+  - "M1-009: vanilla leader damage moves life card to hand (hidden) when no trigger activated."
+  - "M1-011: attacking a rested character can K.O. it (resulting card moved to trash and emits cardKOd or cardTrashed per engine conventions)."
+  - Damage is processed one point at a time and creates lifeTaken/damageDealt events accordingly.
+  - "If life card has [Trigger], engine presents ConfirmLifeTriggerDecision with options activateTrigger/addToHand."
+  - Banish replaces life-to-hand/trigger by trashing the life card.
+required_tests:
+  - "Integration: deal 1 damage to leader with 1 life card and assert lifeTaken event and card moved to hand when trigger declined/unavailable."
+  - "Integration: with banish attacker, assert life card is trashed and no confirmLifeTrigger decision is created."
+  - "Integration: damage=2 processes two sequential lifeTaken events and defers non-trigger auto effects until after processing (can be asserted via deferredTriggers bucket population)."
+repo_rules:
+  - Must not leak life card identity to opponent when added to hand hidden.
+  - Use PendingDecision model for trigger confirmation.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-033.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,39 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: AMB-006
+title: "Ambiguity: define API contracts for decklist and loadout payload shapes (including variant selection identifiers and asset availability check)"
+type: ambiguity
+area: contracts
+priority: high
+status: generated
+summary: >
+  The provided sections require loadouts to store decklist and variant selections only when related image assets are available, but do not specify the wire/DB payload schema for decklists, variant identifiers, or how asset availability is determined at validation time.
+spec_refs:
+  - 03-game-state-events-decisions.s024 (Account-level saved loadouts)
+  - 10-database-schema.s020 (Loadouts instead of local saved decks)
+  - 18-acceptance-tests.s015 (v6 replay and loadout tests)
+  - "12-roadmap.s009 (Milestone 5: deck builder and card data)"
+scope:
+  - Define canonical JSON shape for a decklist used by deck validation and loadouts (card id + count + variant id semantics).
+  - "Define canonical representation for DON!! deck selection, sleeves/playmat/icon identifiers."
+  - "Define how 'variant selections when the related image asset is available' is evaluated (what constitutes an asset, where availability is sourced, and whether availability is time-of-save vs time-of-use)."
+  - Define validation error payloads for rejected variants without affecting gameplay deck legality (RPL-004).
+non_scope:
+  - Implementation of the endpoint/database once contract is decided.
+  - Any cosmetic ownership system.
+dependencies:
+acceptance_criteria:
+  - A written contract exists for decklist + loadout payloads sufficient to implement DB validation and API endpoints without guesswork.
+  - The contract includes explicit rules for asset availability checks and the exact failure behavior required by RPL-004.
+  - The contract specifies stable identifiers for variants and cosmetic assets.
+required_tests:
+  - "Contract tests: JSON schema/Zod schema fixtures for loadout create/update payloads."
+  - "Compatibility test vectors demonstrating: (1) valid loadout, (2) invalid variant asset rejected while decklist is otherwise legal."
+repo_rules:
+  - "Prefer a single canonical decklist/loadout contract shared across @optcg/api, DB validation, and client types."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/AMB-006.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

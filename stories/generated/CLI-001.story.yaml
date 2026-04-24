@@ -1,0 +1,44 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CLI-001
+title: "Implement @optcg/client PlayerView renderer skeleton that never requires raw GameState (Milestone 3 baseline)"
+type: implementation
+area: client
+priority: high
+status: generated
+summary: >
+  Create a browser client skeleton that can render a provided PlayerView (mocked/local) including board, hand, pending decision prompts, and target selection UI driven by PendingDecision, without ever consuming full GameState.
+spec_refs:
+  - "01-system-architecture.s011 (`@optcg/client`)"
+  - "12-roadmap.s007 (Milestone 3: local browser prototype)"
+  - 18-acceptance-tests.s005 (Milestone 3 - browser prototype)
+  - 06-visibility-security.s004 (PlayerView shape)
+scope:
+  - "Add minimal client app routes/components to render PlayerView fields: self/opponent public zones, hand (self only), counts for opponent hidden zones, battle context when present, timers, event lists placeholders."
+  - "Implement PendingDecision-driven prompting: when playerView.pendingDecision is present, render a prompt and collect a response payload suitable for server submission (mocked handler OK)."
+  - Implement target selection UI that uses server-provided legalActions and/or PendingDecision candidate lists (as available in PublicDecision).
+  - Implement local mocked match state provider (in-memory) or single-process stub that feeds PlayerView updates into the UI.
+non_scope:
+  - "Implementing WebSocket protocol, matchmaking, lobby flows, or real server connectivity."
+  - Client-side computation of legal actions or counter-window inference.
+  - Replay viewer and deck builder UI.
+dependencies:
+  - CON-001
+  - CLI-003
+acceptance_criteria:
+  - "M3-001: browser renders PlayerView without raw GameState (no GameState types imported/used in client rendering path)."
+  - "M3-002: target prompts are driven by PendingDecision (UI changes based on pendingDecision presence)."
+  - "M3-004: opponent hand displays count only (no card IDs or names)."
+required_tests:
+  - "Component test: renders PlayerView with opponent hand count and asserts no card identity is displayed for opponent."
+  - "Component test: when pendingDecision exists, UI shows prompt and produces a response object when user confirms selection."
+  - "Static import boundary test: client UI module does not import/use GameState type (grep/ts-arch rule)."
+repo_rules:
+  - UI must treat server-supplied PlayerView as authoritative; do not add local rule resolution.
+  - No hidden-state fields may be added to PlayerView mocks beyond what spec allows.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/CLI-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

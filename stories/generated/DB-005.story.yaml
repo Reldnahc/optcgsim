@@ -1,0 +1,41 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: DB-005
+title: Add loadout persistence model and validation (decklist + cosmetics; reject missing variant assets)
+type: implementation
+area: database
+priority: high
+status: generated
+summary: >
+  Implement account-level Loadout storage and validation replacing browser-local decks, including cosmetic selections and variant validation behavior for unavailable image assets.
+spec_refs:
+  - 03-game-state-events-decisions.s024 (Account-level saved loadouts)
+  - 10-database-schema.s020 (Loadouts instead of local saved decks)
+  - 18-acceptance-tests.s015 (v6 replay and loadout tests)
+scope:
+  - "Add database schema/migration for loadouts keyed to account/user (fields: decklist, donDeck selection, sleeves, playmat, icon, variant selections)."
+  - "Implement server-side validation for loadout create/update: gameplay deck legality independent of cosmetics; cosmetics globally unlocked."
+  - "Implement validation rule: unavailable variant image asset is rejected from loadout validation without affecting gameplay deck legality (drop/deny only the variant selection portion)."
+  - Expose CRUD API surface internally (service functions) for later REST wiring.
+non_scope:
+  - Deck legality rules beyond rejecting unknown card IDs / unsupported cards in ranked (handled elsewhere).
+  - Inventory/ownership systems for cosmetics (explicitly out of scope).
+  - Client deck builder UI.
+dependencies:
+  - DB-001
+acceptance_criteria:
+  - "RPL-003: loadout persistence stores decklist plus icon/playmat/sleeves/don-deck/variant selections."
+  - "RPL-004: unavailable variant image asset is rejected from loadout validation without affecting gameplay deck legality (loadout save succeeds with variant selection rejected/cleared or request fails only on cosmetic portion per implemented API contract)."
+required_tests:
+  - "Unit test: saving loadout with invalid/unavailable variant asset results in variant selection rejected/removed while decklist remains stored."
+  - "Unit test: saving loadout with only gameplay decklist and cosmetics succeeds without ownership checks."
+  - "DB migration test: loadouts table/collection exists with expected columns/indices."
+repo_rules:
+  - Do not add cosmetic ownership tables in v6.
+  - Prefer explicit validation errors for rejected variant assets.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/DB-005.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

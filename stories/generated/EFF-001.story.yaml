@@ -1,0 +1,47 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-001
+title: "Bootstrap @optcg/effects with schema-valid fixture definitions"
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Create the first @optcg/effects package boundary with schema-valid fixture definitions, registry wiring, and coverage hooks so effect work starts from the canonical DSL instead of ad hoc handler code.
+spec_refs:
+  - "01-system-architecture.s007 (`@optcg/effects`)"
+  - 15-implementation-kickoff.s002 (v5 kickoff gates)
+  - 22-v6-implementation-tightening.s007 (3. DSL schema)
+  - 23-repo-tooling-and-enforcement.s011 (Contract and fixture validation)
+  - 23-repo-tooling-and-enforcement.s022 (Required implementation sequence for tooling)
+scope:
+  - create packages/effects with checked-in canonical fixture definitions and a registry entry point
+  - validate committed effect fixtures against contracts/effect-dsl.schema.json before use
+  - separate fixture definitions from engine execution paths so schema drift is caught outside runtime logic
+  - add coverage/report scaffolding for implemented fixtures and custom handlers
+non_scope:
+  - broad non-vanilla card runtime behavior
+  - browser-side effect authoring workflows
+  - live card fetch integration
+dependencies:
+  - INF-001
+  - CON-001
+  - CON-002
+acceptance_criteria:
+  - packages/effects exists with a typed registry entry point and canonical fixture location
+  - committed effect fixtures are rejected when they drift from contracts/effect-dsl.schema.json
+  - the engine consumes effect definitions through package boundaries rather than inlined ad hoc objects
+required_tests:
+  - fixture-validation regression covering one valid and one invalid effect definition
+  - boundary regression proving packages/effects stays separate from browser and transport code
+  - coverage/report smoke test for the initial effect registry
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

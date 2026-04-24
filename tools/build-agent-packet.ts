@@ -1,4 +1,6 @@
+import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   buildSectionLookup,
   ensureDirectory,
@@ -14,13 +16,17 @@ import {
   writeUtf8
 } from "./spec_story_lib.ts";
 
-function buildPacket(storyPath: string, allowNonApproved: boolean): { outputPath: string; storyId: string } {
+export function buildPacket(
+  storyPath: string,
+  allowNonApproved: boolean
+): { outputPath: string; storyId: string } {
   const sectionIndex = loadSectionIndex();
   const sectionLookup = buildSectionLookup(sectionIndex);
   const story = loadStory(storyPath);
   validateStory(story, sectionLookup, { requireApproved: !allowNonApproved });
 
-  const outputPath = story.agent?.packet_path ?? `agent-packets/generated/${story.id}.packet.md`;
+  const outputPath =
+    story.agent?.packet_path ?? `agent-packets/generated/${story.id}.packet.md`;
   ensureDirectory(path.posix.dirname(outputPath));
 
   const excerptBlocks = story.spec_refs.map((rawSpecRef) => {
@@ -42,7 +48,9 @@ function buildPacket(storyPath: string, allowNonApproved: boolean): { outputPath
   lines.push(`doc_id: "${story.id}-packet"`);
   lines.push(`doc_title: "${story.id} Packet"`);
   lines.push('doc_type: "agent-packet"');
-  lines.push(`status: "${story.status === "approved" ? "approved" : "generated"}"`);
+  lines.push(
+    `status: "${story.status === "approved" ? "approved" : "generated"}"`
+  );
   lines.push("machine_readable: true");
   lines.push("---");
   lines.push("");
@@ -103,21 +111,63 @@ function buildPacket(storyPath: string, allowNonApproved: boolean): { outputPath
   }
   lines.push("");
   lines.push("## Ambiguity Rule");
-  lines.push("If the story or cited specification is ambiguous, do not invent behavior. Report the ambiguity and stop at the narrowest safe point.");
+  lines.push(
+    "If the story or cited specification is ambiguous, do not invent behavior. Report the ambiguity and stop at the narrowest safe point."
+  );
   lines.push("");
   writeUtf8(outputPath, `${lines.join("\n")}\n`);
 
   return { outputPath, storyId: story.id };
 }
 
+export function buildPacketsForStories(
+  storyPaths: string[],
+  allowNonApproved: boolean
+): Array<{ outputPath: string; storyId: string }> {
+  return storyPaths.map((storyPath) =>
+    buildPacket(storyPath, allowNonApproved)
+  );
+}
+
+export function buildPacketsForApprovedStories(
+  storyIds?: string[]
+): Array<{ outputPath: string; storyId: string }> {
+  const approvedRoot = path.resolve(ROOT, "stories/approved");
+  if (!fs.existsSync(approvedRoot)) {
+    return [];
+  }
+
+  const explicitIds =
+    storyIds && storyIds.length > 0 ? new Set(storyIds) : null;
+  const storyPaths = fs
+    .readdirSync(approvedRoot, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".story.yaml"))
+    .map((entry) => path.posix.join("stories/approved", entry.name))
+    .filter((storyPath) => {
+      if (!explicitIds) {
+        return true;
+      }
+      const story = loadStory(storyPath);
+      return explicitIds.has(story.id);
+    })
+    .sort((left, right) => left.localeCompare(right));
+
+  return buildPacketsForStories(storyPaths, false);
+}
+
 function main(): void {
   const args = parseArgs(process.argv.slice(2));
   const storyPath = args.get("story");
   if (typeof storyPath !== "string" || !storyPath.trim()) {
-    throw new Error("Usage: node --experimental-strip-types tools/build-agent-packet.ts --story <path>");
+    throw new Error(
+      "Usage: node --experimental-strip-types tools/build-agent-packet.ts --story <path>"
+    );
   }
 
-  const result = buildPacket(storyPath, Boolean(args.get("allow-non-approved")));
+  const result = buildPacket(
+    storyPath,
+    Boolean(args.get("allow-non-approved"))
+  );
   printJson({
     ok: true,
     storyId: result.storyId,
@@ -125,4 +175,7 @@ function main(): void {
   });
 }
 
-main();
+const entrypoint = process.argv[1];
+if (entrypoint && fileURLToPath(import.meta.url) === entrypoint) {
+  main();
+}

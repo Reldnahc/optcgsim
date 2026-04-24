@@ -1,0 +1,37 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: CAR-016
+title: Implement OP01-060 Donquixote Doflamingo effect definition + acceptance tests
+type: implementation
+area: cards
+priority: high
+status: generated
+summary: >
+  Add schema-valid DSL definition for OP01-060 and implement acceptance tests for DON-attached condition, optional cost payment, public reveal with face-down return, play rested ignore cost, and replay stability constraints.
+spec_refs:
+  - 20-card-implementation-examples.s007 (Draft effect definition)
+  - 18-acceptance-tests.s013 (v3 OP01-060 Donquixote Doflamingo tests)
+  - 17-first-card-fixtures.s007 (Real Poneglyph-backed fixtures added in v3)
+scope:
+  - Commit OP01-060 effect definition matching the draft structure (id/category/trigger/conditionTiming/cost/optional/sourcePresencePolicy/effect sequence) (20-card-implementation-examples.s007).
+  - Ensure implementationStatus is implemented-dsl and metadata includes sourceTextHash/rulesVersion/effectDefinitionsVersion/tested flag (05-effect-dsl-reference.s003).
+  - Add tests for DOFFY-001..DOFFY-010 acceptance list (18-acceptance-tests.s013).
+non_scope:
+  - Implementing additional OP01 leader cards.
+  - Custom handler path for OP01-060 (should be DSL-based per example).
+dependencies:
+  - EFF-016
+  - CAR-001
+acceptance_criteria:
+  - DOFFY-001..DOFFY-010 pass (18-acceptance-tests.s013).
+  - "Effect block id is stable and not keyed by array index (04-effect-runtime.s004, 20-card-implementation-examples.s007)."
+required_tests:
+  - "Integration: DOFFY-001..DOFFY-010 as listed (18-acceptance-tests.s013)."
+repo_rules:
+  - Effect definitions must validate against canonical schema (05-effect-dsl-reference.s002).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/CAR-016.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

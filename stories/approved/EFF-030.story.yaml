@@ -1,0 +1,49 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-030
+title: Implement effect queue model + deterministic ordering across timing windows/generations
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Add the effect runtime queue data model and deterministic dequeue/ordering logic: timingWindowId, generation, player buckets, and stable tie-breakers, with decisions when ordering is player-chosen.
+spec_refs:
+  - 04-effect-runtime.s006 (Effect queue entry)
+  - 04-effect-runtime.s008 (Trigger detection from events)
+  - 04-effect-runtime.s009 (Queue ordering)
+  - 18-acceptance-tests.s004 (Milestone 2 - first effect runtime)
+  - 00-project-overview.s012 (Effects are event-driven)
+scope:
+  - Define and persist EffectQueueEntry fields on GameState (id/state/timingWindowId/generation/controllerId/source/sourceSnapshot/triggerEventId/effectBlockId/orderingGroup/createdAtEventSeq/queuedAtStateSeq/sourcePresencePolicy/causedBy).
+  - Implement enqueueTriggeredEffectsRespectingTiming() to assign timingWindowId and generation per normative algorithm.
+  - "Implement deterministic dequeueEffect() that respects ordering rules (window->generation->turnPlayer bucket->nonTurnPlayer bucket->choice or stable tie-breakers)."
+  - "Create PendingDecision.chooseTriggerOrder when a player has >1 pending effect in their bucket within a generation."
+  - "Implement stable tie-breakers: createdAtEventSeq, then source instance id, then effect id."
+non_scope:
+  - Executing specific DSL effect primitives.
+  - Replacement effects processing (handled separately).
+  - Continuous effect computed view application (handled separately).
+dependencies:
+  - ENG-003
+  - ENG-015
+  - ENG-004
+acceptance_criteria:
+  - "Effect triggers collected from an event batch are assigned a timingWindowId and generation=0 for the original timing event (04-effect-runtime.s009)."
+  - "New triggers produced during effect resolution are enqueued with generation=current+1 in the same timing window unless a new timing window opens (04-effect-runtime.s009)."
+  - "Within a timing window, lower generation resolves before higher generation; within a generation, turn-player bucket resolves before non-turn-player bucket (04-effect-runtime.s009)."
+  - "When a player has multiple pending effects in their bucket, the engine pauses with chooseTriggerOrder and resumes deterministically (04-effect-runtime.s009)."
+  - "If no choice is required, ordering is deterministic using the specified tie-breakers (04-effect-runtime.s009)."
+  - Satisfies ordering-related Milestone 2 acceptance items M2-008 and M2-009 (18-acceptance-tests.s004).
+required_tests:
+  - "Unit: ordering algorithm produces A-B-C in the example where A (turn player) triggers C during resolution while B (non-turn player) was pending (18-acceptance-tests.s004 M2-009)."
+  - "Unit: simultaneous triggers controlled by same player produce a chooseTriggerOrder decision (18-acceptance-tests.s004 M2-008)."
+  - "Property/golden: repeated runs on same inputs produce identical dequeue sequence and state hashes."
+repo_rules:
+  - Effect ordering must not depend on JS discovery/iteration order except where explicitly specified (04-effect-runtime.s009).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/EFF-030.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

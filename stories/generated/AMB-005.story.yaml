@@ -1,0 +1,36 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: AMB-005
+title: "Ambiguity: define SpectatorView shape and its relationship to PlayerView/ReplayView under each spectator policy"
+type: ambiguity
+area: contracts
+priority: high
+status: generated
+summary: >
+  The spec defines spectator policies and filtering categories but does not provide a concrete SpectatorView interface. Clarify exact fields, whether it reuses PlayerView, and which hidden-info fields appear under live-filtered vs delayed-filtered vs delayed-full.
+spec_refs:
+  - 06-visibility-security.s008 (Spectator modes)
+  - 06-visibility-security.s020 (Original spectator model and v2 hardening)
+  - 06-visibility-security.s021 (Original state-filtering categories preserved)
+scope:
+  - "Define SpectatorView schema: required fields, event visibility behavior, revealedCards handling, timers inclusion, and whether spectator has a playerId."
+  - Define mapping rules from base state to SpectatorView under each policy.
+  - Define whether spectators receive legalActions (likely no) and how battle context is presented.
+non_scope:
+  - Protocol subscription messages and WebSocket details.
+  - Client spectator UI.
+dependencies:
+acceptance_criteria:
+  - A contract definition exists for SpectatorView and policy-specific filtering behavior.
+  - The definition explicitly states whether legalActions/pendingDecision are included for spectators in filtered/full modes.
+  - Delay gating references what snapshot data is buffered vs emitted.
+required_tests:
+  - Contract tests for view filtering once SpectatorView is defined.
+repo_rules:
+  - Do not implement speculative SpectatorView fields beyond what is clarified.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/AMB-005.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

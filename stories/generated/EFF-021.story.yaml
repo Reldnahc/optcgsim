@@ -1,0 +1,44 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-021
+title: Add Milestone 2 golden interaction scripts for first effect runtime behaviors
+type: verification
+area: engine
+priority: critical
+status: generated
+summary: >
+  Create golden scripts/tests covering the Milestone 2 acceptance list: ordering, optional, once-per-turn, replacement, transient reveal redaction, and visibility-safe target selection.
+spec_refs:
+  - 18-acceptance-tests.s004 (Milestone 2 - first effect runtime)
+  - 17-first-card-fixtures.s006 (Fixture acceptance interactions)
+scope:
+  - "Implement golden scripts for the fixture pool interactions listed in Milestone 2 and fixture acceptance interactions (17-first-card-fixtures.s006, 18-acceptance-tests.s004)."
+  - "Cover: trigger queueing/resolution, blocker redirect event emission, counter effects, On K.O. source presence, life trigger resolution, simultaneous trigger ordering decisions, A-B-C ordering, damage deferral waiting, continuous modifier non-mutation, replacement one-use-per-process, optional activation decisions, target selection visibility, unsupported card rejection, once-per-turn consumption edge cases, transient reveal redaction, replacementApplied logging."
+non_scope:
+  - Building new fixtures beyond those referenced in fixture policy; may reuse existing fixtures and real OP01-060/OP05-091 once implemented.
+  - Full browser e2e; this is engine-level scripts.
+dependencies:
+  - EFF-030
+  - EFF-031
+  - EFF-028
+  - EFF-037
+  - EFF-008
+  - EFF-010
+  - EFF-034
+  - EFF-012
+  - EFF-014
+  - EFF-038
+acceptance_criteria:
+  - All Milestone 2 items M2-001 through M2-022 are covered by tests (18-acceptance-tests.s004).
+  - Fixture acceptance interactions are represented as golden scripts (17-first-card-fixtures.s006).
+required_tests:
+  - "Golden suite: one test per M2-00X line item with deterministic replayable decisions and stable state hashes where applicable."
+  - "Security regression: search/look and private selections do not leak candidates to opponent (17-first-card-fixtures.s006)."
+repo_rules:
+  - Prefer deterministic golden scripts for interaction-heavy timing/visibility behaviors (17-first-card-fixtures.s006).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-021.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

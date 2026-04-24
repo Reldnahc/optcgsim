@@ -1,0 +1,41 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: EFF-035
+title: Implement DSL sequence connector semantics with segment result recording
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Implement execution semantics for Effect.type='sequence' with explicit connectors and deterministic segment result tracking used for later connector decisions and replay stability.
+spec_refs:
+  - 05-effect-dsl-reference.s013 (Sequence connector semantics)
+  - 04-effect-runtime.s016 (Failure policy)
+scope:
+  - "Add runtime representation for SequencedEffect and segment result booleans: attempted, succeeded, changedState, selectedCards, paidCost, playerDeclined (05-effect-dsl-reference.s013)."
+  - "Implement connector control flow: always, then, ifPreviousSucceeded, ifYouDo, ifPossible (05-effect-dsl-reference.s013)."
+  - "Integrate failurePolicy default doAsMuchAsPossible and ensure connectors can enforce dependency where required (04-effect-runtime.s016, 05-effect-dsl-reference.s013)."
+non_scope:
+  - Implementing all Effect primitive types; sequence engine should call sub-effect executor hooks.
+  - Replay serialization format (only ensure determinism of branching decisions).
+dependencies:
+  - EFF-031
+  - EFF-008
+  - EFF-009
+  - EFF-010
+acceptance_criteria:
+  - "Connector behavior matches table in spec, using recorded segment results (05-effect-dsl-reference.s013)."
+  - Segment results are recorded with at least the listed booleans and drive later connector decisions deterministically (05-effect-dsl-reference.s013).
+  - Default failurePolicy is doAsMuchAsPossible unless connector/card text requires dependency (04-effect-runtime.s016).
+required_tests:
+  - "Unit: ifYouDo executes only when player accepted/performed previous optional instruction (05-effect-dsl-reference.s013)."
+  - "Unit: ifPreviousSucceeded executes only when previous segment changed state or made legal selection (05-effect-dsl-reference.s013)."
+  - "Golden: branching across connectors yields stable state hash across runs given same decisions."
+repo_rules:
+  - Do not infer connector behavior from prose card text; use explicit connector semantics for determinism (05-effect-dsl-reference.s013).
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/EFF-035.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

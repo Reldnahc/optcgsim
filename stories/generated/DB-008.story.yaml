@@ -1,0 +1,38 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: DB-008
+title: Add bans table migration + ban persistence API (no enforcement yet)
+type: implementation
+area: database
+priority: medium
+status: generated
+summary: >
+  Implement persistence for bans using the bans table schema, enabling later enforcement in auth/matchmaking.
+spec_refs:
+  - 10-database-schema.s015 (Reports and moderation)
+  - "12-roadmap.s011 (Milestone 7: public unranked alpha and custom lobbies)"
+scope:
+  - Create/verify SQL migration for bans table per schema
+  - Add DB access layer for creating/listing bans by user_id
+  - "Expose minimal admin-only API endpoint to create a ban record (user_id, reason, expires_at optional)"
+non_scope:
+  - "Enforcing bans in login, queueing, or match participation"
+  - Permissions model for who is admin/judge (must exist elsewhere; otherwise fail)
+dependencies:
+  - DB-006
+  - SRV-013
+acceptance_criteria:
+  - "Database migration creates bans table exactly as specified (columns, types, FK, cascade)"
+  - Admin API call inserts a ban with banned_by set and returns created ban id
+  - expires_at nullable behavior works (permanent ban)
+required_tests:
+  - "Migration test: can insert/select bans row; cascade delete on user delete"
+  - "API: non-admin cannot create ban (if auth roles exist; otherwise escalate)"
+repo_rules:
+  - "If admin role system is not implemented, gate endpoint behind server config and document"
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/DB-008.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,41 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-026
+title: "Implement legal-actions routing: phase actions vs decision responses without hidden leaks"
+type: implementation
+area: engine
+priority: high
+status: generated
+summary: >
+  Implement getLegalActions routing that returns legal decision responses when pendingDecision exists, otherwise phase-based actions, and ensure returned legal actions do not leak hidden information.
+spec_refs:
+  - 03-game-state-events-decisions.s015 (Legal actions)
+  - 03-game-state-events-decisions.s009 (Pending decisions)
+  - 03-game-state-events-decisions.s017 (Canonical decision routing)
+  - 00-project-overview.s009 (Official rules are law)
+scope:
+  - "Implement getLegalActions(state, playerId) with the pendingDecision guard and routing to legalResponsesForDecision vs legalPhaseActions."
+  - "Implement legalResponsesForDecision for decision types required for Milestones 1-2 list (as far as they are introduced by implemented flows: mulligan, payCost, selectTargets/selectCards, confirmLifeTrigger, chooseTriggerOrder, chooseOptionalActivation, orderCards)."
+  - "Add a policy layer ensuring the returned action list does not leak opponent hidden information (e.g., do not enumerate hidden hand card counters as playable counters to opponent)."
+non_scope:
+  - Full UI-specific action affordances.
+  - Server-side idempotency / envelope sequencing (match-server).
+  - Complete effect-window legality for Activate effects (beyond baseline actions used in Milestone 1).
+dependencies:
+  - ENG-007
+acceptance_criteria:
+  - "If state.pendingDecision exists, getLegalActions returns only respondToDecision actions appropriate for that decision and player; other actions are not returned."
+  - "If no pendingDecision exists, getLegalActions returns only actions legal in the current phase for the requesting player."
+  - Legal actions for a player do not include information that implies the contents/order of an opponent's hidden zones.
+required_tests:
+  - "Integration: when mulligan decision is pending for player A, player B receives no legal responses and no other phase actions."
+  - "Unit: legalResponsesForDecision rejects wrong playerId and returns empty list."
+  - "Security test: ensure action list for opponent does not include cardInstanceIds from hidden zones they cannot see."
+repo_rules:
+  - No hidden info leakage through getLegalActions outputs.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/ENG-026.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,502 @@
+{
+  "mode": "story-audit",
+  "target": {
+    "plan_path": null,
+    "story_ids": [
+      "INF-001",
+      "CON-001",
+      "ENG-001",
+      "ENG-003",
+      "ENG-004",
+      "ENG-015",
+      "ENG-009",
+      "EFF-030",
+      "EFF-010",
+      "ENG-006",
+      "EFF-034",
+      "ENG-005",
+      "ENG-007",
+      "ENG-010",
+      "ENG-011"
+    ]
+  },
+  "summary": {
+    "overall_verdict": "needs_revision",
+    "summary": "Core direction is solid and many stories are close to approvable, but several are blocked or underspecified due to (a) missing authoritative inputs (canonical contract files / invariant lists) being only referenced, (b) dependencies on adjacent tranche work that is explicitly not ready (notably EFF-031 and EFF-014), and (c) decision visibility + sequencing contracts that are not fully specified in stories (especially for private-to-chooser candidate lists and effect queue “choiceTriggerOrder” decisions). Approve after tightening prerequisites, clarifying exact interfaces/visibility, and adding a small amount of bridge work around decision-view filtering and effect queue integration points."
+  },
+  "story_assessments": [
+    {
+      "id": "INF-001",
+      "verdict": "underspecified",
+      "summary": "Meets the tooling intent and cites authoritative repo-tooling specs, but acceptance includes obligations that reference lanes/fixtures not yet concretely specified in this tranche (notably ‘hidden-information regression lanes’). It also lists dependencies as specific contract files without stating whether they already exist in repo or must be introduced by this story, which affects verification wiring.",
+      "blocking_questions": [
+        "Do contracts/canonical-types.ts and contracts/effect-dsl.schema.json exist in-repo at the time this story runs, or is INF-001 responsible for adding them (or stubbing) so the validation lane can run?",
+        "What is the authoritative mechanism for “package-boundary enforcement” (eslint plugin rules? dependency-cruiser? tsconfig references restrictions)? The story requires enforcement but doesn’t specify the tool/config expected by 23-repo-tooling-and-enforcement.s004/s022.",
+        "What constitutes the ‘hidden-information regression lane’ at this stage: is it only the PlayerView key blacklist (like the ENG-009 test), or does it require additional fixtures (neighbor SEC-007 suggests fixtures/checklist exist later)?"
+      ],
+      "missing_prerequisites": [
+        "Concrete decision on boundary enforcement tool + rule set to satisfy ‘mechanically enforced’ (23-repo-tooling-and-enforcement.s023).",
+        "A minimal set of schema/contract fixtures to validate effect-dsl.schema.json lane (story asks for negative fixture but doesn’t define where fixtures live or how discovered)."
+      ],
+      "missing_tests": [
+        "Test that CI mirrors local `pnpm verify` steps materially (spec requires alignment; story only says ‘CI runs verification baseline’—needs an assertion or scripted comparison).",
+        "Hidden-information regression lane test definition is vague; needs at least one enforceable check (e.g., grep/AST for forbidden keys in view DTOs, or fixture-based PlayerView snapshot test run in CI)."
+      ],
+      "ambiguities": [
+        "Whether `pnpm verify` includes typecheck of all packages or just contracts + lint + tests.",
+        "Whether schema validation includes only effect DSL schema validation or also canonical-types drift checks (some drift checks are claimed here but also in CON-001)."
+      ],
+      "scope_risks": [
+        "Tooling story may balloon into selecting/building full lint/boundary ecosystem; lock down minimal toolchain per spec sequence s022 to avoid overscope."
+      ],
+      "dependency_risks": [
+        "If the contract files are not present, verification lanes can’t be wired as required, blocking the dependency chain (CON-001, ENG-001)."
+      ]
+    },
+    {
+      "id": "CON-001",
+      "verdict": "underspecified",
+      "summary": "Correctly anchored on canonical-types.ts and kickoff specs. However, the story doesn’t precisely define the export surface expected (beyond broad categories) nor the drift-check mechanism. It also risks duplicating work with INF-001’s contract validation lane without a clear division of responsibility.",
+      "blocking_questions": [
+        "Is @optcg/types meant to re-export types directly from contracts/canonical-types.ts (single source), or copy them and treat contracts as a build-time check only? Spec says ‘copy or import’ (15-implementation-kickoff.s002) but the story needs an explicit choice because it affects drift enforcement.",
+        "Which exact symbols from contracts/canonical-types.ts must be exported in v1 (names list exists in 15-implementation-kickoff.s005, but story should pin to that list as acceptance)?",
+        "How is ‘API-surface regression’ enforced—type tests (tsd), generated d.ts snapshot, or explicit export list test?"
+      ],
+      "missing_prerequisites": [
+        "INF-001 must already provide a working TypeScript base config + verify lane that runs `tsc -p contracts/tsconfig.json` (15-implementation-kickoff.s002, 22-v6-implementation-tightening.s006)."
+      ],
+      "missing_tests": [
+        "A test that ensures @optcg/types has no runtime deps (package.json `dependencies` empty or only type-only, and bundler/tsc path tests).",
+        "A drift test that fails when contracts/canonical-types.ts changes but packages/types exports are not updated (if copying rather than re-exporting)."
+      ],
+      "ambiguities": [
+        "What counts as ‘runtime dependency’—devDependencies allowed? (spec bans runtime deps on app packages, but story should codify check)."
+      ],
+      "scope_risks": [
+        "Risk of turning into a ‘model everything’ story; must stay to kickoff-required exports only."
+      ],
+      "dependency_risks": [
+        "If canonical-types.ts contains unresolved/unstable symbols, CON-001 can’t complete; story assumes contract compiles but does not explicitly assert running `tsc -p contracts/tsconfig.json` as a gate (it should)."
+      ]
+    },
+    {
+      "id": "ENG-001",
+      "verdict": "underspecified",
+      "summary": "Defines the engine-core public API and key security boundaries. But it partially overlaps with ENG-003/ENG-006/ENG-009 (hashing and filtering) and doesn’t specify minimal functional behavior for applyAction/getLegalActions/resumeDecision beyond being exported. This risks either stubbing too much (tests can’t be meaningful) or overscoping to implement mechanics prematurely.",
+      "blocking_questions": [
+        "What is the minimal semantic contract for applyAction/getLegalActions at this stage—can they error ‘unsupported’ for most actions until later stories, or must they support setup/turn/mulligan immediately? (Kickoff DOD implies more, but that’s milestone-level, not necessarily ENG-001).",
+        "Should hashGameState delegate to ENG-006 hashState(includeHidden:true, normalizeTransientIds:false) explicitly (ENG-006 says so, ENG-001 also claims hashing)?",
+        "Does computeView exist as a placeholder only, or must it already apply continuousEffects derived view? (00-project-overview.s019 says continuous derived; but continuous effect implementation is adjacent backlog EFF-012)."
+      ],
+      "missing_prerequisites": [
+        "CON-001 must define Action/PendingDecision/PlayerView types; story depends on that but doesn’t specify how engine imports them (path alias, package dependency)."
+      ],
+      "missing_tests": [
+        "Export surface test: ensure exact named exports exist and are typed (to prevent drift).",
+        "Boundary test: engine-core must not import browser/websocket/db/poneglyph—acceptance says this but needs an enforceable test/rule (likely in INF-001)."
+      ],
+      "ambiguities": [
+        "What ‘deterministic state hashing’ means here vs ENG-006 (duplicate responsibility).",
+        "What exactly is included in ‘server-only boundary’ enforcement (lint rule? package.json ‘exports’?)"
+      ],
+      "scope_risks": [
+        "If ENG-001 tries to implement filtering/hashing fully, it will duplicate ENG-006/ENG-009; keep to skeleton + wiring points."
+      ],
+      "dependency_risks": [
+        "ENG-001 acceptance includes filterStateForPlayer behavior that is primarily ENG-009; consider moving that assertion to ENG-009 to avoid blocking ENG-001 on later implementation."
+      ]
+    },
+    {
+      "id": "ENG-003",
+      "verdict": "underspecified",
+      "summary": "Good canonical state shape and invariants runner requirement. Main hole: it references ‘each required invariant listed in spec’ and G-001..G-012, but the authoritative invariant list is split across 03-game-state-events-decisions.s021 and 18-acceptance-tests.s009 and those lists differ in naming. The story needs a definitive mapping to contract names to avoid implementer guesswork.",
+      "blocking_questions": [
+        "Which invariant list is authoritative for implementation naming/signatures: 03-game-state-events-decisions.s021 or 18-acceptance-tests.s009? They overlap but have different function names (e.g., assertAttachedDonExistsAndBelongsToController vs assertAttachedDonConsistency). Provide an explicit mapping/table in the story or point to the canonical list in contracts/canonical-types.ts if present.",
+        "What is the exact rule for when invariants run: spec says after every accepted action and after every effect resolution in tests/dev (03.s021), while story says after every action and decision resume. Do we also need an invariant hook after internal effect resolution steps (even though effect loop EFF-031 is not in this tranche)?",
+        "How should invariant failures be represented: return EngineError {type:'invariantViolation'} vs throw? Story allows either, but downstream code/tests need a single convention. Which is required for engine-core API (applyAction/resumeDecision return shape)?"
+      ],
+      "missing_prerequisites": [
+        "A clearly defined EngineResult type (success vs error) from contracts/canonical-types.ts; ENG-003 assumes it but doesn’t restate required shape.",
+        "Deep-freeze/dev-mode guard configuration (story mentions prefer pure functions but doesn’t state how to enforce)."
+      ],
+      "missing_tests": [
+        "A regression test that invariants are run on both applyAction and resumeDecision paths (story includes spy test, good) AND that they do not mutate state on failure (acceptance mentions without mutating further).",
+        "A test ensuring no Set/Map anywhere in GameState (can be structural check or JSON serialization test + runtime guard)."
+      ],
+      "ambiguities": [
+        "Field list includes both seq/stateSeq wording (‘seq/stateSeq’) but spec canonical name is `seq` in snippet and table says `stateSeq` is canonical; contract excerpt shows `seq: StateSeq`. Story must align terminology to contract to avoid dual fields."
+      ],
+      "scope_risks": [
+        "Implementing all invariants up-front might be large; but it is required by specs. Keep each invariant minimal and focused on canonical state model, not full rules behavior."
+      ],
+      "dependency_risks": [
+        "Some invariants refer to views/effect queue resolvability that depend on ENG-009/EFF-030/EFF-031; need to clarify whether invariants may be stubbed to ‘pass’ until those systems exist, or implemented with minimal checks against empty structures."
+      ]
+    },
+    {
+      "id": "ENG-004",
+      "verdict": "complete_enough",
+      "summary": "Well-scoped event journal plumbing consistent with 03.s005–s008. Tests cover visibility filtering and append behavior. Main remaining risk is sequence numbering: story introduces event-local seq and createdAtStateSeq; must ensure deterministic increment rules are explicit and compatible with hashing/replay.",
+      "blocking_questions": [
+        "What is the canonical rule for EngineEvent.seq increment—global monotonically increasing over match, or per-batch? Spec says ‘events have their own sequence inside the event journal’ but not the increment algorithm. This story should pin it (e.g., eventJournal.length+1) to avoid inconsistent implementations.",
+        "Should filterEventsForPlayer treat {type:'private'; playerId} as visible only to that player, and should it redact payload for other players or drop entire event? Acceptance says ‘excludes private events for other players’—dropping is implied; confirm."
+      ],
+      "missing_prerequisites": [],
+      "missing_tests": [
+        "Add a unit test that event seq is monotonic and stable across identical action logs (ties into hashing determinism)."
+      ],
+      "ambiguities": [
+        "Spec 03.s018 mentions ‘serverOnly’ visibility but EventVisibility type excerpt here does not include it; story uses public/private/hidden/replayOnly per 03.s006. Ensure alignment with contract file (contracts/canonical-types.ts)."
+      ],
+      "scope_risks": [],
+      "dependency_risks": [
+        "Event causality refs depend on Action IDs / queue IDs / decision IDs existing and being stable; ensure other stories generate those IDs deterministically."
+      ]
+    },
+    {
+      "id": "ENG-015",
+      "verdict": "underspecified",
+      "summary": "Correct pending-decision routing model. Key hole: decision visibility and candidate redaction must integrate with PlayerView filtering (ENG-009) and with decision DTOs in @optcg/types. The story also introduces decision types beyond what’s used in this tranche (OrderCardsDecision) without tests/fixtures.",
+      "blocking_questions": [
+        "Where do PendingDecision objects appear for clients—inside PlayerView or a separate decision DTO? The story implies they are in state and blocking actions, but does not define the ‘filtered pendingDecision’ shape for opponents when visibility is private/hidden.",
+        "For resumeDecision: what is EngineResult error behavior—does it return {error} without changing state.seq/actionSeq/eventJournal, or throw? Needs to be consistent with 03.s023.",
+        "How is decisionId generated deterministically (no random UUID unless derived deterministically from seq)? The story requires uniqueness but doesn’t constrain generation method (important for hashing/replay)."
+      ],
+      "missing_prerequisites": [
+        "ENG-009 (or another layer) must define how pendingDecision is filtered from opponent views to prevent hidden info leakage (spec: hidden info is a security boundary)."
+      ],
+      "missing_tests": [
+        "Security: opponent view of a private decision should not include decision details (candidate IDs, prompt specifics if needed) beyond what visibility allows.",
+        "Determinism: decisionId generation stable across runs given same state/action log (or explicitly normalized in hash via normalizeTransientIds—but ENG-006 says normalizeTransientIds is false for authoritative hash)."
+      ],
+      "ambiguities": [
+        "state.seq increments after each accepted action and after each resolved decision—story repeats this, but also mentions Action.respondToDecision path. Need to clarify whether respondToDecision increments actionSeq as an action (it is an action) in addition to seq increment rules."
+      ],
+      "scope_risks": [
+        "Adding many decision types early may overscope; focus on MulliganDecision and the ones required by stories in this tranche (chooseTriggerOrder, chooseReplacement, selectTargets/selectCards) unless contract mandates stubs."
+      ],
+      "dependency_risks": [
+        "EFF-030 and EFF-010 depend on decisions; if decision visibility filtering isn’t nailed down, those stories’ security tests will be blocked."
+      ]
+    },
+    {
+      "id": "ENG-009",
+      "verdict": "underspecified",
+      "summary": "Good high-level PlayerView filtering requirements and tests. Hole: it doesn’t specify how to handle visibility of PendingDecision and eventJournal in PlayerView. Since ENG-004 creates filterEventsForPlayer and ENG-015 creates private decisions, PlayerView needs an explicit contract for including filtered events and filtered pendingDecision (or excluding both).",
+      "blocking_questions": [
+        "Does PlayerView include any events at all? Spec discusses filtering events before sending to clients (03.s006) but PlayerView story talks about excluding ‘full event payloads’. If PlayerView contains events, are they filtered via filterEventsForPlayer? If it does not, where are events sent from?",
+        "How should pendingDecision be represented in PlayerView for the chooser vs opponent? For privateToChooser decisions (EFF-010), opponent must not see candidate IDs—does opponent see that ‘a decision is pending’ at all?",
+        "How are revealedCards (RevealRecord) projected into PlayerView to satisfy transient reveal rules later (04.s017)? Story says include known revealed/face-up life, but not the exact projection rules."
+      ],
+      "missing_prerequisites": [
+        "Clarify authoritative PlayerView type from contracts/canonical-types.ts (CON-001). The story says ‘define PlayerView structure or reuse from contracts’—must choose reuse to avoid drift."
+      ],
+      "missing_tests": [
+        "PendingDecision leakage regression (private decision not visible to opponent, or redacted).",
+        "Event leakage regression if events are included anywhere in PlayerView (ensure hidden/private are filtered)."
+      ],
+      "ambiguities": [
+        "Attached DON counts/ids: story says ‘attached DON counts/ids only where visible by rules’ but the rules excerpt doesn’t define any hidden-ness for attached DON—they’re in open cost/field context. Need to specify whether InstanceIds of attached DON are always public (likely yes because field is open) vs can be redacted; don’t guess—tie to spec or contract."
+      ],
+      "scope_risks": [],
+      "dependency_risks": [
+        "EFF-010 security test depends on a clear rule for whether decision candidate lists are embedded in PlayerView or in a separate decision channel. If unclear, EFF-010 can’t be implemented safely."
+      ]
+    },
+    {
+      "id": "EFF-030",
+      "verdict": "blocked",
+      "summary": "Queue ordering model is well anchored to 04-effect-runtime.s009, but it explicitly requires ‘trigger detection from events’ and ‘pauses with chooseTriggerOrder’, which in adjacent context is owned by EFF-031 (effect queue processing loop with trigger detection) and EFF-008 (optional activations) / EFF-037. This story defines ordering and enqueue/dequeue, but without the processing loop integration, tests that rely on resolution-generated triggers and timing windows may be impossible to run end-to-end in this tranche.",
+      "blocking_questions": [
+        "Where does `enqueueTriggeredEffectsRespectingTiming()` get its inputs (event batches) from if EFF-031 is not implemented? Is this story allowed to implement a minimal trigger-collection driver purely for tests?",
+        "What opens a ‘new official timing window’ (04.s009 step 3) in this tranche? Without rule-processing checkpoints and effect processing loop semantics (ENG-014/EFF-031), timing window boundaries are underspecified.",
+        "How is chooseTriggerOrder decision represented and resumed—what is the response shape (ordering list of queueEntryIds?) per contracts/canonical-types.ts? The story doesn’t cite the contract for decision response schema."
+      ],
+      "missing_prerequisites": [
+        "EFF-031 (adjacent) provides effect queue processing loop and trigger detection; without it, only unit-testing dequeue order on synthetic queues is feasible.",
+        "A canonical definition of QueueEntryId/TimingWindowId types and chooseTriggerOrder DecisionResponse shape from contracts/canonical-types.ts (not included here)."
+      ],
+      "missing_tests": [
+        "Integration test that ordering holds when triggers are enqueued during resolution is stated, but without EFF-031 (resolution loop) it becomes a simulated unit test; story should either (a) downgrade to pure ordering unit tests on constructed queue entries or (b) add a dependency on EFF-031.",
+        "Security: ensure effectQueue internals do not leak to PlayerView (ENG-009 has key blacklist, but effect queue entries created here might surface via other paths; needs explicit test if any view includes them)."
+      ],
+      "ambiguities": [
+        "Tie-breakers include ‘source instance id’ and ‘effect id’—need exact fields used (source.instanceId? effectBlockId?).",
+        "EffectQueueEntry fields include both id and effectBlockId; story uses ‘effect id’ in tie-breakers—must specify effectBlockId vs effectId in contracts."
+      ],
+      "scope_risks": [
+        "Adding chooseTriggerOrder decision plus enqueue/dequeue may drift into full processing loop; keep ordering-only unless EFF-031 is pulled in."
+      ],
+      "dependency_risks": [
+        "Depends on ENG-015 decision framework and ENG-004 events, but also implicitly on how effect resolution emits events/triggers, which is outside this tranche."
+      ]
+    },
+    {
+      "id": "EFF-010",
+      "verdict": "blocked",
+      "summary": "Target selection and visibility gating depends on the ‘transient reveal/selection set framework’ rules (04.s017) and on how decisions are delivered to clients without leaking candidate IDs. Adjacent backlog explicitly has EFF-014 for transient reveal/selection sets and is unmet. Even if EFF-010 excludes transient reveal, the visibility constraints it cites reference 04.s017 and require infrastructure to prevent opponent inference from decision candidates.",
+      "blocking_questions": [
+        "Where are decision candidate lists stored—inside GameState.pendingDecision (and thus must be filtered by ENG-009), or outside state? Without a specified delivery/filtering model, ‘privateToChooser candidate list’ cannot be safely implemented.",
+        "How does the engine represent ‘privateToChooser’ candidates in state while preserving deterministic hashing without leaking to opponent views? (Hash includes hidden data when includeHidden=true per 03.s020, but opponent view must not contain those IDs). Need an explicit contract for redaction rather than ad hoc deletion.",
+        "Which CardFilter fields are required by the Milestone 2 fixtures for M2-014? Story lists a subset, but says ‘only those required by fixtures used in tests’—fixtures are not included here, so implementer cannot know minimum."
+      ],
+      "missing_prerequisites": [
+        "A defined mechanism for filtering/redacting PendingDecision contents in PlayerView (ENG-009 does not specify pendingDecision handling).",
+        "If any M2-014 test uses transient sets (hand reveal, revealTop), then EFF-014 is a hard prerequisite; story says separate, but the required integration test mentions hand-selection vs public trash selection—hand-selection may be implementable without transient sets, but must be confirmed by the fixture/card used."
+      ],
+      "missing_tests": [
+        "A direct test that opponent cannot infer private candidates through counts/placeholder IDs (e.g., ensure opponent sees no list length that reveals exact candidate identities if that’s prohibited—needs spec clarity).",
+        "Determinism test that candidate resolution is stable given same state (ordering of candidates must be defined; otherwise JS iteration order may leak nondeterminism)."
+      ],
+      "ambiguities": [
+        "Candidate ordering: spec for targets does not define canonical order; story must define deterministic ordering of candidate lists (e.g., by zone order then instanceId) to ensure stable decisions/hashes.",
+        "Visibility policy for decisionCreated events (ENG-015) vs the decision payload itself; must be consistent with 03.s006/s018."
+      ],
+      "scope_risks": [
+        "Implementing partial CardFilter risks later incompatibilities; without knowing fixtures, this is risky."
+      ],
+      "dependency_risks": [
+        "Depends on ENG-009 and ENG-015; but also on how clients receive decisions. If the match protocol later sends decisions separately from PlayerView, implementation here may need rework."
+      ]
+    },
+    {
+      "id": "ENG-006",
+      "verdict": "complete_enough",
+      "summary": "Clear deterministic hashing story aligned to 03.s020. Main caution: it introduces options includeHidden/normalizeTransientIds; other stories (ENG-015 decision IDs, EFF-030 queue IDs) must ensure IDs are deterministic or else hashing will be unstable with normalizeTransientIds:false (as required for authoritative hash).",
+      "blocking_questions": [
+        "What are considered ‘transient ids’ eligible for normalization—decisionId? EngineEventId? queueEntryId? instanceId? Need a canonical list, otherwise implementations may diverge.",
+        "Does hash include eventJournal and audit arrays? Spec implies full GameState, but excluding timestamps is required. If EngineEvent includes createdAtStateSeq and seq only, OK—ensure no wall-clock time exists anywhere. ENG-004 mentions createdAtStateSeq; also mentions createdAtStateSeq but not wall-clock."
+      ],
+      "missing_prerequisites": [],
+      "missing_tests": [
+        "A test ensuring hash differs when hidden info differs if includeHidden=true (e.g., different deck order) to prove it is actually hashing hidden zones.",
+        "A test ensuring canonical serializer does not reorder semantic arrays (explicitly called out in scope)."
+      ],
+      "ambiguities": [
+        "ENG-001 also mentions hashing; ensure single canonical function name (hashGameState vs hashState) and avoid duplication."
+      ],
+      "scope_risks": [],
+      "dependency_risks": [
+        "If any ID generation uses non-deterministic UUIDs, this story’s acceptance will fail; coordinate with ENG-004/ENG-015/ENG-007."
+      ]
+    },
+    {
+      "id": "EFF-034",
+      "verdict": "blocked",
+      "summary": "Replacement runtime loop is well scoped and spec-anchored, but it depends on having at least one concrete replaceable process type wired into engine execution to test (story acknowledges) and on effect queue/processing integration to produce real replacement opportunities. Without EFF-031 (effect processing loop) and without a defined set of replaceable processes in current engine mechanics tranche, this risks being untestable beyond synthetic unit tests.",
+      "blocking_questions": [
+        "Which replaceable process type will be implemented for the required tests (M2-020/M2-021/M2-012)? e.g., ‘damageWouldBeDealt’ process? ‘cardWouldMove’? The story must name one process type and where it is invoked in engine.",
+        "Where do replacement effects come from in state—continuousEffects? card text definitions? Without EFF-001/@optcg/effects fixtures, how will findApplicableReplacements be populated for tests?",
+        "What is the exact DecisionResponse shape for chooseReplacement and how is ‘decline’ represented for optional replacements? Must come from contracts/canonical-types.ts."
+      ],
+      "missing_prerequisites": [
+        "A minimal replacement source registry (even hardcoded test-only) to let findApplicableReplacements return deterministic replacements for the chosen process type.",
+        "Effect/runtime integration point where executeReplaceableProcess is called (e.g., during damage or card move). Not present in current tranche stories."
+      ],
+      "missing_tests": [
+        "If only synthetic tests are possible, adjust required tests: add unit tests for usedReplacementIds enforcement and ordering rules with mocked replacements, plus deterministic replacementApplied payload hashing.",
+        "A test that replacementApplied visibility is at least replayOnly and is filtered from live views (ties to ENG-004/ENG-009)."
+      ],
+      "ambiguities": [
+        "‘Old/new payload hashes’: which hash function and includeHidden setting? Probably ENG-006 canonical JSON hash, but story should specify.",
+        "Processing order item (1) ‘card/process being replaced first’ needs a concrete definition of “generated by card/process being replaced” in data model."
+      ],
+      "scope_risks": [
+        "Implementing general replacement system without any real engine process risks dead code or incorrect integration."
+      ],
+      "dependency_risks": [
+        "Strong dependency on effect runtime infrastructure not in tranche (effect definitions, processing loop)."
+      ]
+    },
+    {
+      "id": "ENG-005",
+      "verdict": "complete_enough",
+      "summary": "Deterministic RNG and shuffle event emission are well-defined and testable. Biggest integration risk is ensuring shuffle event payload does not leak secret order while still being replay-deterministic (replay relies on RNG callCount rather than order payload).",
+      "blocking_questions": [
+        "What exactly goes into the shuffle EngineEvent.payload to be replay-useful but non-leaking (e.g., zone name + rng callCount delta)? Story says must not contain full ordered card IDs; define minimal payload fields."
+      ],
+      "missing_prerequisites": [],
+      "missing_tests": [
+        "Add an explicit test that shuffle event payload does not include any CardId/InstanceId list for secret deck shuffles (string search / structural assertion)."
+      ],
+      "ambiguities": [
+        "Supported algorithms: story lists pcg32/xoshiro256ss/test-fixed; spec allows those. Need golden vectors source—where do vectors live? (Test can define its own, but should be pinned)."
+      ],
+      "scope_risks": [],
+      "dependency_risks": [
+        "RNG draw API returning EngineEvent implies event visibility decisions; must align with ENG-004 event factory and filtering."
+      ]
+    },
+    {
+      "id": "ENG-007",
+      "verdict": "underspecified",
+      "summary": "Setup flow matches 02.s008/s009 and acceptance. Key missing pieces: (a) how deck validation is stubbed while still deterministic and testable, (b) how to emit draw/mulligan/life placement events without leaking secret order, and (c) interaction with pendingDecision visibility (mulligan is a decision).",
+      "blocking_questions": [
+        "What is the exact createInitialState(input) shape and required inputs (decks, seeds, playerIds)? Story references an entrypoint but doesn’t cite the contract for input type.",
+        "For mulligan decision: does the opponent see the decisionCreated event? If so, with what visibility (public vs private)? The choice itself is private, but the fact a mulligan decision exists is public in most games—spec doesn’t state; needs explicit rule.",
+        "Life placement events: what is the visibility and payload? Must not leak the facedown life card IDs to opponent, but must be replayable. Specify whether events are private to owner or replayOnly."
+      ],
+      "missing_prerequisites": [
+        "ENG-015 pending decision framework must be able to represent mulligan decisions and validate responses.",
+        "ENG-005 shuffle utility and event emission.",
+        "A deterministic instanceId generation strategy for created CardInstances during setup (otherwise hashing breaks)."
+      ],
+      "missing_tests": [
+        "A test that setup emits required events with correct visibility (shuffle, draw, decisionCreated/Resolved, life placement) and does not leak deck/life IDs to opponent.",
+        "A test for ‘start-of-game effects hook point’ event existence and that it’s a no-op for now (ensures future integration doesn’t break determinism)."
+      ],
+      "ambiguities": [
+        "Step 1 deck validation stub: story says placeholder behavior should be explicit, but doesn’t define what happens on invalid deck in this milestone (illegalAction? unsupportedCard? invariantViolation?)."
+      ],
+      "scope_risks": [
+        "Setup touches many zones and IDs; risk of ballooning into full deck legality or start-of-game effects."
+      ],
+      "dependency_risks": [
+        "If decision visibility/filtering is unresolved (ENG-009/ENG-015), mulligan may leak information or be unrenderable."
+      ]
+    },
+    {
+      "id": "ENG-010",
+      "verdict": "complete_enough",
+      "summary": "Phase progression and first-turn restrictions are well-scoped and testable. Main missing detail is how getLegalActions expresses endMainPhase/phase transitions and how phase transition is triggered (action vs automatic).",
+      "blocking_questions": [
+        "What action advances phases—only endMainPhase, or are there explicit ‘endDrawPhase/endDonPhase’? Spec’s Action union only includes endMainPhase, so phase transitions for refresh/draw/don likely happen automatically; story should explicitly state the mechanism to avoid divergent implementations."
+      ],
+      "missing_prerequisites": [
+        "ENG-007 setup must initialize TurnState correctly (globalTurn, turnPlayerId, phase=refresh)."
+      ],
+      "missing_tests": [
+        "Add a test that phaseStarted/phaseEnded events are emitted with correct causedBy (ruleProcess vs playerAction) to satisfy causality plumbing expectations (03.s008)."
+      ],
+      "ambiguities": [
+        "‘Cannot attack’ restriction wired into legal actions: declareAttack action exists, but battle not implemented here; make sure legality check doesn’t depend on missing battle state."
+      ],
+      "scope_risks": [],
+      "dependency_risks": [
+        "Attack legality depends on tracking ‘first turn’ counts; ensure playerTurnCounts semantics are defined (increment at start of player’s refresh?)."
+      ]
+    },
+    {
+      "id": "ENG-011",
+      "verdict": "complete_enough",
+      "summary": "DON attachment mechanics align with 02.s036 and zone transition rules 02.s006. Tests cover refresh return and host leaving field. Main integration risk: ‘when host leaves field’ requires a general card move primitive/event (cardMoved) which isn’t in this tranche explicitly (beyond event journal plumbing).",
+      "blocking_questions": [
+        "What engine primitive performs ‘host leaves the field’ in the integration test—do we already have a card move utility that enforces ‘new instance when leaving field’ (02.s006)? If not, the test may rely on ad hoc mutation that violates invariants/identity rules."
+      ],
+      "missing_prerequisites": [
+        "A canonical card-move helper that performs zone transitions per 02.s006 (new instanceId on field->other zone) to make the ‘host leaves field’ case correct and deterministic. Not clearly owned by any story here."
+      ],
+      "missing_tests": [
+        "If card move helper exists: add a test that attached DON return happens even when host leaves field due to rule processing (not KO) vs due to effect, and that emitted events have correct causedBy type (ruleProcess vs effect vs playerAction)."
+      ],
+      "ambiguities": [
+        "Attached DON tracked in host.attachedDon list: ensure invariants expect attached DON not simultaneously in cost area list. Needs clear modeling of where attached DON lives (still a CardInstance with zone? or zone is host?)—story says state:'attached' and tracked; but 02.s006 shows CardInstance.zone exists. Must define ZoneRef for attached DON (or special handling) to satisfy ‘exactly one location’ invariant."
+      ],
+      "scope_risks": [],
+      "dependency_risks": [
+        "Depends on invariant definitions in ENG-003; if invariants interpret attached DON incorrectly, this will churn."
+      ]
+    }
+  ],
+  "cross_story_holes": [
+    {
+      "title": "PendingDecision visibility + delivery contract is missing (critical for EFF-010, ENG-015, ENG-009)",
+      "reason": "Specs define EventVisibility and privateToChooser target selection, but the tranche never states how PendingDecision is projected to each player without leaking candidates/hidden fields. ENG-009 excludes internal keys but does not define decision redaction rules. This blocks implementing private target selection safely.",
+      "affected_story_ids": [
+        "ENG-015",
+        "ENG-009",
+        "EFF-010",
+        "EFF-030",
+        "EFF-034",
+        "ENG-007"
+      ],
+      "suggested_spec_refs": [
+        "03-game-state-events-decisions.s006",
+        "03-game-state-events-decisions.s009",
+        "03-game-state-events-decisions.s017",
+        "03-game-state-events-decisions.s018",
+        "04-effect-runtime.s012",
+        "05-effect-dsl-reference.s008"
+      ]
+    },
+    {
+      "title": "Effect queue ordering stories depend on effect processing loop / timing window boundaries not present in tranche",
+      "reason": "EFF-030 and EFF-034 require concepts like ‘during resolution new triggers enqueue generation+1’ and ‘new timing window opens’, but EFF-031 (processing loop and trigger detection) is explicitly not ready. Without at least a minimal loop integration point, some required tests become ungrounded.",
+      "affected_story_ids": [
+        "EFF-030",
+        "EFF-034"
+      ],
+      "suggested_spec_refs": [
+        "04-effect-runtime.s008",
+        "04-effect-runtime.s009",
+        "04-effect-runtime.s012",
+        "18-acceptance-tests.s004"
+      ]
+    },
+    {
+      "title": "Invariant list naming mismatch and authority source is ambiguous",
+      "reason": "ENG-003 references invariants from 03.s021 and 18.s009, which use differing names/sets. Without a single authoritative list/mapping (ideally from contracts/canonical-types.ts), implementers may implement the wrong invariants or duplicate them inconsistently.",
+      "affected_story_ids": [
+        "ENG-003",
+        "ENG-001",
+        "ENG-009",
+        "ENG-011"
+      ],
+      "suggested_spec_refs": [
+        "03-game-state-events-decisions.s021",
+        "11-testing-quality.s008",
+        "18-acceptance-tests.s009",
+        "03-game-state-events-decisions.s002"
+      ]
+    },
+    {
+      "title": "Card instance identity / zone transition helper not owned but required by multiple tests",
+      "reason": "02-engine-mechanics.s006 mandates new instance identity on field->other zone moves and ordering rules. ENG-011 requires moving a host from field to trash. ENG-007/ENG-010 will also need cardMoved/cardDrawn transitions. No story explicitly owns a canonical moveCard primitive that enforces identity reset + event emission + ordering decisions when simultaneous.",
+      "affected_story_ids": [
+        "ENG-007",
+        "ENG-011",
+        "ENG-003",
+        "ENG-004"
+      ],
+      "suggested_spec_refs": [
+        "02-engine-mechanics.s006",
+        "03-game-state-events-decisions.s005",
+        "03-game-state-events-decisions.s007"
+      ]
+    }
+  ],
+  "bridge_story_candidates": [
+    {
+      "title": "BRIDGE: Define and implement PendingDecision projection/redaction rules for PlayerView and opponent visibility",
+      "summary": "Add an explicit, spec-cited contract for how pendingDecision is exposed per player: (1) if decision.visibility is public, both see full decision metadata; (2) if private, only chooser sees candidates/details while opponent sees either a redacted stub or nothing (must be specified); (3) candidate lists for privateToChooser are never present in opponent PlayerView; (4) decisionCreated/Resolved events visibility aligns with decision visibility. Implement filterPendingDecisionForPlayer and update ENG-009 tests accordingly.",
+      "depends_on": [
+        "CON-001",
+        "ENG-015",
+        "ENG-009"
+      ],
+      "spec_refs": [
+        "03-game-state-events-decisions.s006",
+        "03-game-state-events-decisions.s009",
+        "03-game-state-events-decisions.s017",
+        "03-game-state-events-decisions.s018",
+        "04-effect-runtime.s012",
+        "05-effect-dsl-reference.s008"
+      ]
+    },
+    {
+      "title": "BRIDGE: Implement canonical moveCard atomic mutation helper enforcing zone-transition identity reset + event emission",
+      "summary": "Create a single engine-core helper (AtomicMutation) for moving cards between zones that enforces 02-engine-mechanics.s006: new instanceId on field->other zone moves, strips applied effects, handles simultaneous placement ordering decision hook (OrderCardsDecision when needed), and emits cardMoved with correct visibility. Use it in ENG-007 draws/life placement and ENG-011 host-leaves-field test.",
+      "depends_on": [
+        "ENG-003",
+        "ENG-004",
+        "ENG-015"
+      ],
+      "spec_refs": [
+        "02-engine-mechanics.s006",
+        "03-game-state-events-decisions.s005",
+        "03-game-state-events-decisions.s007",
+        "03-game-state-events-decisions.s009"
+      ]
+    }
+  ]
+}

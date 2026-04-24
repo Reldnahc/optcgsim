@@ -1,0 +1,45 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: SRV-005
+title: Implement decisionRequired routing and expectedDecisionId validation for respondToDecision
+type: implementation
+area: server
+priority: high
+status: generated
+summary: >
+  When engine pauses on a decision, notify only the required player via decisionRequired; validate expectedDecisionId on decision responses; route respondToDecision to engine.resumeDecision.
+spec_refs:
+  - 07-match-server-protocol.s010 (Decision protocol)
+  - 07-match-server-protocol.s007 (Action application flow)
+  - 07-match-server-protocol.s008 (Broadcast ordering)
+  - 18-acceptance-tests.s006 (Milestone 4 - match server)
+scope:
+  - Track pending decision state in match runtime (decisionId + requiredPlayerId + any public waiting status).
+  - Send decisionRequired only to the required player after state commit when a decision is pending and visible to that recipient.
+  - "On respondToDecision envelope, validate envelope.expectedDecisionId matches current pending decisionId; reject with pendingDecisionMismatch if not."
+  - Route respondToDecision to engine.resumeDecision rather than engine.applyAction.
+  - Ensure decision response participates in the same idempotency and sequencing model as other actions.
+non_scope:
+  - Auto-default decision responses (explicitly disallowed in competitive play).
+  - UI/UX for "waiting" status beyond any public placeholder message contract.
+  - Complex multi-recipient decision visibility rules beyond 'required player only' stated here.
+dependencies:
+  - SRV-001
+  - ENG-001
+  - SRV-003
+acceptance_criteria:
+  - decisionRequired is sent only to the required player when the engine is paused on a decision.
+  - "respondToDecision with wrong expectedDecisionId is rejected with pendingDecisionMismatch (M4-? protocol list includes this behavior)."
+  - respondToDecision calls engine.resumeDecision (M4-011).
+  - "If the required player's game timer reaches 0 while holding up the game on a decision, they lose (timer integration may be validated in SRV-006)."
+required_tests:
+  - "Protocol test: decision response with wrong decisionId rejected (11-testing-quality.s013)."
+  - "Protocol test: respondToDecision routes to resumeDecision rather than applyAction (M4-011)."
+repo_rules:
+  - "Engine-core owns decision logic; match-server only orchestrates resume/apply (01-system-architecture.s005, 01-system-architecture.s009)."
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/SRV-005.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

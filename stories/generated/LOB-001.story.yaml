@@ -1,0 +1,49 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: LOB-001
+title: "Implement custom lobby creation, join, and spectator-policy constraints"
+type: implementation
+area: server
+priority: medium
+status: generated
+summary: >
+  Build the first custom-lobby session flow with optional password support, allowed spectator-policy selection, and immutable lobby-derived match metadata.
+spec_refs:
+  - 29-game-types-queues-and-lobbies.s007 (Custom lobbies)
+  - 29-game-types-queues-and-lobbies.s008 (Lobby configuration contract)
+  - 29-game-types-queues-and-lobbies.s009 (Match creation requirements)
+  - 29-game-types-queues-and-lobbies.s010 (Launch defaults)
+  - 18-acceptance-tests.s010 (Milestone 7 - public unranked alpha and custom lobbies)
+  - 11-testing-quality.s013 (Protocol tests)
+scope:
+  - implement custom-lobby creation and join flows with optional password hashing
+  - restrict host-configurable spectator modes to allowed policy bounds
+  - carry lobby-derived formatId and spectator policy into created matches as immutable session metadata
+  - support rematch-friendly lobby workflow without turning custom into a rated path
+non_scope:
+  - ranked queue entry
+  - rating updates
+  - tournament-only organizer layers
+dependencies:
+  - SRV-001
+  - QUE-001
+acceptance_criteria:
+  - custom lobbies can be created and joined with optional password support
+  - incorrect passwords are rejected without writing plaintext password material to durable logs
+  - hosts can select only allowed spectator policies for custom sessions
+  - custom matches never update Elo or ladder history
+required_tests:
+  - service test covering custom lobby creation and passworded join
+  - service test covering rejection of incorrect password
+  - policy test covering allowed spectator mode selection
+  - service test proving custom matches do not stamp ladder updates
+repo_rules:
+  - must pass pnpm verify
+  - must preserve package boundary enforcement
+  - must not introduce hidden-information leakage
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/LOB-001.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

@@ -1,0 +1,41 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: DB-009
+title: Persist rollback audit records in match_rollbacks table (branching-friendly)
+type: implementation
+area: database
+priority: high
+status: generated
+summary: >
+  Add DB migration + persistence API to store rollback events in match_rollbacks, aligned with RollbackRecord fields and rollback flow requirements, including approved_by JSONB and reason.
+spec_refs:
+  - 08-replay-rollback-recovery.s015 (Rollback record)
+  - 10-database-schema.s012 (Rollbacks)
+  - 08-replay-rollback-recovery.s014 (Rollback flow)
+scope:
+  - Create/verify SQL migration for match_rollbacks table per schema
+  - Add DB access layer methods to insert rollback records
+  - "Ensure records include: mode, rollback_class, from_state_seq, to_state_seq, requested_by, approved_by (JSONB), admin_id, reason, created_at"
+  - Enable storing multiple rollback records per match (audit trail)
+  - Provide server-callable function to write rollback record during rollback handling
+non_scope:
+  - Admin UI for browsing rollback history
+  - Defining how inactive/discarded future history is represented in replay storage (only record the rollback)
+dependencies:
+  - DB-001
+acceptance_criteria:
+  - "Database migration creates match_rollbacks exactly as specified (columns, types, constraints, FK)"
+  - "On each rollback completion (or attempted rollback if server chooses), a row is inserted with correct from/to stateSeq and mode metadata"
+  - approved_by persists as JSONB array when present
+  - Deleting a match cascades to delete its match_rollbacks rows
+required_tests:
+  - "Migration test: schema matches spec and can insert/select a sample row"
+  - "Integration: rollback handler writes a match_rollbacks record with expected fields"
+repo_rules:
+  - Use UTC timestamps; rely on DB default now() where appropriate
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/DB-009.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review
