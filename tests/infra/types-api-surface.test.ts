@@ -12,7 +12,9 @@ import type {
   MatchResult,
   PlayerId,
   PublicDecision,
+  PublicEffectEvent,
   PublicTimerState,
+  ServerActionResult,
   ServerMessage,
   StateSeq
 } from "@optcg/types";
@@ -44,14 +46,13 @@ describe("@optcg/types API surface", () => {
 
     const decision: PublicDecision = {
       id: decisionId,
-      type: "selectTargets",
+      type: "selectCards",
       playerId,
-      prompt: "Choose a target",
+      prompt: "Choose cards",
       request: {
-        timing: "onResolution",
         chooser: "self",
-        zone: "characterArea",
-        player: "opponent",
+        zone: "hand",
+        player: "self",
         min: 1,
         max: 1,
         allowFewerIfUnavailable: false,
@@ -70,6 +71,18 @@ describe("@optcg/types API surface", () => {
       ]
     };
 
+    const publicEvents: PublicEffectEvent[] = [
+      {
+        id: asBrand("event-1"),
+        eventSeq: 7,
+        stateSeq,
+        type: "cardPlayed",
+        actor: playerId,
+        visibility: { type: "public" },
+        payload: { instanceId: "instance-1" }
+      }
+    ];
+
     const timers: PublicTimerState = {
       drainingPlayerId: playerId,
       players: {
@@ -87,21 +100,92 @@ describe("@optcg/types API surface", () => {
       reason: "concede"
     };
 
+    const actionResult: ServerActionResult = {
+      type: "actionResult",
+      matchId,
+      clientActionId: "client-action-1",
+      accepted: true,
+      stateSeq,
+      actionSeq: asBrand(5),
+      events: publicEvents
+    };
+
     const message: ServerMessage = {
-      type: "decisionRequired",
+      type: "stateSync",
       matchId,
       serverSeq: asBrand(4),
       stateSeq,
-      decision
+      view: {
+        matchId,
+        viewer: playerId,
+        gameType: "unranked" satisfies GameType,
+        formatId: asBrand<FormatId>("format-1"),
+        stateSeq,
+        serverSeq: asBrand(4),
+        you: {
+          playerId,
+          deck: { count: 40 },
+          donDeck: { count: 10 },
+          hand: { count: 5 },
+          trash: [],
+          leader: {
+            instanceId: asBrand("leader-1"),
+            cardId: asBrand<CardId>("OP01-001"),
+            controller: playerId,
+            owner: playerId,
+            state: "active",
+            attachedDonCount: 0,
+            keywords: []
+          },
+          characters: [],
+          costArea: [],
+          life: { count: 5 }
+        },
+        opponent: {
+          playerId: asBrand<PlayerId>("player-2"),
+          deck: { count: 40 },
+          donDeck: { count: 10 },
+          hand: { count: 5 },
+          trash: [],
+          leader: {
+            instanceId: asBrand("leader-2"),
+            cardId: asBrand<CardId>("OP01-002"),
+            controller: asBrand<PlayerId>("player-2"),
+            owner: asBrand<PlayerId>("player-2"),
+            state: "active",
+            attachedDonCount: 0,
+            keywords: []
+          },
+          characters: [],
+          costArea: [],
+          life: { count: 5 }
+        },
+        turn: {
+          activePlayer: playerId,
+          nonActivePlayer: asBrand<PlayerId>("player-2"),
+          firstPlayer: playerId,
+          globalTurnNumber: asBrand(1),
+          phase: "main"
+        },
+        pendingDecision: decision,
+        timers,
+        visibleEvents: publicEvents
+      }
     };
 
     const payload = JSON.parse(
-      JSON.stringify({ envelope, message, timers, result })
+      JSON.stringify({ envelope, actionResult, message, timers, result })
     ) as {
       envelope: { protocolVersion: string; expectedDecisionId: string };
+      actionResult: {
+        events: Array<{ visibility: { type: string } }>;
+      };
       message: {
         type: string;
-        decision: { type: string; candidates: unknown[] };
+        view: {
+          pendingDecision: { type: string; candidates: unknown[] };
+          timers: { players: Record<string, { remainingMs: number }> };
+        };
       };
       timers: { players: Record<string, { remainingMs: number }> };
       result: { reason: string };
@@ -109,9 +193,13 @@ describe("@optcg/types API surface", () => {
 
     expect(payload.envelope.protocolVersion).toBe("v1");
     expect(payload.envelope.expectedDecisionId).toBe("decision-1");
-    expect(payload.message.type).toBe("decisionRequired");
-    expect(payload.message.decision.type).toBe("selectTargets");
-    expect(payload.message.decision.candidates).toHaveLength(1);
+    expect(payload.actionResult.events[0]?.visibility.type).toBe("public");
+    expect(payload.message.type).toBe("stateSync");
+    expect(payload.message.view.pendingDecision.type).toBe("selectCards");
+    expect(payload.message.view.pendingDecision.candidates).toHaveLength(1);
+    expect(payload.message.view.timers.players["player-1"]?.remainingMs).toBe(
+      120000
+    );
     expect(payload.timers.players["player-1"]?.remainingMs).toBe(120000);
     expect(payload.result.reason).toBe("concede");
   });

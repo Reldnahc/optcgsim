@@ -1149,6 +1149,15 @@ export interface CardSelectionCandidate {
   label?: string;
 }
 
+export type PublicEventVisibility = Extract<
+  EventVisibility,
+  { type: "public" } | { type: "private" }
+>;
+
+export interface PublicEffectEvent extends Omit<EngineEvent, "visibility"> {
+  visibility: PublicEventVisibility;
+}
+
 export type PublicDecision =
   | (PublicDecisionBase & {
       type: "mulligan";
@@ -1177,7 +1186,7 @@ export type PublicDecision =
   | (PublicDecisionBase & {
       type: "selectCards";
       request: CardSelectionRequest;
-      candidates?: CardSelectionCandidate[];
+      candidates: CardSelectionCandidate[];
     })
   | (PublicDecisionBase & {
       type: "chooseEffectOption";
@@ -1258,13 +1267,13 @@ export interface ServerActionResult {
   actionSeq: ActionSeq;
   reason?: RejectionReason;
   view?: PlayerView;
-  events?: EngineEvent[];
+  events?: PublicEffectEvent[];
 }
 
 export interface EngineResult {
   state: GameState;
   events: EngineEvent[];
-  publicEvents: EngineEvent[];
+  publicEvents: PublicEffectEvent[];
   pendingDecision?: PendingDecision;
   stateHash: Sha256;
 }
@@ -1310,8 +1319,8 @@ export interface PlayerView {
   turn: TurnState;
   battle?: BattleState;
   pendingDecision?: PublicDecision;
-  timers?: PublicTimerState;
-  visibleEvents: EngineEvent[];
+  timers: PublicTimerState;
+  visibleEvents: PublicEffectEvent[];
   winner?: MatchResult["winner"];
 }
 
