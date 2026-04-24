@@ -58,6 +58,12 @@ interface ReviewSummary {
 }
 
 const GENERATED_DIR = "stories/generated";
+const KNOWN_STORY_DIRS = [
+  "stories/generated",
+  "stories/approved",
+  "stories/done",
+  "stories/blocked"
+];
 const PLACEHOLDER_DEP_RE = /^STORY-\d+$/;
 
 function normalizeTitle(value: string): string {
@@ -127,6 +133,16 @@ function loadAllStories(): Array<{ path: string; story: Story }> {
     path,
     story: loadStory(path)
   }));
+}
+
+function loadKnownStoryIds(): Set<string> {
+  const ids = new Set<string>();
+  for (const dir of KNOWN_STORY_DIRS) {
+    for (const path of listStoryFiles(dir)) {
+      ids.add(loadStory(path).id);
+    }
+  }
+  return ids;
 }
 
 function isArtifactDependency(dependency: string): boolean {
@@ -232,7 +248,8 @@ function findFalseAmbiguityHits(
 
   const likelySpectatorDelay =
     /\bspectator\b/.test(titleAndSummary) &&
-    /\bdelay|\bdelayed/.test(titleAndSummary);
+    /\bdelay|\bdelayed/.test(titleAndSummary) &&
+    !/\bshape\b|\bschema\b|\bcontract\b|\bprotocol\b/.test(titleAndSummary);
   if (likelySpectatorDelay) {
     const closure = sectionLookup.get("22-v6-implementation-tightening.s014");
     const excerpt = closure ? extractSectionExcerpt(closure) : "";
@@ -292,7 +309,7 @@ export function buildReview(
   sectionLookup: Map<string, SectionEntry>
 ): ReviewSummary {
   const stories = loadAllStories();
-  const knownIds = new Set(stories.map((entry) => entry.story.id));
+  const knownIds = loadKnownStoryIds();
 
   const storyReviews: StoryReview[] = stories.map((entry) => {
     const dependencyIssues = findDependencyIssues(entry.story, knownIds);

@@ -3,17 +3,302 @@
   "source_review": "stories/generated-review.json",
   "limit": 15,
   "summary": {
-    "generated_stories": 92,
+    "generated_stories": 94,
     "approved_or_done_stories": 16,
-    "candidate_keep_stories": 42,
-    "selected": 6,
-    "ready_now_remaining": 0,
-    "ready_after": 32,
-    "ambiguities": 4,
+    "candidate_keep_stories": 94,
+    "selected": 15,
+    "ready_now_remaining": 11,
+    "ready_after": 45,
+    "ambiguities": 7,
     "merge_or_replace": 0,
-    "reject_or_needs_edit": 50
+    "reject_or_needs_edit": 0
   },
   "selected": [
+    {
+      "id": "CON-003",
+      "title": "Add public protocol and deck-validation DTOs to @optcg/types",
+      "path": "stories/generated/CON-003.story.yaml",
+      "area": "contracts",
+      "type": "implementation",
+      "priority": "critical",
+      "score": 134,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "CON-001"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "priority=critical",
+        "area=contracts",
+        "dependents=0"
+      ]
+    },
+    {
+      "id": "CAR-001",
+      "title": "Add a fixture-backed @optcg/cards adapter for Poneglyph-shaped records",
+      "path": "stories/generated/CAR-001.story.yaml",
+      "area": "cards",
+      "type": "implementation",
+      "priority": "high",
+      "score": 132,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "INF-001",
+        "CON-001"
+      ],
+      "reverse_dependency_count": 11,
+      "reasons": [
+        "priority=high",
+        "area=cards",
+        "dependents=11"
+      ]
+    },
+    {
+      "id": "ENG-035",
+      "title": "Implement rule-processing checkpoint runner after every atomic mutation",
+      "path": "stories/generated/ENG-035.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "critical",
+      "score": 128,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-003",
+        "ENG-004"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "priority=critical",
+        "area=engine",
+        "dependents=0"
+      ]
+    },
+    {
+      "id": "EFF-039",
+      "title": "BRIDGE: Implement PendingDecision projection/redaction in PlayerView without leaking privateToChooser candidates",
+      "path": "stories/generated/EFF-039.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "critical",
+      "score": 126,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "CON-001",
+        "ENG-009",
+        "ENG-015"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "priority=critical",
+        "area=engine",
+        "dependents=0"
+      ]
+    },
+    {
+      "id": "SRV-001",
+      "title": "Implement the match-server action envelope and idempotent sequencing baseline",
+      "path": "stories/generated/SRV-001.story.yaml",
+      "area": "server",
+      "type": "implementation",
+      "priority": "high",
+      "score": 122,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "INF-001",
+        "CON-001",
+        "ENG-001"
+      ],
+      "reverse_dependency_count": 9,
+      "reasons": [
+        "priority=high",
+        "area=server",
+        "dependents=9"
+      ]
+    },
+    {
+      "id": "ENG-026",
+      "title": "Implement legal-actions routing: phase actions vs decision responses without hidden leaks",
+      "path": "stories/generated/ENG-026.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 120,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-007"
+      ],
+      "reverse_dependency_count": 5,
+      "reasons": [
+        "priority=high",
+        "area=engine",
+        "dependents=5"
+      ]
+    },
+    {
+      "id": "ENG-033",
+      "title": "Implement battle + damage processing for vanilla cards (life to hand, banish, KO rested character)",
+      "path": "stories/generated/ENG-033.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "critical",
+      "score": 142,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-010",
+        "ENG-004",
+        "ENG-026"
+      ],
+      "reverse_dependency_count": 4,
+      "reasons": [
+        "priority=critical",
+        "area=engine",
+        "dependents=4"
+      ]
+    },
+    {
+      "id": "ENG-014",
+      "title": "Implement rule-processing checkpoints + exact win/loss conditions (deck-out, 0-life damage loss, concede, draw on double loss)",
+      "path": "stories/generated/ENG-014.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "critical",
+      "score": 132,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-004",
+        "ENG-033"
+      ],
+      "reverse_dependency_count": 1,
+      "reasons": [
+        "priority=critical",
+        "area=engine",
+        "dependents=1"
+      ]
+    },
+    {
+      "id": "EFF-031",
+      "title": "Implement effect queue processing loop with pause/cancel/resolve and trigger detection from events",
+      "path": "stories/generated/EFF-031.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "critical",
+      "score": 144,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "EFF-030",
+        "ENG-004",
+        "ENG-006",
+        "ENG-014"
+      ],
+      "reverse_dependency_count": 5,
+      "reasons": [
+        "priority=critical",
+        "area=engine",
+        "dependents=5"
+      ]
+    },
+    {
+      "id": "EFF-014",
+      "title": "Implement transient reveal/selection set framework with cleanup and visibility redaction",
+      "path": "stories/generated/EFF-014.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "critical",
+      "score": 142,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-009",
+        "ENG-004",
+        "EFF-031"
+      ],
+      "reverse_dependency_count": 4,
+      "reasons": [
+        "priority=critical",
+        "area=engine",
+        "dependents=4"
+      ]
+    },
+    {
+      "id": "ENG-028",
+      "title": "Implement legal-action visibility redaction so opponent cannot infer hidden counter availability",
+      "path": "stories/generated/ENG-028.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "critical",
+      "score": 128,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-026",
+        "ENG-009"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "priority=critical",
+        "area=engine",
+        "dependents=0"
+      ]
+    },
+    {
+      "id": "ENG-032",
+      "title": "Implement life trigger decision flow during damage processing (ConfirmLifeTriggerDecision + no-zone handling)",
+      "path": "stories/generated/ENG-032.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "critical",
+      "score": 126,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-033",
+        "ENG-015",
+        "ENG-009"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "priority=critical",
+        "area=engine",
+        "dependents=0"
+      ]
+    },
+    {
+      "id": "SEC-007",
+      "title": "Add PlayerView filter checklist assertions and fixtures for hidden-zone + RNG/effectQueue redaction",
+      "path": "stories/generated/SEC-007.story.yaml",
+      "area": "security",
+      "type": "verification",
+      "priority": "critical",
+      "score": 122,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-009",
+        "ENG-026",
+        "ENG-005"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "priority=critical",
+        "area=security",
+        "dependents=0"
+      ]
+    },
+    {
+      "id": "SRV-016",
+      "title": "Implement match-time card manifest snapshot creation from resolved @optcg/cards data",
+      "path": "stories/generated/SRV-016.story.yaml",
+      "area": "server",
+      "type": "implementation",
+      "priority": "critical",
+      "score": 120,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "CAR-001"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "priority=critical",
+        "area=server",
+        "dependents=0"
+      ]
+    },
     {
       "id": "SRV-013",
       "title": "Implement auth/session REST endpoints backed by users/sessions tables",
@@ -30,6 +315,42 @@
         "area=server",
         "dependents=6"
       ]
+    }
+  ],
+  "ready_now_remaining": [
+    {
+      "id": "CON-002",
+      "title": "Validate effect-definition fixtures against the canonical DSL schema",
+      "path": "stories/generated/CON-002.story.yaml",
+      "area": "contracts",
+      "type": "tooling",
+      "priority": "high",
+      "score": 112,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "INF-001"
+      ],
+      "reverse_dependency_count": 1,
+      "reasons": [
+        "ready with current approved/done dependencies"
+      ]
+    },
+    {
+      "id": "EFF-017",
+      "title": "Add DSL primitive selectCards (zone-based) with public/private visibility support",
+      "path": "stories/generated/EFF-017.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 104,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "EFF-010"
+      ],
+      "reverse_dependency_count": 1,
+      "reasons": [
+        "ready with current approved/done dependencies"
+      ]
     },
     {
       "id": "DB-006",
@@ -43,108 +364,218 @@
       "story_dependencies": [],
       "reverse_dependency_count": 1,
       "reasons": [
-        "priority=high",
-        "area=database",
-        "dependents=1"
+        "ready with current approved/done dependencies"
       ]
     },
     {
-      "id": "SRV-008",
-      "title": "Implement deck CRUD endpoints backed by decks table",
-      "path": "stories/generated/SRV-008.story.yaml",
+      "id": "SRV-007",
+      "title": "Add visibility-category filter functions: PlayerView vs SpectatorView vs ReplayView serializers kept separate",
+      "path": "stories/generated/SRV-007.story.yaml",
       "area": "server",
+      "type": "implementation",
+      "priority": "high",
+      "score": 100,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-004",
+        "ENG-009"
+      ],
+      "reverse_dependency_count": 3,
+      "reasons": [
+        "ready with current approved/done dependencies"
+      ]
+    },
+    {
+      "id": "EFF-028",
+      "title": "Implement source presence policy checks for queueing and resolution",
+      "path": "stories/generated/EFF-028.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 100,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-003",
+        "ENG-004",
+        "EFF-030"
+      ],
+      "reverse_dependency_count": 1,
+      "reasons": [
+        "ready with current approved/done dependencies"
+      ]
+    },
+    {
+      "id": "ENG-022",
+      "title": "Implement card instance identity reset on zone transitions + simultaneous ordering decision for multi-move",
+      "path": "stories/generated/ENG-022.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 100,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-015",
+        "ENG-003",
+        "ENG-004"
+      ],
+      "reverse_dependency_count": 1,
+      "reasons": [
+        "ready with current approved/done dependencies"
+      ]
+    },
+    {
+      "id": "ENG-025",
+      "title": "Add EngineEvent visibility taxonomy including serverOnly and ensure replayOnly storage is supported without live emission",
+      "path": "stories/generated/ENG-025.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 100,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-004"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "ready with current approved/done dependencies"
+      ]
+    },
+    {
+      "id": "SEC-001",
+      "title": "Add hidden-information and replay-drift verification lanes",
+      "path": "stories/generated/SEC-001.story.yaml",
+      "area": "security",
+      "type": "verification",
+      "priority": "high",
+      "score": 98,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "INF-001",
+        "ENG-001"
+      ],
+      "reverse_dependency_count": 1,
+      "reasons": [
+        "ready with current approved/done dependencies"
+      ]
+    },
+    {
+      "id": "ENG-034",
+      "title": "Implement phaseStarted(main) gating with start-of-main trigger window before action priority",
+      "path": "stories/generated/ENG-034.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 96,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-010",
+        "ENG-004",
+        "ENG-015"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "ready with current approved/done dependencies"
+      ]
+    },
+    {
+      "id": "CLI-003",
+      "title": "Create @optcg/view-engine package with PlayerView-only API boundary and no hidden-state inputs",
+      "path": "stories/generated/CLI-003.story.yaml",
+      "area": "client",
       "type": "implementation",
       "priority": "high",
       "score": 90,
       "unmet_story_dependencies": [],
       "story_dependencies": [
-        "SRV-013"
+        "CON-001"
       ],
-      "reverse_dependency_count": 0,
+      "reverse_dependency_count": 1,
       "reasons": [
-        "priority=high",
-        "area=server",
-        "dependents=0"
+        "ready with current approved/done dependencies"
       ]
     },
     {
-      "id": "DB-008",
-      "title": "Add bans table migration + ban persistence API (no enforcement yet)",
-      "path": "stories/generated/DB-008.story.yaml",
-      "area": "database",
+      "id": "ENG-029",
+      "title": "Implement loop detection signatures and declare-loop-count decision path (draw resolution baseline)",
+      "path": "stories/generated/ENG-029.story.yaml",
+      "area": "engine",
       "type": "implementation",
       "priority": "medium",
-      "score": 62,
+      "score": 68,
       "unmet_story_dependencies": [],
       "story_dependencies": [
-        "DB-006",
-        "SRV-013"
+        "ENG-006",
+        "ENG-015"
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "priority=medium",
-        "area=database",
-        "dependents=0"
-      ]
-    },
-    {
-      "id": "SRV-014",
-      "title": "Implement player settings persistence endpoints and DB model",
-      "path": "stories/generated/SRV-014.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "medium",
-      "score": 62,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "SRV-013"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "priority=medium",
-        "area=server",
-        "dependents=0"
-      ]
-    },
-    {
-      "id": "SRV-009",
-      "title": "Implement social friendships endpoints backed by friendships table",
-      "path": "stories/generated/SRV-009.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "low",
-      "score": 32,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "SRV-013"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "priority=low",
-        "area=server",
-        "dependents=0"
+        "ready with current approved/done dependencies"
       ]
     }
   ],
-  "ready_now_remaining": [],
   "ready_after": [
     {
-      "id": "SRV-016",
-      "title": "Implement match-time card manifest snapshot creation from resolved @optcg/cards data",
-      "path": "stories/generated/SRV-016.story.yaml",
-      "area": "server",
+      "id": "ENG-030",
+      "title": "Implement moveSelected and playSelected execution with board-cap rule-processing integration",
+      "path": "stories/generated/ENG-030.story.yaml",
+      "area": "engine",
       "type": "implementation",
       "priority": "critical",
-      "score": 120,
+      "score": 130,
       "unmet_story_dependencies": [
-        "CAR-001"
+        "ENG-031"
       ],
       "story_dependencies": [
-        "CAR-001"
+        "ENG-031",
+        "ENG-015",
+        "EFF-014"
       ],
-      "reverse_dependency_count": 0,
+      "reverse_dependency_count": 1,
       "reasons": [
-        "waits on CAR-001"
+        "waits on ENG-031"
+      ]
+    },
+    {
+      "id": "EFF-016",
+      "title": "Add DSL primitives required for OP01-060: revealTop + selectFromSet + playSelected + returnUnselectedToDeck + attachedDonCount condition",
+      "path": "stories/generated/EFF-016.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "critical",
+      "score": 128,
+      "unmet_story_dependencies": [
+        "EFF-035"
+      ],
+      "story_dependencies": [
+        "EFF-014",
+        "EFF-035",
+        "ENG-011",
+        "ENG-009"
+      ],
+      "reverse_dependency_count": 1,
+      "reasons": [
+        "waits on EFF-035"
+      ]
+    },
+    {
+      "id": "DB-001",
+      "title": "Implement the durable match, replay, and Redis recovery persistence baseline",
+      "path": "stories/generated/DB-001.story.yaml",
+      "area": "database",
+      "type": "implementation",
+      "priority": "high",
+      "score": 122,
+      "unmet_story_dependencies": [
+        "RPL-001"
+      ],
+      "story_dependencies": [
+        "INF-001",
+        "RPL-001",
+        "SRV-001"
+      ],
+      "reverse_dependency_count": 8,
+      "reasons": [
+        "waits on RPL-001"
       ]
     },
     {
@@ -198,6 +629,25 @@
       ]
     },
     {
+      "id": "EFF-012",
+      "title": "Implement continuous effect records + modifier layer application in computed view",
+      "path": "stories/generated/EFF-012.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 114,
+      "unmet_story_dependencies": [
+        "ENG-017"
+      ],
+      "story_dependencies": [
+        "ENG-017"
+      ],
+      "reverse_dependency_count": 3,
+      "reasons": [
+        "waits on ENG-017"
+      ]
+    },
+    {
       "id": "SRV-017",
       "title": "Implement crash recovery mode selection and safe restart behavior (no blind replay)",
       "path": "stories/generated/SRV-017.story.yaml",
@@ -223,22 +673,35 @@
       ]
     },
     {
-      "id": "SRV-002",
-      "title": "Add reconnect, timer ownership, and spectator subscription handling",
-      "path": "stories/generated/SRV-002.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "high",
+      "id": "EFF-021",
+      "title": "Add Milestone 2 golden interaction scripts for first effect runtime behaviors",
+      "path": "stories/generated/EFF-021.story.yaml",
+      "area": "engine",
+      "type": "verification",
+      "priority": "critical",
       "score": 110,
       "unmet_story_dependencies": [
-        "SRV-001"
+        "EFF-028",
+        "EFF-037",
+        "EFF-008",
+        "EFF-012",
+        "EFF-038"
       ],
       "story_dependencies": [
-        "SRV-001"
+        "EFF-030",
+        "EFF-031",
+        "EFF-028",
+        "EFF-037",
+        "EFF-008",
+        "EFF-010",
+        "EFF-034",
+        "EFF-012",
+        "EFF-014",
+        "EFF-038"
       ],
-      "reverse_dependency_count": 5,
+      "reverse_dependency_count": 0,
       "reasons": [
-        "waits on SRV-001"
+        "waits on EFF-028, EFF-037, EFF-008, EFF-012, EFF-038"
       ]
     },
     {
@@ -251,7 +714,6 @@
       "score": 110,
       "unmet_story_dependencies": [
         "RPL-003",
-        "SRV-001",
         "SRV-003",
         "SRV-004",
         "SRV-002",
@@ -267,26 +729,72 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on RPL-003, SRV-001, SRV-003, SRV-004, SRV-002, AMB-005"
+        "waits on RPL-003, SRV-003, SRV-004, SRV-002, AMB-005"
       ]
     },
     {
-      "id": "EFF-012",
-      "title": "Implement continuous effect records + modifier layer application in computed view",
-      "path": "stories/generated/EFF-012.story.yaml",
+      "id": "EFF-001",
+      "title": "Bootstrap @optcg/effects with schema-valid fixture definitions",
+      "path": "stories/generated/EFF-001.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 108,
+      "unmet_story_dependencies": [
+        "CON-002"
+      ],
+      "story_dependencies": [
+        "INF-001",
+        "CON-001",
+        "CON-002"
+      ],
+      "reverse_dependency_count": 3,
+      "reasons": [
+        "waits on CON-002"
+      ]
+    },
+    {
+      "id": "CON-005",
+      "title": "Implement the format registry, ladderId derivation, and simple Elo policy baseline",
+      "path": "stories/generated/CON-005.story.yaml",
+      "area": "contracts",
+      "type": "implementation",
+      "priority": "high",
+      "score": 108,
+      "unmet_story_dependencies": [
+        "QUE-001",
+        "DB-001"
+      ],
+      "story_dependencies": [
+        "CON-001",
+        "QUE-001",
+        "DB-001"
+      ],
+      "reverse_dependency_count": 2,
+      "reasons": [
+        "waits on QUE-001, DB-001"
+      ]
+    },
+    {
+      "id": "EFF-037",
+      "title": "Implement once-per-turn usage records and commitment rules",
+      "path": "stories/generated/EFF-037.story.yaml",
       "area": "engine",
       "type": "implementation",
       "priority": "high",
       "score": 106,
       "unmet_story_dependencies": [
-        "ENG-017"
+        "EFF-006"
       ],
       "story_dependencies": [
-        "ENG-017"
+        "ENG-003",
+        "ENG-010",
+        "EFF-006",
+        "ENG-015"
       ],
-      "reverse_dependency_count": 1,
+      "reverse_dependency_count": 3,
       "reasons": [
-        "waits on ENG-017"
+        "waits on EFF-006"
       ]
     },
     {
@@ -296,18 +804,17 @@
       "area": "engine",
       "type": "implementation",
       "priority": "high",
-      "score": 102,
+      "score": 106,
       "unmet_story_dependencies": [
-        "EFF-001",
-        "CAR-001"
+        "EFF-001"
       ],
       "story_dependencies": [
         "EFF-001",
         "CAR-001"
       ],
-      "reverse_dependency_count": 1,
+      "reverse_dependency_count": 2,
       "reasons": [
-        "waits on EFF-001, CAR-001"
+        "waits on EFF-001"
       ]
     },
     {
@@ -317,18 +824,38 @@
       "area": "server",
       "type": "implementation",
       "priority": "high",
-      "score": 100,
+      "score": 104,
       "unmet_story_dependencies": [
-        "SRV-001",
         "DB-001"
       ],
       "story_dependencies": [
         "SRV-001",
         "DB-001"
       ],
-      "reverse_dependency_count": 3,
+      "reverse_dependency_count": 4,
       "reasons": [
-        "waits on SRV-001, DB-001"
+        "waits on DB-001"
+      ]
+    },
+    {
+      "id": "EFF-008",
+      "title": "Implement optional effect activation decisions (chooseOptionalActivation)",
+      "path": "stories/generated/EFF-008.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 104,
+      "unmet_story_dependencies": [
+        "EFF-037"
+      ],
+      "story_dependencies": [
+        "ENG-015",
+        "EFF-030",
+        "EFF-037"
+      ],
+      "reverse_dependency_count": 2,
+      "reasons": [
+        "waits on EFF-037"
       ]
     },
     {
@@ -351,22 +878,44 @@
       ]
     },
     {
-      "id": "EFF-006",
-      "title": "Implement conditionTiming + re-check conditions at activation vs resolution",
-      "path": "stories/generated/EFF-006.story.yaml",
+      "id": "EFF-009",
+      "title": "Implement PayCostDecision creation + atomic cost payment events",
+      "path": "stories/generated/EFF-009.story.yaml",
       "area": "engine",
       "type": "implementation",
       "priority": "high",
       "score": 100,
       "unmet_story_dependencies": [
-        "EFF-031"
+        "EFF-037"
       ],
       "story_dependencies": [
-        "EFF-031"
+        "ENG-015",
+        "ENG-011",
+        "EFF-037"
       ],
-      "reverse_dependency_count": 0,
+      "reverse_dependency_count": 1,
       "reasons": [
-        "waits on EFF-031"
+        "waits on EFF-037"
+      ]
+    },
+    {
+      "id": "RPL-001",
+      "title": "Define the replay artifact contract and checkpoint drift verification lane",
+      "path": "stories/generated/RPL-001.story.yaml",
+      "area": "replay",
+      "type": "implementation",
+      "priority": "high",
+      "score": 98,
+      "unmet_story_dependencies": [
+        "SEC-001"
+      ],
+      "story_dependencies": [
+        "ENG-001",
+        "SEC-001"
+      ],
+      "reverse_dependency_count": 4,
+      "reasons": [
+        "waits on SEC-001"
       ]
     },
     {
@@ -408,6 +957,29 @@
       ]
     },
     {
+      "id": "EFF-035",
+      "title": "Implement DSL sequence connector semantics with segment result recording",
+      "path": "stories/generated/EFF-035.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 98,
+      "unmet_story_dependencies": [
+        "EFF-008",
+        "EFF-009"
+      ],
+      "story_dependencies": [
+        "EFF-031",
+        "EFF-008",
+        "EFF-009",
+        "EFF-010"
+      ],
+      "reverse_dependency_count": 1,
+      "reasons": [
+        "waits on EFF-008, EFF-009"
+      ]
+    },
+    {
       "id": "DB-007",
       "title": "Persist ranked Elo, rating_history, and disconnect discipline events with ladder scoping",
       "path": "stories/generated/DB-007.story.yaml",
@@ -429,22 +1001,65 @@
       ]
     },
     {
-      "id": "SRV-010",
-      "title": "Implement deck validation endpoint: reject unknown Poneglyph card IDs",
-      "path": "stories/generated/SRV-010.story.yaml",
-      "area": "server",
+      "id": "EFF-032",
+      "title": "Implement duration expiration for effect queue and continuous effects",
+      "path": "stories/generated/EFF-032.story.yaml",
+      "area": "engine",
       "type": "implementation",
       "priority": "high",
-      "score": 94,
+      "score": 96,
       "unmet_story_dependencies": [
-        "CAR-001"
+        "EFF-012"
       ],
       "story_dependencies": [
-        "CAR-001"
+        "ENG-010",
+        "ENG-033",
+        "EFF-012"
       ],
-      "reverse_dependency_count": 1,
+      "reverse_dependency_count": 0,
       "reasons": [
-        "waits on CAR-001"
+        "waits on EFF-012"
+      ]
+    },
+    {
+      "id": "ENG-024",
+      "title": "Implement OrderCardsDecision for simultaneous multi-card zone placement with secret-zone non-leak rules",
+      "path": "stories/generated/ENG-024.story.yaml",
+      "area": "engine",
+      "type": "implementation",
+      "priority": "high",
+      "score": 96,
+      "unmet_story_dependencies": [
+        "ENG-022"
+      ],
+      "story_dependencies": [
+        "ENG-015",
+        "ENG-009",
+        "ENG-022"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "waits on ENG-022"
+      ]
+    },
+    {
+      "id": "CLI-001",
+      "title": "Implement @optcg/client PlayerView renderer skeleton that never requires raw GameState (Milestone 3 baseline)",
+      "path": "stories/generated/CLI-001.story.yaml",
+      "area": "client",
+      "type": "implementation",
+      "priority": "high",
+      "score": 92,
+      "unmet_story_dependencies": [
+        "CLI-003"
+      ],
+      "story_dependencies": [
+        "CON-001",
+        "CLI-003"
+      ],
+      "reverse_dependency_count": 2,
+      "reasons": [
+        "waits on CLI-003"
       ]
     },
     {
@@ -467,25 +1082,6 @@
       ]
     },
     {
-      "id": "CAR-005",
-      "title": "Implement @optcg/cards read-through Redis cache keying and failure behaviors",
-      "path": "stories/generated/CAR-005.story.yaml",
-      "area": "cards",
-      "type": "implementation",
-      "priority": "high",
-      "score": 88,
-      "unmet_story_dependencies": [
-        "CAR-001"
-      ],
-      "story_dependencies": [
-        "CAR-001"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "waits on CAR-001"
-      ]
-    },
-    {
       "id": "CAR-014",
       "title": "Add initial fixture slice implementation records and ensure each fixture has at least one test",
       "path": "stories/generated/CAR-014.story.yaml",
@@ -494,7 +1090,6 @@
       "priority": "high",
       "score": 88,
       "unmet_story_dependencies": [
-        "CAR-001",
         "EFF-001"
       ],
       "story_dependencies": [
@@ -503,7 +1098,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on CAR-001, EFF-001"
+        "waits on EFF-001"
       ]
     },
     {
@@ -571,6 +1166,29 @@
       ]
     },
     {
+      "id": "RPL-002",
+      "title": "Implement replay header + deterministic log writer in match-server with version and RNG metadata",
+      "path": "stories/generated/RPL-002.story.yaml",
+      "area": "replay",
+      "type": "implementation",
+      "priority": "high",
+      "score": 86,
+      "unmet_story_dependencies": [
+        "RPL-001",
+        "DB-001"
+      ],
+      "story_dependencies": [
+        "RPL-001",
+        "SRV-001",
+        "ENG-001",
+        "DB-001"
+      ],
+      "reverse_dependency_count": 2,
+      "reasons": [
+        "waits on RPL-001, DB-001"
+      ]
+    },
+    {
       "id": "CAR-016",
       "title": "Implement OP01-060 Donquixote Doflamingo effect definition + acceptance tests",
       "path": "stories/generated/CAR-016.story.yaml",
@@ -579,8 +1197,7 @@
       "priority": "high",
       "score": 86,
       "unmet_story_dependencies": [
-        "EFF-016",
-        "CAR-001"
+        "EFF-016"
       ],
       "story_dependencies": [
         "EFF-016",
@@ -588,7 +1205,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on EFF-016, CAR-001"
+        "waits on EFF-016"
       ]
     },
     {
@@ -634,6 +1251,49 @@
       ]
     },
     {
+      "id": "SRV-005",
+      "title": "Implement decisionRequired routing and expectedDecisionId validation for respondToDecision",
+      "path": "stories/generated/SRV-005.story.yaml",
+      "area": "server",
+      "type": "implementation",
+      "priority": "high",
+      "score": 86,
+      "unmet_story_dependencies": [
+        "SRV-003"
+      ],
+      "story_dependencies": [
+        "SRV-001",
+        "ENG-001",
+        "SRV-003"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "waits on SRV-003"
+      ]
+    },
+    {
+      "id": "SRV-006",
+      "title": "Implement authoritative per-player game timers and draining-player rules (no per-decision/mulligan timers)",
+      "path": "stories/generated/SRV-006.story.yaml",
+      "area": "server",
+      "type": "implementation",
+      "priority": "high",
+      "score": 86,
+      "unmet_story_dependencies": [
+        "SRV-002",
+        "SRV-003"
+      ],
+      "story_dependencies": [
+        "SRV-002",
+        "SRV-003",
+        "ENG-001"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "waits on SRV-002, SRV-003"
+      ]
+    },
+    {
       "id": "SRV-018",
       "title": "Implement report creation pipeline that bundles replay, action log, rejected actions, rollback history, and state hashes",
       "path": "stories/generated/SRV-018.story.yaml",
@@ -669,8 +1329,7 @@
       "unmet_story_dependencies": [
         "EFF-012",
         "EFF-017",
-        "ENG-030",
-        "CAR-001"
+        "ENG-030"
       ],
       "story_dependencies": [
         "EFF-012",
@@ -680,7 +1339,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on EFF-012, EFF-017, ENG-030, CAR-001"
+        "waits on EFF-012, EFF-017, ENG-030"
       ]
     },
     {
@@ -692,7 +1351,6 @@
       "priority": "medium",
       "score": 70,
       "unmet_story_dependencies": [
-        "SRV-001",
         "QUE-001"
       ],
       "story_dependencies": [
@@ -701,7 +1359,49 @@
       ],
       "reverse_dependency_count": 3,
       "reasons": [
-        "waits on SRV-001, QUE-001"
+        "waits on QUE-001"
+      ]
+    },
+    {
+      "id": "RPL-003",
+      "title": "Add replay checkpoints with state hashes at recommended boundaries (start, turn start, rollback, end)",
+      "path": "stories/generated/RPL-003.story.yaml",
+      "area": "replay",
+      "type": "implementation",
+      "priority": "medium",
+      "score": 66,
+      "unmet_story_dependencies": [
+        "RPL-001",
+        "RPL-002"
+      ],
+      "story_dependencies": [
+        "RPL-001",
+        "RPL-002",
+        "ENG-001"
+      ],
+      "reverse_dependency_count": 4,
+      "reasons": [
+        "waits on RPL-001, RPL-002"
+      ]
+    },
+    {
+      "id": "DB-008",
+      "title": "Add bans table migration + ban persistence API (no enforcement yet)",
+      "path": "stories/generated/DB-008.story.yaml",
+      "area": "database",
+      "type": "implementation",
+      "priority": "medium",
+      "score": 62,
+      "unmet_story_dependencies": [
+        "DB-006"
+      ],
+      "story_dependencies": [
+        "DB-006",
+        "SRV-013"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "waits on DB-006"
       ]
     },
     {
@@ -713,7 +1413,6 @@
       "priority": "medium",
       "score": 60,
       "unmet_story_dependencies": [
-        "CAR-001",
         "EFF-001"
       ],
       "story_dependencies": [
@@ -722,26 +1421,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on CAR-001, EFF-001"
-      ]
-    },
-    {
-      "id": "SRV-011",
-      "title": "Implement deck validation: variant split counting up to base-card limit",
-      "path": "stories/generated/SRV-011.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "medium",
-      "score": 60,
-      "unmet_story_dependencies": [
-        "CAR-001"
-      ],
-      "story_dependencies": [
-        "CAR-001"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "waits on CAR-001"
+        "waits on EFF-001"
       ]
     },
     {
@@ -813,6 +1493,56 @@
   ],
   "ambiguities": [
     {
+      "id": "AMB-007",
+      "title": "Ambiguity: define SpectatorView and spectator-facing protocol contracts across filtered and delayed-full modes",
+      "path": "stories/generated/AMB-007.story.yaml",
+      "area": "contracts",
+      "type": "ambiguity",
+      "priority": "critical",
+      "score": 124,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "CON-001"
+      ],
+      "reverse_dependency_count": 0,
+      "reasons": [
+        "clarification item; do not promote into implementation tranche"
+      ]
+    },
+    {
+      "id": "AMB-005",
+      "title": "Ambiguity: define SpectatorView shape and its relationship to PlayerView/ReplayView under each spectator policy",
+      "path": "stories/generated/AMB-005.story.yaml",
+      "area": "contracts",
+      "type": "ambiguity",
+      "priority": "high",
+      "score": 104,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [],
+      "reverse_dependency_count": 2,
+      "reasons": [
+        "clarification item; do not promote into implementation tranche"
+      ]
+    },
+    {
+      "id": "AMB-001",
+      "title": "Ambiguity: define match_lost message contract and terminal handling when recovery data is unavailable",
+      "path": "stories/generated/AMB-001.story.yaml",
+      "area": "contracts",
+      "type": "ambiguity",
+      "priority": "high",
+      "score": 100,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "CON-001",
+        "SRV-015"
+      ],
+      "reverse_dependency_count": 2,
+      "reasons": [
+        "clarification item; do not promote into implementation tranche"
+      ]
+    },
+    {
       "id": "AMB-002",
       "title": "Ambiguity: define exact semantics and identifiers for EngineEvents emitted by effect runtime queue lifecycle and transient-set cardMoved visibility",
       "path": "stories/generated/AMB-002.story.yaml",
@@ -874,1030 +1604,5 @@
     }
   ],
   "merge_or_replace": [],
-  "reject_or_needs_edit": [
-    {
-      "id": "ENG-030",
-      "title": "Implement moveSelected and playSelected execution with board-cap rule-processing integration",
-      "path": "stories/generated/ENG-030.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "critical",
-      "score": 130,
-      "unmet_story_dependencies": [
-        "ENG-031",
-        "EFF-014"
-      ],
-      "story_dependencies": [
-        "ENG-031",
-        "ENG-015",
-        "EFF-014"
-      ],
-      "reverse_dependency_count": 1,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-016",
-      "title": "Add DSL primitives required for OP01-060: revealTop + selectFromSet + playSelected + returnUnselectedToDeck + attachedDonCount condition",
-      "path": "stories/generated/EFF-016.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "critical",
-      "score": 128,
-      "unmet_story_dependencies": [
-        "EFF-014",
-        "EFF-035"
-      ],
-      "story_dependencies": [
-        "EFF-014",
-        "EFF-035",
-        "ENG-011",
-        "ENG-009"
-      ],
-      "reverse_dependency_count": 1,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-031",
-      "title": "Implement effect queue processing loop with pause/cancel/resolve and trigger detection from events",
-      "path": "stories/generated/EFF-031.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "critical",
-      "score": 128,
-      "unmet_story_dependencies": [
-        "ENG-014"
-      ],
-      "story_dependencies": [
-        "EFF-030",
-        "ENG-004",
-        "ENG-006",
-        "ENG-014"
-      ],
-      "reverse_dependency_count": 1,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-014",
-      "title": "Implement rule-processing checkpoints + exact win/loss conditions (deck-out, 0-life damage loss, concede, draw on double loss)",
-      "path": "stories/generated/ENG-014.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "critical",
-      "score": 128,
-      "unmet_story_dependencies": [
-        "ENG-033"
-      ],
-      "story_dependencies": [
-        "ENG-004",
-        "ENG-033"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-028",
-      "title": "Implement legal-action visibility redaction so opponent cannot infer hidden counter availability",
-      "path": "stories/generated/ENG-028.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "critical",
-      "score": 128,
-      "unmet_story_dependencies": [
-        "ENG-026"
-      ],
-      "story_dependencies": [
-        "ENG-026",
-        "ENG-009"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-035",
-      "title": "Implement rule-processing checkpoint runner after every atomic mutation",
-      "path": "stories/generated/ENG-035.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "critical",
-      "score": 128,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "ENG-003",
-        "ENG-004"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-014",
-      "title": "Implement transient reveal/selection set framework with cleanup and visibility redaction",
-      "path": "stories/generated/EFF-014.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "critical",
-      "score": 126,
-      "unmet_story_dependencies": [
-        "EFF-031"
-      ],
-      "story_dependencies": [
-        "ENG-009",
-        "ENG-004",
-        "EFF-031"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-039",
-      "title": "BRIDGE: Implement PendingDecision projection/redaction in PlayerView without leaking privateToChooser candidates",
-      "path": "stories/generated/EFF-039.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "critical",
-      "score": 126,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "CON-001",
-        "ENG-009",
-        "ENG-015"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-032",
-      "title": "Implement life trigger decision flow during damage processing (ConfirmLifeTriggerDecision + no-zone handling)",
-      "path": "stories/generated/ENG-032.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "critical",
-      "score": 126,
-      "unmet_story_dependencies": [
-        "ENG-033"
-      ],
-      "story_dependencies": [
-        "ENG-033",
-        "ENG-015",
-        "ENG-009"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-033",
-      "title": "Implement battle + damage processing for vanilla cards (life to hand, banish, KO rested character)",
-      "path": "stories/generated/ENG-033.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "critical",
-      "score": 126,
-      "unmet_story_dependencies": [
-        "ENG-026"
-      ],
-      "story_dependencies": [
-        "ENG-010",
-        "ENG-004",
-        "ENG-026"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "CAR-001",
-      "title": "Add a fixture-backed @optcg/cards adapter for Poneglyph-shaped records",
-      "path": "stories/generated/CAR-001.story.yaml",
-      "area": "cards",
-      "type": "implementation",
-      "priority": "high",
-      "score": 124,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "INF-001",
-        "CON-001"
-      ],
-      "reverse_dependency_count": 9,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "SEC-007",
-      "title": "Add PlayerView filter checklist assertions and fixtures for hidden-zone + RNG/effectQueue redaction",
-      "path": "stories/generated/SEC-007.story.yaml",
-      "area": "security",
-      "type": "verification",
-      "priority": "critical",
-      "score": 122,
-      "unmet_story_dependencies": [
-        "ENG-026"
-      ],
-      "story_dependencies": [
-        "ENG-009",
-        "ENG-026",
-        "ENG-005"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "DB-001",
-      "title": "Implement the durable match, replay, and Redis recovery persistence baseline",
-      "path": "stories/generated/DB-001.story.yaml",
-      "area": "database",
-      "type": "implementation",
-      "priority": "high",
-      "score": 114,
-      "unmet_story_dependencies": [
-        "RPL-001",
-        "SRV-001"
-      ],
-      "story_dependencies": [
-        "INF-001",
-        "RPL-001",
-        "SRV-001"
-      ],
-      "reverse_dependency_count": 6,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-021",
-      "title": "Add Milestone 2 golden interaction scripts for first effect runtime behaviors",
-      "path": "stories/generated/EFF-021.story.yaml",
-      "area": "engine",
-      "type": "verification",
-      "priority": "critical",
-      "score": 110,
-      "unmet_story_dependencies": [
-        "EFF-031",
-        "EFF-028",
-        "EFF-037",
-        "EFF-008",
-        "EFF-012",
-        "EFF-014",
-        "EFF-038"
-      ],
-      "story_dependencies": [
-        "EFF-030",
-        "EFF-031",
-        "EFF-028",
-        "EFF-037",
-        "EFF-008",
-        "EFF-010",
-        "EFF-034",
-        "EFF-012",
-        "EFF-014",
-        "EFF-038"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-001",
-      "title": "Bootstrap @optcg/effects with schema-valid fixture definitions",
-      "path": "stories/generated/EFF-001.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 108,
-      "unmet_story_dependencies": [
-        "CON-002"
-      ],
-      "story_dependencies": [
-        "INF-001",
-        "CON-001",
-        "CON-002"
-      ],
-      "reverse_dependency_count": 3,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "CON-005",
-      "title": "Implement the format registry, ladderId derivation, and simple Elo policy baseline",
-      "path": "stories/generated/CON-005.story.yaml",
-      "area": "contracts",
-      "type": "implementation",
-      "priority": "high",
-      "score": 108,
-      "unmet_story_dependencies": [
-        "QUE-001",
-        "DB-001"
-      ],
-      "story_dependencies": [
-        "CON-001",
-        "QUE-001",
-        "DB-001"
-      ],
-      "reverse_dependency_count": 2,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "CON-002",
-      "title": "Validate effect-definition fixtures against the canonical DSL schema",
-      "path": "stories/generated/CON-002.story.yaml",
-      "area": "contracts",
-      "type": "tooling",
-      "priority": "high",
-      "score": 108,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "INF-001"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "AMB-005",
-      "title": "Ambiguity: define SpectatorView shape and its relationship to PlayerView/ReplayView under each spectator policy",
-      "path": "stories/generated/AMB-005.story.yaml",
-      "area": "contracts",
-      "type": "ambiguity",
-      "priority": "high",
-      "score": 104,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [],
-      "reverse_dependency_count": 2,
-      "reasons": [
-        "ambiguity is already closed by cited or tightening spec"
-      ]
-    },
-    {
-      "id": "EFF-017",
-      "title": "Add DSL primitive selectCards (zone-based) with public/private visibility support",
-      "path": "stories/generated/EFF-017.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 104,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "EFF-010"
-      ],
-      "reverse_dependency_count": 1,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "SRV-001",
-      "title": "Implement the match-server action envelope and idempotent sequencing baseline",
-      "path": "stories/generated/SRV-001.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "high",
-      "score": 102,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "INF-001",
-        "CON-001",
-        "ENG-001"
-      ],
-      "reverse_dependency_count": 4,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "SRV-007",
-      "title": "Add visibility-category filter functions: PlayerView vs SpectatorView vs ReplayView serializers kept separate",
-      "path": "stories/generated/SRV-007.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "high",
-      "score": 100,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "ENG-004",
-        "ENG-009"
-      ],
-      "reverse_dependency_count": 3,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "AMB-001",
-      "title": "Ambiguity: define match_lost message contract and terminal handling when recovery data is unavailable",
-      "path": "stories/generated/AMB-001.story.yaml",
-      "area": "contracts",
-      "type": "ambiguity",
-      "priority": "high",
-      "score": 100,
-      "unmet_story_dependencies": [
-        "SRV-015"
-      ],
-      "story_dependencies": [
-        "CON-001",
-        "SRV-015"
-      ],
-      "reverse_dependency_count": 2,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-025",
-      "title": "Add EngineEvent visibility taxonomy including serverOnly and ensure replayOnly storage is supported without live emission",
-      "path": "stories/generated/ENG-025.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 100,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "ENG-004"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-026",
-      "title": "Implement legal-actions routing: phase actions vs decision responses without hidden leaks",
-      "path": "stories/generated/ENG-026.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 100,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "ENG-007"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "SRV-003",
-      "title": "Implement match-server broadcast ordering with monotonic serverSeq and committed stateSeq",
-      "path": "stories/generated/SRV-003.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [
-        "SRV-001"
-      ],
-      "story_dependencies": [
-        "SRV-001",
-        "ENG-001"
-      ],
-      "reverse_dependency_count": 2,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-008",
-      "title": "Implement optional effect activation decisions (chooseOptionalActivation)",
-      "path": "stories/generated/EFF-008.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [
-        "EFF-037"
-      ],
-      "story_dependencies": [
-        "ENG-015",
-        "EFF-030",
-        "EFF-037"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-009",
-      "title": "Implement PayCostDecision creation + atomic cost payment events",
-      "path": "stories/generated/EFF-009.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [
-        "EFF-037"
-      ],
-      "story_dependencies": [
-        "ENG-015",
-        "ENG-011",
-        "EFF-037"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-024",
-      "title": "Implement RevealRecord lifecycle: temporary visibility records with expiration cleanup in engine output views",
-      "path": "stories/generated/EFF-024.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [
-        "EFF-014"
-      ],
-      "story_dependencies": [
-        "ENG-003",
-        "ENG-009",
-        "EFF-014"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-028",
-      "title": "Implement source presence policy checks for queueing and resolution",
-      "path": "stories/generated/EFF-028.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "ENG-003",
-        "ENG-004",
-        "EFF-030"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-032",
-      "title": "Implement duration expiration for effect queue and continuous effects",
-      "path": "stories/generated/EFF-032.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [
-        "ENG-033",
-        "EFF-012"
-      ],
-      "story_dependencies": [
-        "ENG-010",
-        "ENG-033",
-        "EFF-012"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-033",
-      "title": "Implement effect logging events for queue lifecycle and decisions for replay determinism",
-      "path": "stories/generated/EFF-033.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [
-        "EFF-031"
-      ],
-      "story_dependencies": [
-        "ENG-004",
-        "EFF-031",
-        "EFF-034"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-022",
-      "title": "Implement card instance identity reset on zone transitions + simultaneous ordering decision for multi-move",
-      "path": "stories/generated/ENG-022.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "ENG-015",
-        "ENG-003",
-        "ENG-004"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-024",
-      "title": "Implement OrderCardsDecision for simultaneous multi-card zone placement with secret-zone non-leak rules",
-      "path": "stories/generated/ENG-024.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [
-        "ENG-022"
-      ],
-      "story_dependencies": [
-        "ENG-015",
-        "ENG-009",
-        "ENG-022"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-027",
-      "title": "Implement Counter Step legal counter actions with hidden-info safe auto-pass behavior",
-      "path": "stories/generated/ENG-027.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [
-        "ENG-033",
-        "ENG-026"
-      ],
-      "story_dependencies": [
-        "ENG-033",
-        "ENG-009",
-        "ENG-026"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-031",
-      "title": "Implement playing a card action skeleton with cost computation + overflow/stage replacement rule trashing",
-      "path": "stories/generated/ENG-031.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [
-        "ENG-026"
-      ],
-      "story_dependencies": [
-        "ENG-011",
-        "ENG-004",
-        "ENG-026"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-034",
-      "title": "Implement phaseStarted(main) gating with start-of-main trigger window before action priority",
-      "path": "stories/generated/ENG-034.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 96,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "ENG-010",
-        "ENG-004",
-        "ENG-015"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "SRV-004",
-      "title": "Add match-server full PlayerView stateSync and client resync request handling",
-      "path": "stories/generated/SRV-004.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "high",
-      "score": 94,
-      "unmet_story_dependencies": [
-        "SRV-001"
-      ],
-      "story_dependencies": [
-        "CON-001",
-        "SRV-001",
-        "ENG-001"
-      ],
-      "reverse_dependency_count": 2,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-035",
-      "title": "Implement DSL sequence connector semantics with segment result recording",
-      "path": "stories/generated/EFF-035.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 94,
-      "unmet_story_dependencies": [
-        "EFF-031",
-        "EFF-008",
-        "EFF-009"
-      ],
-      "story_dependencies": [
-        "EFF-031",
-        "EFF-008",
-        "EFF-009",
-        "EFF-010"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "EFF-037",
-      "title": "Implement once-per-turn usage records and commitment rules",
-      "path": "stories/generated/EFF-037.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 94,
-      "unmet_story_dependencies": [
-        "EFF-006"
-      ],
-      "story_dependencies": [
-        "ENG-003",
-        "ENG-010",
-        "EFF-006",
-        "ENG-015"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-002",
-      "title": "Build the terminal CLI runner for two-sided vanilla matches",
-      "path": "stories/generated/ENG-002.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 94,
-      "unmet_story_dependencies": [
-        "CAR-001"
-      ],
-      "story_dependencies": [
-        "INF-001",
-        "CON-001",
-        "ENG-001",
-        "CAR-001"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "SEC-001",
-      "title": "Add hidden-information and replay-drift verification lanes",
-      "path": "stories/generated/SEC-001.story.yaml",
-      "area": "security",
-      "type": "verification",
-      "priority": "high",
-      "score": 94,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "INF-001",
-        "ENG-001"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "CLI-001",
-      "title": "Implement @optcg/client PlayerView renderer skeleton that never requires raw GameState (Milestone 3 baseline)",
-      "path": "stories/generated/CLI-001.story.yaml",
-      "area": "client",
-      "type": "implementation",
-      "priority": "high",
-      "score": 92,
-      "unmet_story_dependencies": [
-        "CLI-003"
-      ],
-      "story_dependencies": [
-        "CON-001",
-        "CLI-003"
-      ],
-      "reverse_dependency_count": 2,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "RPL-001",
-      "title": "Define the replay artifact contract and checkpoint drift verification lane",
-      "path": "stories/generated/RPL-001.story.yaml",
-      "area": "replay",
-      "type": "implementation",
-      "priority": "high",
-      "score": 86,
-      "unmet_story_dependencies": [
-        "SEC-001"
-      ],
-      "story_dependencies": [
-        "ENG-001",
-        "SEC-001"
-      ],
-      "reverse_dependency_count": 1,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "CLI-003",
-      "title": "Create @optcg/view-engine package with PlayerView-only API boundary and no hidden-state inputs",
-      "path": "stories/generated/CLI-003.story.yaml",
-      "area": "client",
-      "type": "implementation",
-      "priority": "high",
-      "score": 86,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "CON-001"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "SRV-005",
-      "title": "Implement decisionRequired routing and expectedDecisionId validation for respondToDecision",
-      "path": "stories/generated/SRV-005.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "high",
-      "score": 86,
-      "unmet_story_dependencies": [
-        "SRV-001",
-        "SRV-003"
-      ],
-      "story_dependencies": [
-        "SRV-001",
-        "ENG-001",
-        "SRV-003"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "SRV-006",
-      "title": "Implement authoritative per-player game timers and draining-player rules (no per-decision/mulligan timers)",
-      "path": "stories/generated/SRV-006.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "high",
-      "score": 86,
-      "unmet_story_dependencies": [
-        "SRV-002",
-        "SRV-003"
-      ],
-      "story_dependencies": [
-        "SRV-002",
-        "SRV-003",
-        "ENG-001"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "RPL-002",
-      "title": "Implement replay header + deterministic log writer in match-server with version and RNG metadata",
-      "path": "stories/generated/RPL-002.story.yaml",
-      "area": "replay",
-      "type": "implementation",
-      "priority": "high",
-      "score": 82,
-      "unmet_story_dependencies": [
-        "RPL-001",
-        "SRV-001",
-        "DB-001"
-      ],
-      "story_dependencies": [
-        "RPL-001",
-        "SRV-001",
-        "ENG-001",
-        "DB-001"
-      ],
-      "reverse_dependency_count": 1,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-017",
-      "title": "Implement continuous-effects computed view skeleton (power/cost/keywords) without mutating canonical state",
-      "path": "stories/generated/ENG-017.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "medium",
-      "score": 72,
-      "unmet_story_dependencies": [
-        "CAR-001"
-      ],
-      "story_dependencies": [
-        "CAR-001",
-        "ENG-003"
-      ],
-      "reverse_dependency_count": 1,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "ENG-029",
-      "title": "Implement loop detection signatures and declare-loop-count decision path (draw resolution baseline)",
-      "path": "stories/generated/ENG-029.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "medium",
-      "score": 68,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "ENG-006",
-        "ENG-015"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    },
-    {
-      "id": "RPL-003",
-      "title": "Add replay checkpoints with state hashes at recommended boundaries (start, turn start, rollback, end)",
-      "path": "stories/generated/RPL-003.story.yaml",
-      "area": "replay",
-      "type": "implementation",
-      "priority": "medium",
-      "score": 66,
-      "unmet_story_dependencies": [
-        "RPL-001",
-        "RPL-002"
-      ],
-      "story_dependencies": [
-        "RPL-001",
-        "RPL-002",
-        "ENG-001"
-      ],
-      "reverse_dependency_count": 4,
-      "reasons": [
-        "contains dependencies that do not resolve to repo story IDs"
-      ]
-    }
-  ]
+  "reject_or_needs_edit": []
 }
