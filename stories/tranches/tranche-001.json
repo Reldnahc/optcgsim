@@ -3,36 +3,17 @@
   "source_review": "stories/generated-review.json",
   "limit": 15,
   "summary": {
-    "generated_stories": 94,
-    "approved_or_done_stories": 16,
-    "candidate_keep_stories": 94,
+    "generated_stories": 92,
+    "approved_or_done_stories": 17,
+    "candidate_keep_stories": 92,
     "selected": 15,
     "ready_now_remaining": 11,
     "ready_after": 45,
-    "ambiguities": 7,
+    "ambiguities": 6,
     "merge_or_replace": 0,
     "reject_or_needs_edit": 0
   },
   "selected": [
-    {
-      "id": "CON-003",
-      "title": "Add public protocol and deck-validation DTOs to @optcg/types",
-      "path": "stories/generated/CON-003.story.yaml",
-      "area": "contracts",
-      "type": "implementation",
-      "priority": "critical",
-      "score": 134,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "CON-001"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "priority=critical",
-        "area=contracts",
-        "dependents=0"
-      ]
-    },
     {
       "id": "CAR-001",
       "title": "Add a fixture-backed @optcg/cards adapter for Poneglyph-shaped records",
@@ -315,6 +296,25 @@
         "area=server",
         "dependents=6"
       ]
+    },
+    {
+      "id": "SRV-002",
+      "title": "Add reconnect, timer ownership, and spectator subscription handling",
+      "path": "stories/generated/SRV-002.story.yaml",
+      "area": "server",
+      "type": "implementation",
+      "priority": "high",
+      "score": 114,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "SRV-001"
+      ],
+      "reverse_dependency_count": 6,
+      "reasons": [
+        "priority=high",
+        "area=server",
+        "dependents=6"
+      ]
     }
   ],
   "ready_now_remaining": [
@@ -588,7 +588,6 @@
       "score": 118,
       "unmet_story_dependencies": [
         "DB-001",
-        "SRV-002",
         "SRV-004",
         "RPL-001"
       ],
@@ -600,7 +599,7 @@
       ],
       "reverse_dependency_count": 1,
       "reasons": [
-        "waits on DB-001, SRV-002, SRV-004, RPL-001"
+        "waits on DB-001, SRV-004, RPL-001"
       ]
     },
     {
@@ -613,7 +612,6 @@
       "score": 116,
       "unmet_story_dependencies": [
         "SRV-003",
-        "SRV-002",
         "RPL-003",
         "AMB-001"
       ],
@@ -625,7 +623,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on SRV-003, SRV-002, RPL-003, AMB-001"
+        "waits on SRV-003, RPL-003, AMB-001"
       ]
     },
     {
@@ -658,7 +656,6 @@
       "unmet_story_dependencies": [
         "SRV-015",
         "RPL-003",
-        "SRV-002",
         "AMB-001"
       ],
       "story_dependencies": [
@@ -669,7 +666,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on SRV-015, RPL-003, SRV-002, AMB-001"
+        "waits on SRV-015, RPL-003, AMB-001"
       ]
     },
     {
@@ -716,8 +713,7 @@
         "RPL-003",
         "SRV-003",
         "SRV-004",
-        "SRV-002",
-        "AMB-005"
+        "AMB-007"
       ],
       "story_dependencies": [
         "RPL-003",
@@ -725,11 +721,11 @@
         "SRV-003",
         "SRV-004",
         "SRV-002",
-        "AMB-005"
+        "AMB-007"
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on RPL-003, SRV-003, SRV-004, SRV-002, AMB-005"
+        "waits on RPL-003, SRV-003, SRV-004, AMB-007"
       ]
     },
     {
@@ -1132,8 +1128,7 @@
       "score": 88,
       "unmet_story_dependencies": [
         "FMT-003",
-        "SRV-007",
-        "SRV-002"
+        "SRV-007"
       ],
       "story_dependencies": [
         "FMT-003",
@@ -1142,7 +1137,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on FMT-003, SRV-007, SRV-002"
+        "waits on FMT-003, SRV-007"
       ]
     },
     {
@@ -1280,7 +1275,6 @@
       "priority": "high",
       "score": 86,
       "unmet_story_dependencies": [
-        "SRV-002",
         "SRV-003"
       ],
       "story_dependencies": [
@@ -1290,7 +1284,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on SRV-002, SRV-003"
+        "waits on SRV-003"
       ]
     },
     {
@@ -1477,17 +1471,17 @@
         "LOB-001",
         "FMT-003",
         "SRV-007",
-        "AMB-005"
+        "AMB-007"
       ],
       "story_dependencies": [
         "LOB-001",
         "FMT-003",
         "SRV-007",
-        "AMB-005"
+        "AMB-007"
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on LOB-001, FMT-003, SRV-007, AMB-005"
+        "waits on LOB-001, FMT-003, SRV-007, AMB-007"
       ]
     }
   ],
@@ -1499,26 +1493,11 @@
       "area": "contracts",
       "type": "ambiguity",
       "priority": "critical",
-      "score": 124,
+      "score": 132,
       "unmet_story_dependencies": [],
       "story_dependencies": [
         "CON-001"
       ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "clarification item; do not promote into implementation tranche"
-      ]
-    },
-    {
-      "id": "AMB-005",
-      "title": "Ambiguity: define SpectatorView shape and its relationship to PlayerView/ReplayView under each spectator policy",
-      "path": "stories/generated/AMB-005.story.yaml",
-      "area": "contracts",
-      "type": "ambiguity",
-      "priority": "high",
-      "score": 104,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [],
       "reverse_dependency_count": 2,
       "reasons": [
         "clarification item; do not promote into implementation tranche"

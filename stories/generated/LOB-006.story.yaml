@@ -24,7 +24,7 @@ dependencies:
   - LOB-001
   - FMT-003
   - SRV-007
-  - AMB-005
+  - AMB-007
 acceptance_criteria:
   - Attempting to set a disallowed spectator policy mode for a custom lobby is rejected (M7-003)
   - Delayed modes require delayMs and minActionDelay to be present and are validated

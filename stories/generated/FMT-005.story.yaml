@@ -34,7 +34,7 @@ dependencies:
   - SRV-003
   - SRV-004
   - SRV-002
-  - AMB-005
+  - AMB-007
 acceptance_criteria:
   - "Given a rollback request with a non-existent targetIndex, the server rejects it without mutating match state"
   - "Given a mutual rollback request, the opponent is prompted for consent and no further actions are accepted until consent is resolved"

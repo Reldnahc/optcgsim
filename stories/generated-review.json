@@ -1,8 +1,8 @@
 {
   "ok": true,
   "totals": {
-    "reviewed": 94,
-    "keep": 94,
+    "reviewed": 92,
+    "keep": 92,
     "merge_or_replace": 0,
     "reject": 0,
     "needs_edit": 0
@@ -42,16 +42,6 @@
       "id": "AMB-004",
       "title": "Ambiguity: define exact expiration semantics for RevealRecord.expires and required cleanup checkpoint timing",
       "path": "stories/generated/AMB-004.story.yaml",
-      "dependencyIssues": [],
-      "duplicateHits": [],
-      "falseAmbiguityHits": [],
-      "recommendation": "keep",
-      "reasons": []
-    },
-    {
-      "id": "AMB-005",
-      "title": "Ambiguity: define SpectatorView shape and its relationship to PlayerView/ReplayView under each spectator policy",
-      "path": "stories/generated/AMB-005.story.yaml",
       "dependencyIssues": [],
       "duplicateHits": [],
       "falseAmbiguityHits": [],
@@ -182,16 +172,6 @@
       "id": "CON-002",
       "title": "Validate effect-definition fixtures against the canonical DSL schema",
       "path": "stories/generated/CON-002.story.yaml",
-      "dependencyIssues": [],
-      "duplicateHits": [],
-      "falseAmbiguityHits": [],
-      "recommendation": "keep",
-      "reasons": []
-    },
-    {
-      "id": "CON-003",
-      "title": "Add public protocol and deck-validation DTOs to @optcg/types",
-      "path": "stories/generated/CON-003.story.yaml",
       "dependencyIssues": [],
       "duplicateHits": [],
       "falseAmbiguityHits": [],

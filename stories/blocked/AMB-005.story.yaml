@@ -6,9 +6,9 @@ title: "Ambiguity: define SpectatorView shape and its relationship to PlayerView
 type: ambiguity
 area: contracts
 priority: high
-status: generated
+status: replaced
 summary: >
-  The spec defines spectator policies and filtering categories but does not provide a concrete SpectatorView interface. Clarify exact fields, whether it reuses PlayerView, and which hidden-info fields appear under live-filtered vs delayed-filtered vs delayed-full.
+  Superseded by AMB-007. The spec defines spectator policies and filtering categories but does not provide a concrete SpectatorView interface. Clarify exact fields, whether it reuses PlayerView, and which hidden-info fields appear under live-filtered vs delayed-filtered vs delayed-full.
 spec_refs:
   - 06-visibility-security.s008 (Spectator modes)
   - 06-visibility-security.s020 (Original spectator model and v2 hardening)
@@ -29,6 +29,7 @@ required_tests:
   - Contract tests for view filtering once SpectatorView is defined.
 repo_rules:
   - Do not implement speculative SpectatorView fields beyond what is clarified.
+  - Replaced by AMB-007 because the broader spectator protocol/stateSync contract must be decided together with the DTO shape.
 ambiguity_policy: fail_and_escalate
 agent:
   packet_path: agent-packets/generated/AMB-005.packet.md
