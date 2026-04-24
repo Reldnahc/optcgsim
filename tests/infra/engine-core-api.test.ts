@@ -367,6 +367,20 @@ describe("engine-core API skeleton", () => {
     expect(() => applyAction(state, { type: "concede" })).toThrow(/frozen/);
   });
 
+  it("rejects actions once the match is completed", () => {
+    const state = createInitialState(
+      makeInput({
+        status: "completed",
+        winner: asId<PlayerId>("p1")
+      })
+    );
+
+    expect(getLegalActions(state, asId("p1"))).toEqual([]);
+    expect(() => applyAction(state, { type: "endMainPhase" })).toThrow(
+      /terminal/
+    );
+  });
+
   it("filters hidden information out of PlayerView", () => {
     const state = createInitialState(makeInput());
     const view = filterStateForPlayer(state, asId("p1"));
@@ -538,6 +552,41 @@ describe("engine-core API skeleton", () => {
     ).toBeUndefined();
   });
 
+  it("redacts face-down life cards in public trigger decisions", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-life-trigger"),
+          type: "confirmTriggerFromLife",
+          playerId: asId("p1"),
+          visibility: { type: "public" },
+          card: {
+            instanceId: asId("p1-life-1"),
+            cardId: asId("life-1"),
+            owner: asId("p1"),
+            controller: asId("p1"),
+            zone: {
+              zone: "life",
+              playerId: asId("p1"),
+              index: 0
+            }
+          }
+        } satisfies PendingDecision
+      })
+    );
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    const opponentView = filterStateForPlayer(state, asId("p2"));
+
+    expect(chooserView.pendingDecision?.type).toBe("confirmTriggerFromLife");
+    expect(opponentView.pendingDecision?.type).toBe("confirmTriggerFromLife");
+    expect(
+      opponentView.pendingDecision?.type === "confirmTriggerFromLife"
+        ? opponentView.pendingDecision.card.cardId
+        : undefined
+    ).toBeUndefined();
+  });
+
   it("runs invariant checks after actions in test mode", () => {
     const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
     process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
@@ -638,6 +687,25 @@ describe("engine-core API skeleton", () => {
         response: { type: "mulligan" }
       }
     ]);
+  });
+
+  it("rejects non-decision actions while a decision is pending", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-block-actions"),
+          type: "mulligan",
+          playerId: asId("p1"),
+          handCount: 5,
+          visibility: { type: "private", playerIds: [asId("p1")] }
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(() => applyAction(state, { type: "endMainPhase" })).toThrow(
+      /pending decision/
+    );
+    expect(state.pendingDecision?.id).toBe(asId("decision-block-actions"));
   });
 
   it("rejects invalid decision payloads before clearing the pending decision", () => {

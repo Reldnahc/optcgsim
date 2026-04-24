@@ -614,7 +614,7 @@ function toPublicDecision(
       return withOptionalBaseFields({
         ...base,
         type: "confirmTriggerFromLife",
-        card: toPublicCardRef(pendingDecision.card),
+        card: toPublicDecisionCardRef(pendingDecision.card, viewerId),
         options: ["activateTrigger", "addToHand"]
       }) as PublicDecision;
     case "chooseReplacement":
@@ -1696,6 +1696,10 @@ export function getLegalActions(
 }
 
 export function applyAction(state: GameState, action: Action): EngineResult {
+  if (state.status === "completed" || state.status === "errored") {
+    throw new Error("Actions are not allowed once the match is terminal");
+  }
+
   if (state.status === "frozen") {
     throw new Error("Actions are not allowed while the match is frozen");
   }
@@ -1708,6 +1712,12 @@ export function applyAction(state: GameState, action: Action): EngineResult {
       throw new Error("respondToDecision requires the active pending decision");
     }
     return resumeDecision(state, action.response);
+  }
+
+  if (state.pendingDecision) {
+    throw new Error(
+      "Non-decision actions are not allowed while a pending decision exists"
+    );
   }
 
   const nextState = cloneStateForMutation(state);
