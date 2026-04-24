@@ -1053,11 +1053,15 @@ export type DecisionResponse =
   | { type: "optionalActivationChoice"; choice: "activate" | "decline" }
   | { type: "lifeTriggerChoice"; choice: "activateTrigger" | "addToHand" }
   | { type: "payment"; selection: CostPaymentSelection }
-  | { type: "targetSelection"; selected: PublicCardRef[] }
-  | { type: "cardSelection"; selected: PublicCardRef[]; saveAs?: SelectionId }
+  | { type: "targetSelection"; selected: PublicDecisionCardRef[] }
+  | {
+      type: "cardSelection";
+      selected: PublicDecisionCardRef[];
+      saveAs?: SelectionId;
+    }
   | { type: "effectOptionSelection"; optionIds: string[] }
   | { type: "replacementChoice"; replacementId: EffectId | null }
-  | { type: "orderCards"; ordered: PublicCardRef[] }
+  | { type: "orderCards"; ordered: PublicDecisionCardRef[] }
   | { type: "chooseCharacterToTrash"; instanceId: InstanceId }
   | { type: "pass" };
 
@@ -1133,12 +1137,12 @@ export interface PublicDecisionBase {
 }
 
 export interface TargetCandidate {
-  card: PublicCardRef;
+  card: PublicDecisionCardRef;
   label?: string;
 }
 
 export interface CardSelectionCandidate {
-  card: PublicCardRef;
+  card: PublicDecisionCardRef;
   label?: string;
 }
 
@@ -1152,6 +1156,13 @@ export interface PublicCardRef {
   cardId: CardId;
   owner: PlayerId;
   controller: PlayerId;
+}
+
+export interface PublicDecisionCardRef {
+  instanceId: InstanceId;
+  owner: PlayerId;
+  controller: PlayerId;
+  cardId?: CardId;
 }
 
 export interface PublicPaymentCardRef extends PublicCardRef {
@@ -1323,7 +1334,7 @@ export type PublicDecision =
     })
   | (PublicDecisionBase & {
       type: "orderCards";
-      cards: PublicCardRef[];
+      cards: PublicDecisionCardRef[];
       destination: ZoneName;
     })
   | (PublicDecisionBase & {
@@ -1411,9 +1422,10 @@ export interface PublicCardView {
   keywords: Keyword[];
 }
 
-export type PublicLifeCardView =
-  | { faceUp: false }
-  | { faceUp: true; card: PublicCardView };
+export interface PublicLifeAreaView {
+  count: number;
+  faceUpCards: PublicCardView[];
+}
 
 export interface VisiblePlayerState {
   playerId: PlayerId;
@@ -1425,7 +1437,7 @@ export interface VisiblePlayerState {
   characters: PublicCardView[];
   stage?: PublicCardView;
   costArea: PublicCardView[];
-  life: PublicLifeCardView[] | HiddenZoneView;
+  life: PublicLifeAreaView;
 }
 
 export interface OpponentVisibleState {
@@ -1438,7 +1450,7 @@ export interface OpponentVisibleState {
   characters: PublicCardView[];
   stage?: PublicCardView;
   costArea: PublicCardView[];
-  life: PublicLifeCardView[] | HiddenZoneView;
+  life: PublicLifeAreaView;
 }
 
 export type PublicTurnState = TurnState;

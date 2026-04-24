@@ -151,6 +151,31 @@ describe("@optcg/types API surface", () => {
       ]
     };
 
+    const hiddenCardSelectionDecision: PublicDecision = {
+      id: asBrand<DecisionId>("decision-7"),
+      type: "selectCards",
+      playerId,
+      visibility: { type: "private", playerIds: [playerId] },
+      request: {
+        chooser: "self",
+        zone: "deck",
+        min: 1,
+        max: 1,
+        allowFewerIfUnavailable: false,
+        visibility: "privateToChooser"
+      },
+      candidates: [
+        {
+          card: {
+            controller: playerId,
+            owner: playerId,
+            instanceId: asBrand("deck-card-1")
+          },
+          label: "Unknown top card"
+        }
+      ]
+    };
+
     const replacementDecision: PublicDecision = {
       id: replacementDecisionId,
       type: "chooseReplacement",
@@ -266,7 +291,7 @@ describe("@optcg/types API surface", () => {
           },
           characters: [],
           costArea: [],
-          life: [{ faceUp: false }]
+          life: { count: 1, faceUpCards: [] }
         },
         opponent: {
           playerId: asBrand<PlayerId>("player-2"),
@@ -285,7 +310,7 @@ describe("@optcg/types API surface", () => {
           },
           characters: [],
           costArea: [],
-          life: [{ faceUp: false }]
+          life: { count: 1, faceUpCards: [] }
         },
         turn: {
           activePlayer: playerId,
@@ -348,6 +373,17 @@ describe("@optcg/types API surface", () => {
           choice: "activate"
         } satisfies DecisionResponse,
         targetDecision,
+        hiddenCardSelectionDecision,
+        hiddenCardSelectionResponse: {
+          type: "cardSelection",
+          selected: [
+            {
+              controller: playerId,
+              owner: playerId,
+              instanceId: asBrand("deck-card-1")
+            }
+          ]
+        } satisfies DecisionResponse,
         lifeTriggerResponse: {
           type: "lifeTriggerChoice",
           choice: "addToHand"
@@ -372,7 +408,7 @@ describe("@optcg/types API surface", () => {
           self: { hand: Array<{ instanceId: string }> };
           opponent: {
             hand: { count: number };
-            life: Array<{ faceUp: boolean; card?: { cardId: string } }>;
+            life: { count: number; faceUpCards: Array<{ cardId: string }> };
           };
           pendingDecision: {
             type: string;
@@ -417,7 +453,17 @@ describe("@optcg/types API surface", () => {
       };
       targetDecision: {
         request: { chooser: string; zone: string; player: string };
-        candidates: Array<{ label: string }>;
+        candidates: Array<{ label: string; card: { cardId?: string } }>;
+      };
+      hiddenCardSelectionDecision: {
+        request: { zone?: string; visibility: string };
+        candidates: Array<{
+          label: string;
+          card: { instanceId: string; cardId?: string };
+        }>;
+      };
+      hiddenCardSelectionResponse: {
+        selected: Array<{ instanceId: string; cardId?: string }>;
       };
       lifeTriggerDecision: {
         options: string[];
@@ -442,8 +488,8 @@ describe("@optcg/types API surface", () => {
     expect(payload.message.view.playerId).toBe("player-1");
     expect(payload.message.view.self.hand[0]?.instanceId).toBe("hand-1");
     expect(payload.message.view.opponent.hand.count).toBe(5);
-    expect(payload.message.view.opponent.life[0]?.faceUp).toBe(false);
-    expect(payload.message.view.opponent.life[0]?.card).toBeUndefined();
+    expect(payload.message.view.opponent.life.count).toBe(1);
+    expect(payload.message.view.opponent.life.faceUpCards).toEqual([]);
     expect(payload.message.view.pendingDecision.type).toBe(
       "chooseTriggerOrder"
     );
@@ -510,6 +556,23 @@ describe("@optcg/types API surface", () => {
     expect(payload.targetDecision.candidates[0]?.label).toBe(
       "Opposing character"
     );
+    expect(payload.targetDecision.candidates[0]?.card.cardId).toBe("OP01-020");
+    expect(payload.hiddenCardSelectionDecision.request.zone).toBe("deck");
+    expect(payload.hiddenCardSelectionDecision.request.visibility).toBe(
+      "privateToChooser"
+    );
+    expect(payload.hiddenCardSelectionDecision.candidates[0]?.label).toBe(
+      "Unknown top card"
+    );
+    expect(
+      payload.hiddenCardSelectionDecision.candidates[0]?.card.cardId
+    ).toBeUndefined();
+    expect(payload.hiddenCardSelectionResponse.selected[0]?.instanceId).toBe(
+      "deck-card-1"
+    );
+    expect(
+      payload.hiddenCardSelectionResponse.selected[0]?.cardId
+    ).toBeUndefined();
     expect(payload.lifeTriggerDecision.options).toEqual([
       "activateTrigger",
       "addToHand"
