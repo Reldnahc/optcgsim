@@ -41,7 +41,10 @@ describe("@optcg/types API surface", () => {
       expectedDecisionId: decisionId,
       actionHash: asBrand("hash-1"),
       sentAtClientTime: "2026-04-24T08:00:00.000Z",
-      action: { type: "endMainPhase" },
+      action: {
+        type: "activateBlocker",
+        blockerInstanceId: asBrand("blocker-1")
+      },
       signature: "sig"
     };
 
@@ -287,6 +290,7 @@ describe("@optcg/types API surface", () => {
         },
         pendingDecision: decision,
         legalActions: [
+          { type: "activateBlocker", blockerInstanceId: asBrand("blocker-1") },
           { type: "playCard", handInstanceId: asBrand("hand-1") },
           { type: "respondToDecision", decisionId }
         ],
@@ -346,7 +350,11 @@ describe("@optcg/types API surface", () => {
         result
       })
     ) as {
-      envelope: { protocolVersion: string; expectedDecisionId: string };
+      envelope: {
+        protocolVersion: string;
+        expectedDecisionId: string;
+        action: { type: string; blockerInstanceId?: string };
+      };
       actionResult: {
         serverSeq: number;
         events: Array<{ visibleTo: string }>;
@@ -361,7 +369,11 @@ describe("@optcg/types API surface", () => {
             life: Array<{ faceUp: boolean; card?: { cardId: string } }>;
           };
           pendingDecision: { type: string; triggers: Array<{ label: string }> };
-          legalActions: Array<{ type: string; decisionId?: string }>;
+          legalActions: Array<{
+            type: string;
+            decisionId?: string;
+            blockerInstanceId?: string;
+          }>;
           revealedCards: Array<{ reason: string; visibleTo: string }>;
           timers: { players: Record<string, { remainingMs: number }> };
         };
@@ -409,6 +421,10 @@ describe("@optcg/types API surface", () => {
 
     expect(payload.envelope.protocolVersion).toBe("v1");
     expect(payload.envelope.expectedDecisionId).toBe("decision-1");
+    expect(payload.envelope.action).toEqual({
+      type: "activateBlocker",
+      blockerInstanceId: "blocker-1"
+    });
     expect(payload.actionResult.serverSeq).toBe(4);
     expect(payload.actionResult.events[0]?.visibleTo).toBe("both");
     expect(payload.message.type).toBe("stateSync");
@@ -423,8 +439,12 @@ describe("@optcg/types API surface", () => {
     expect(payload.message.view.pendingDecision.triggers[0]?.label).toBe(
       "Leader trigger"
     );
-    expect(payload.message.view.legalActions[0]?.type).toBe("playCard");
-    expect(payload.message.view.legalActions[1]?.decisionId).toBe("decision-1");
+    expect(payload.message.view.legalActions[0]).toEqual({
+      type: "activateBlocker",
+      blockerInstanceId: "blocker-1"
+    });
+    expect(payload.message.view.legalActions[1]?.type).toBe("playCard");
+    expect(payload.message.view.legalActions[2]?.decisionId).toBe("decision-1");
     expect(payload.message.view.revealedCards[0]?.reason).toBe("trigger");
     expect(payload.message.view.revealedCards[0]?.visibleTo).toBe("both");
     expect(payload.replacementDecision.replacements[0]?.label).toBe(

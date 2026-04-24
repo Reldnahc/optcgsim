@@ -1017,6 +1017,7 @@ export type Action =
       attackerInstanceId: InstanceId;
       target: BattleTarget;
     }
+  | { type: "activateBlocker"; blockerInstanceId: InstanceId }
   | { type: "activateEffect"; sourceInstanceId: InstanceId; effectId: EffectId }
   | {
       type: "useCounter";
@@ -1236,6 +1237,7 @@ export type PublicLegalAction =
       attackerInstanceId: InstanceId;
       target: BattleTarget;
     }
+  | { type: "activateBlocker"; blockerInstanceId: InstanceId }
   | { type: "activateEffect"; sourceInstanceId: InstanceId; effectId: EffectId }
   | {
       type: "useCounter";
