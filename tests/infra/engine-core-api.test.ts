@@ -1,0 +1,398 @@
+import { describe, expect, it } from "vitest";
+import {
+  applyAction,
+  createInitialState,
+  filterStateForPlayer,
+  hashGameState,
+  resumeDecision
+} from "../../packages/engine-core/src/index.ts";
+import type {
+  CardCategory,
+  CardColor,
+  CardInstance,
+  CardState,
+  Keyword,
+  LifeCard,
+  MatchCardManifest,
+  MatchConfiguration,
+  MatchId,
+  PendingDecision,
+  PlayerId,
+  PlayerState,
+  ResolvedCard,
+  RngState,
+  SpectatorPolicy,
+  TurnState,
+  ZoneName,
+  ZoneRef
+} from "@optcg/types";
+import type { CreateInitialStateInput } from "../../packages/engine-core/src/index.ts";
+
+function asId<T extends string>(value: string): T {
+  return value as T;
+}
+
+function makeResolvedCard(
+  cardId: string,
+  category: CardCategory
+): ResolvedCard {
+  const card: ResolvedCard = {
+    cardId: asId(cardId),
+    language: "en",
+    name: cardId,
+    category,
+    set: "set-1",
+    setName: "Set 1",
+    released: true,
+    rarity: "C",
+    colors: ["red"] as CardColor[],
+    attributes: ["slash"],
+    types: [category],
+    printedKeywords: category === "character" ? (["blocker"] as Keyword[]) : [],
+    variants: [],
+    legality: {},
+    officialFaq: [],
+    sourceTextHash: asId("source-hash"),
+    behaviorHash: asId("behavior-hash"),
+    support: {
+      status: "vanilla-confirmed",
+      effectDefinitionIds: [],
+      customHandlerIds: [],
+      sourceTextHash: asId("source-hash"),
+      behaviorHash: asId("behavior-hash")
+    }
+  };
+  if (category !== "leader") {
+    card.cost = 1;
+  }
+  if (category !== "don") {
+    card.power = 5000;
+  }
+  if (category !== "leader" && category !== "don") {
+    card.counter = 1000;
+  }
+  if (category === "leader") {
+    card.life = 5;
+  }
+  return card;
+}
+
+function makeManifest(): MatchCardManifest {
+  const cards = {
+    "leader-1": makeResolvedCard("leader-1", "leader"),
+    "leader-2": makeResolvedCard("leader-2", "leader"),
+    "char-1": makeResolvedCard("char-1", "character"),
+    "char-2": makeResolvedCard("char-2", "character"),
+    "char-3": makeResolvedCard("char-3", "character"),
+    "char-4": makeResolvedCard("char-4", "character"),
+    "event-1": makeResolvedCard("event-1", "event"),
+    "stage-1": makeResolvedCard("stage-1", "stage"),
+    "don-1": makeResolvedCard("don-1", "don"),
+    "don-2": makeResolvedCard("don-2", "don"),
+    "life-1": makeResolvedCard("life-1", "character"),
+    "life-2": makeResolvedCard("life-2", "character"),
+    "life-3": makeResolvedCard("life-3", "character"),
+    "trash-1": makeResolvedCard("trash-1", "character")
+  } as MatchCardManifest["cards"];
+
+  return {
+    manifestHash: asId("manifest-hash"),
+    source: "manual-test",
+    cardDataVersion: "1",
+    effectDefinitionsVersion: "1",
+    customHandlerVersion: "1",
+    banlistVersion: "1",
+    cards,
+    createdAt: "2026-04-24T00:00:00Z"
+  };
+}
+
+function makeZone(zone: ZoneName, playerId: string, index?: number): ZoneRef {
+  return {
+    zone,
+    playerId: asId(playerId),
+    index
+  } as ZoneRef;
+}
+
+function makeCard(args: {
+  instanceId: string;
+  cardId: string;
+  owner: string;
+  controller?: string;
+  zone: ZoneRef;
+  state?: CardState;
+}): CardInstance {
+  return {
+    instanceId: asId(args.instanceId),
+    cardId: asId(args.cardId),
+    owner: asId(args.owner),
+    controller: asId(args.controller ?? args.owner),
+    zone: args.zone,
+    state: args.state ?? "active",
+    attachedDon: [],
+    createdAtStateSeq: 0 as CardInstance["createdAtStateSeq"]
+  };
+}
+
+function makeLifeCard(card: CardInstance, faceUp: boolean): LifeCard {
+  return { card, faceUp };
+}
+
+function makePlayerState(
+  playerId: string,
+  leaderCardId: string,
+  hiddenHandCardId: string
+): PlayerState {
+  const brandedPlayerId = asId<PlayerId>(playerId);
+  return {
+    playerId: brandedPlayerId,
+    deck: [
+      makeCard({
+        instanceId: `${playerId}-deck-1`,
+        cardId: "char-3",
+        owner: playerId,
+        zone: makeZone("deck", playerId, 0)
+      }),
+      makeCard({
+        instanceId: `${playerId}-deck-2`,
+        cardId: "char-4",
+        owner: playerId,
+        zone: makeZone("deck", playerId, 1)
+      })
+    ],
+    donDeck: [
+      makeCard({
+        instanceId: `${playerId}-don-1`,
+        cardId: "don-1",
+        owner: playerId,
+        zone: makeZone("donDeck", playerId, 0)
+      }),
+      makeCard({
+        instanceId: `${playerId}-don-2`,
+        cardId: "don-2",
+        owner: playerId,
+        zone: makeZone("donDeck", playerId, 1)
+      })
+    ],
+    hand: [
+      makeCard({
+        instanceId: `${playerId}-hand-1`,
+        cardId: hiddenHandCardId,
+        owner: playerId,
+        zone: makeZone("hand", playerId, 0)
+      })
+    ],
+    trash: [
+      makeCard({
+        instanceId: `${playerId}-trash-1`,
+        cardId: "trash-1",
+        owner: playerId,
+        zone: makeZone("trash", playerId, 0)
+      })
+    ],
+    leader: makeCard({
+      instanceId: `${playerId}-leader`,
+      cardId: leaderCardId,
+      owner: playerId,
+      zone: makeZone("leaderArea", playerId)
+    }),
+    characters: [
+      makeCard({
+        instanceId: `${playerId}-char-1`,
+        cardId: "char-1",
+        owner: playerId,
+        zone: makeZone("characterArea", playerId, 0)
+      })
+    ],
+    stage: makeCard({
+      instanceId: `${playerId}-stage`,
+      cardId: "stage-1",
+      owner: playerId,
+      zone: makeZone("stageArea", playerId)
+    }),
+    costArea: [
+      makeCard({
+        instanceId: `${playerId}-cost-1`,
+        cardId: "don-1",
+        owner: playerId,
+        zone: makeZone("costArea", playerId, 0)
+      })
+    ],
+    life: [
+      makeLifeCard(
+        makeCard({
+          instanceId: `${playerId}-life-1`,
+          cardId: "life-1",
+          owner: playerId,
+          zone: makeZone("life", playerId, 0)
+        }),
+        false
+      ),
+      makeLifeCard(
+        makeCard({
+          instanceId: `${playerId}-life-2`,
+          cardId: "life-2",
+          owner: playerId,
+          zone: makeZone("life", playerId, 1)
+        }),
+        true
+      )
+    ],
+    hasMulliganed: false,
+    keptOpeningHand: false,
+    turnCount: 0
+  };
+}
+
+function makeMatchConfig(): MatchConfiguration {
+  return {
+    gameType: "custom",
+    formatId: asId("format-1"),
+    spectatorPolicy: {
+      mode: "disabled",
+      allowHandRevealAfterGame: false
+    } satisfies SpectatorPolicy,
+    disconnectPolicy: {
+      gracePeriodMs: 30000,
+      forfeitAfterMs: 60000,
+      pauseTimersDuringGrace: true,
+      allowReconnectAfterForfeit: false,
+      countsAsLossOnGraceExpiry: true
+    }
+  };
+}
+
+function makeTurnState(
+  activePlayer: string,
+  nonActivePlayer: string,
+  phase: TurnState["phase"] = "main"
+): TurnState {
+  return {
+    activePlayer: asId(activePlayer),
+    nonActivePlayer: asId(nonActivePlayer),
+    firstPlayer: asId(activePlayer),
+    globalTurnNumber: 1 as TurnState["globalTurnNumber"],
+    phase
+  };
+}
+
+function makeInput(
+  overrides?: Partial<CreateInitialStateInput>
+): CreateInitialStateInput {
+  const base: CreateInitialStateInput = {
+    matchId: asId<MatchId>("match-1"),
+    rulesVersion: "v6",
+    engineVersion: "eng-001",
+    cardManifest: makeManifest(),
+    matchConfig: makeMatchConfig(),
+    rng: {
+      algorithm: "test-fixed",
+      seed: "seed-1",
+      internalState: "rng-state",
+      callCount: 0
+    } satisfies RngState,
+    players: {
+      [asId<PlayerId>("p1")]: makePlayerState("p1", "leader-1", "event-1"),
+      [asId<PlayerId>("p2")]: makePlayerState("p2", "leader-2", "char-2")
+    },
+    turn: makeTurnState("p1", "p2"),
+    status: "active"
+  };
+
+  return {
+    ...base,
+    ...overrides
+  };
+}
+
+describe("engine-core API skeleton", () => {
+  it("keeps state hashes stable for identical seed and action logs", () => {
+    const firstState = createInitialState(makeInput());
+    const secondState = createInitialState(makeInput());
+
+    const firstResult = applyAction(firstState, { type: "endMainPhase" });
+    const secondResult = applyAction(secondState, { type: "endMainPhase" });
+
+    expect(hashGameState(firstState)).toBe(hashGameState(secondState));
+    expect(firstResult.stateHash).toBe(secondResult.stateHash);
+    expect(firstResult.state.turn.phase).toBe("end");
+    expect(firstResult.events.map((event) => event.type)).toEqual([
+      "phaseEnded",
+      "phaseStarted"
+    ]);
+  });
+
+  it("filters hidden information out of PlayerView", () => {
+    const state = createInitialState(makeInput());
+    const view = filterStateForPlayer(state, asId("p1"));
+
+    expect(view.self.hand.map((card) => card.cardId)).toEqual([
+      asId("event-1")
+    ]);
+    expect(view.opponent.hand.count).toBe(1);
+    expect(view.opponent.life.count).toBe(2);
+    expect(view.opponent.life.faceUpCards.map((card) => card.cardId)).toEqual([
+      asId("life-2")
+    ]);
+
+    const serializedView = JSON.stringify(view);
+    expect(serializedView).not.toContain("rng-state");
+    expect(serializedView).not.toContain("seed-1");
+    expect(serializedView).not.toContain("effectQueue");
+    expect(serializedView).not.toContain("p2-hand-1");
+    expect(serializedView).not.toContain("life-1");
+  });
+
+  it("runs invariant checks after actions in test mode", () => {
+    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
+    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
+
+    const input = makeInput();
+    const p1 = input.players[asId<PlayerId>("p1")]!;
+    p1.hand[0]!.instanceId = p1.deck[0]!.instanceId;
+
+    try {
+      const state = createInitialState(input);
+      expect(() => applyAction(state, { type: "concede" })).toThrow(
+        /multiple locations/
+      );
+    } finally {
+      if (originalFlag === undefined) {
+        delete process.env["OPTCG_ENGINE_TEST_MODE"];
+      } else {
+        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
+      }
+    }
+  });
+
+  it("runs invariant checks after decision responses in test mode", () => {
+    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
+    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
+
+    const input = makeInput({
+      pendingDecision: {
+        id: asId("decision-1"),
+        type: "mulligan",
+        playerId: asId("p1"),
+        handCount: 5,
+        visibility: { type: "private", playerIds: [asId("p1")] }
+      } satisfies PendingDecision
+    });
+    const p1 = input.players[asId<PlayerId>("p1")]!;
+    p1.hand[0]!.instanceId = p1.deck[0]!.instanceId;
+
+    try {
+      const state = createInitialState(input);
+      expect(() => resumeDecision(state, { type: "keepOpeningHand" })).toThrow(
+        /multiple locations/
+      );
+    } finally {
+      if (originalFlag === undefined) {
+        delete process.env["OPTCG_ENGINE_TEST_MODE"];
+      } else {
+        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
+      }
+    }
+  });
+});

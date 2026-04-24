@@ -6,7 +6,7 @@ title: Bootstrap the deterministic engine-core API skeleton
 type: implementation
 area: engine
 priority: critical
-status: approved
+status: in_progress
 summary: >
   Create the authoritative engine-core package with the canonical entry points, deterministic state hashing, and player-view filtering contracts.
 spec_refs:
