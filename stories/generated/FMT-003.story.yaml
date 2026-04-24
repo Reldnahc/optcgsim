@@ -2,37 +2,42 @@ spec_version: v6
 spec_package_name: optcg-md-specs-v6
 story_schema_version: 1.0.0
 id: FMT-003
-title: Implement spectator policy evaluation and filtering modes (live-filtered / delayed-filtered / delayed-full / disabled)
+title: Implement spectator policy evaluation for opt-in live-filtered matches (disabled / live-filtered)
 type: implementation
 area: server
 priority: high
 status: generated
 summary: >
-  Add spectator mode support with policy-driven filtering and delays, ensuring ranked defaults do not expose hidden info and delayed modes satisfy turn/time/min-action constraints.
+  Add initial spectator mode support with policy-driven filtering for
+  explicitly spectatable matches only. The first implementation supports
+  disabled and live-filtered only; ranked and delayed spectator modes remain
+  out of scope.
 spec_refs:
   - 06-visibility-security.s008 (Spectator modes)
   - 06-visibility-security.s020 (Original spectator model and v2 hardening)
 scope:
-  - "Define SpectatorPolicy type and canonical defaults per game context in server config (unranked live-filtered; ranked delayed-filtered with delayTurns=3 plus configured delayMs/minActionDelay)."
-  - "Implement spectator subscription projection: produce SpectatorView snapshots according to policy (filtered vs full)."
-  - "Implement delay gate logic that requires all configured constraints to pass before releasing a snapshot: delayTurns, delayMs, minActionDelay."
-  - "Allow internal buffer to store full snapshots, but ensure emitted spectator snapshots are filtered/released per policy only."
+  - "Define SpectatorPolicy type and canonical defaults per game context for initial implementation (disabled or live-filtered only)."
+  - "Implement spectator subscription projection for explicitly spectatable matches: produce live filtered SpectatorView snapshots only."
+  - "Reject spectator subscription when the match policy is disabled."
+  - "Ensure spectator payloads use only public filtered state and never require delayed buffering or full-information snapshots."
 non_scope:
-  - Match-server protocol for spectator subscriptions (handled by SRV-002 / SEC-005).
+  - Match-server protocol for spectator subscriptions beyond live filtered payload routing (handled by SRV-002 / SEC-005).
   - UI implementation for spectator viewing in the client.
+  - Delayed spectator modes.
+  - Ranked spectator support.
   - Tournament/broadcast organizer configuration UI.
 dependencies:
   - SRV-007
 acceptance_criteria:
-  - Spectator snapshots for ranked default are delayed-filtered and do not expose hidden info.
-  - "Delayed spectator emission requires satisfying all configured constraints (turn delay, wall-clock delay, minimum server-action delay) when present."
-  - disabled policy yields no spectator snapshots/stream.
+  - Spectator snapshots are emitted only for matches with `live-filtered` spectator policy and do not expose hidden info.
+  - Ranked matches and any `disabled` policy yield no spectator snapshots/stream.
+  - No delayed spectator buffering or release gates exist in the initial implementation.
 required_tests:
-  - "Unit test: delay gate blocks emission until delayTurns AND delayMs AND minActionDelay are satisfied."
-  - "Unit test: delayed-full emits full info only after delays; delayed-filtered emits filtered view after delays."
   - "Unit test: live-filtered emits immediately but still filtered."
+  - "Unit test: disabled policy yields no spectator snapshots."
+  - "Security test: spectator payload never contains hidden zones, private decision data, or other non-public state."
 repo_rules:
-  - Prefer conservative filtering; never emit full info unless policy is delayed-full and delays satisfied.
+  - Prefer conservative filtering; do not implement delayed or full-information spectator delivery in this story.
 ambiguity_policy: fail_and_escalate
 agent:
   packet_path: agent-packets/generated/FMT-003.packet.md

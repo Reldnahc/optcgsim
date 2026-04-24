@@ -2,24 +2,27 @@ spec_version: v6
 spec_package_name: optcg-md-specs-v6
 story_schema_version: 1.0.0
 id: LOB-006
-title: "Custom lobby spectator policy validation: host may choose only allowed modes; enforce allowHandRevealAfterGame flag"
+title: "Custom lobby spectator policy validation: host may choose only disabled or live-filtered for opt-in spectating"
 type: implementation
 area: server
 priority: medium
 status: generated
 summary: >
-  Extend lobby creation/update validation so host-configured spectator policy is constrained to allowed modes and includes required policy fields; persist and apply allowHandRevealAfterGame behavior flag.
+  Extend lobby creation/update validation so host-configured spectator policy is
+  constrained to the initial allowed modes for opt-in spectating: `disabled`
+  and `live-filtered`.
 spec_refs:
   - 06-visibility-security.s008 (Spectator modes)
   - 18-acceptance-tests.s010 (Milestone 7 - public unranked alpha and custom lobbies)
 scope:
-  - "On lobby creation/update, validate requested SpectatorPolicy.mode is among allowed modes for custom lobbies"
-  - "Validate policy fields: delayTurns/delayMs/minActionDelay presence as required by mode (delayed policies require time/action delay per s020 interface)"
-  - Persist allowHandRevealAfterGame setting and apply it when serving post-game views to spectators (if spectator system supports post-game)
-  - Ensure lobby host can select only allowed spectator policies (M7-003)
+  - "On lobby creation/update, validate requested SpectatorPolicy.mode is either `disabled` or `live-filtered`."
+  - Ensure lobby host can opt into spectating only for matches intended to be spectatable.
+  - Ensure lobby host can select only allowed spectator policies (M7-003).
 non_scope:
   - Defining the exact set of allowed modes per lobby type if not already present in lobby spec (escalate if missing)
-  - Implementing post-game hand reveal UI; only enforce server data gating
+  - Delayed spectator modes
+  - Post-game hand reveal behavior
+  - Implementing spectator UI; only enforce server-side policy gating
 dependencies:
   - LOB-001
   - FMT-003
@@ -27,12 +30,12 @@ dependencies:
   - AMB-007
 acceptance_criteria:
   - Attempting to set a disallowed spectator policy mode for a custom lobby is rejected (M7-003)
-  - Delayed modes require delayMs and minActionDelay to be present and are validated
-  - allowHandRevealAfterGame is stored and included in lobby/match metadata and respected by server when producing post-game spectator views (if served)
+  - Custom lobbies can opt into `live-filtered` spectating only when explicitly configured to do so
+  - Ranked or otherwise non-spectatable matches never become spectatable through this flow
 required_tests:
   - "API: create lobby with invalid spectator policy rejected"
-  - "API: create lobby with delayed policy missing delayMs rejected"
-  - "Integration: lobby-configured policy is applied to spectator stream behavior"
+  - "API: create lobby with delayed or full-information spectator policy rejected"
+  - "Integration: lobby-configured live-filtered policy is applied only to explicitly spectatable matches"
 repo_rules:
   - "If allowed modes list is not specified in provided sections, fail_and_escalate rather than guessing"
 ambiguity_policy: fail_and_escalate

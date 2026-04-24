@@ -112,7 +112,7 @@ area: server
 priority: high
 status: approved
 summary: >
-  Implement the default delayed-filtered spectator projection for ranked public
+  Implement opt-in live-filtered spectator projection for explicitly spectatable matches
   matches so spectators do not receive current-turn hidden information.
 spec_refs:
   - 06-visibility-security.s008 (Spectator modes)

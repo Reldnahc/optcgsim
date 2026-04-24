@@ -1,8 +1,8 @@
 {
   "ok": true,
   "totals": {
-    "reviewed": 92,
-    "keep": 92,
+    "reviewed": 90,
+    "keep": 90,
     "merge_or_replace": 0,
     "reject": 0,
     "needs_edit": 0
@@ -52,16 +52,6 @@
       "id": "AMB-006",
       "title": "Ambiguity: define API contracts for decklist and loadout payload shapes (including variant selection identifiers and asset availability check)",
       "path": "stories/generated/AMB-006.story.yaml",
-      "dependencyIssues": [],
-      "duplicateHits": [],
-      "falseAmbiguityHits": [],
-      "recommendation": "keep",
-      "reasons": []
-    },
-    {
-      "id": "AMB-007",
-      "title": "Ambiguity: define SpectatorView and spectator-facing protocol contracts across filtered and delayed-full modes",
-      "path": "stories/generated/AMB-007.story.yaml",
       "dependencyIssues": [],
       "duplicateHits": [],
       "falseAmbiguityHits": [],
@@ -590,7 +580,7 @@
     },
     {
       "id": "FMT-003",
-      "title": "Implement spectator policy evaluation and filtering modes (live-filtered / delayed-filtered / delayed-full / disabled)",
+      "title": "Implement spectator policy evaluation for opt-in live-filtered matches (disabled / live-filtered)",
       "path": "stories/generated/FMT-003.story.yaml",
       "dependencyIssues": [],
       "duplicateHits": [],
@@ -612,16 +602,6 @@
       "id": "FMT-005",
       "title": "Implement rollback authorization gating by mode + hidden-information exposure class (block or judge-only in ranked)",
       "path": "stories/generated/FMT-005.story.yaml",
-      "dependencyIssues": [],
-      "duplicateHits": [],
-      "falseAmbiguityHits": [],
-      "recommendation": "keep",
-      "reasons": []
-    },
-    {
-      "id": "FMT-006",
-      "title": "Enforce ranked default spectator policy: delayed-filtered with turn+time+minActionDelay constraints",
-      "path": "stories/generated/FMT-006.story.yaml",
       "dependencyIssues": [],
       "duplicateHits": [],
       "falseAmbiguityHits": [],
@@ -670,7 +650,7 @@
     },
     {
       "id": "LOB-006",
-      "title": "Custom lobby spectator policy validation: host may choose only allowed modes; enforce allowHandRevealAfterGame flag",
+      "title": "Custom lobby spectator policy validation: host may choose only disabled or live-filtered for opt-in spectating",
       "path": "stories/generated/LOB-006.story.yaml",
       "dependencyIssues": [],
       "duplicateHits": [],

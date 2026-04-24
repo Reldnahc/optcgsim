@@ -237,17 +237,17 @@ Section Ref: `22-v6-implementation-tightening.s013`
 <!-- SECTION_REF: 22-v6-implementation-tightening.s014 -->
 Section Ref: `22-v6-implementation-tightening.s014`
 
-Default spectator policy is now singular:
+Initial spectator scope is now singular and narrowed for implementation:
 
 | Match type | Default spectator policy |
 |---|---|
 | Casual public | `live-filtered` |
-| Ranked public | `delayed-filtered`, `delayTurns = 3`, plus server-configured time/action delay |
-| Private lobby | Host-configurable among allowed modes |
-| Tournament | Organizer-configurable, default `delayed-filtered` |
+| Ranked public | `disabled` |
+| Private lobby | Host-configurable between `disabled` and `live-filtered` only |
+| Tournament | Deferred from initial implementation |
 | Completed replay | Full information, unless a future privacy policy says otherwise |
 
-`delayed-full` is not the public ranked default.
+`delayed-filtered` and `delayed-full` are deferred from initial implementation. They remain future design options, not active implementation scope.
 
 ### 11. Protocol idempotency
 <!-- SECTION_REF: 22-v6-implementation-tightening.s015 -->

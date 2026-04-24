@@ -169,7 +169,7 @@ Section Ref: `00-project-overview.s018`
 |---|---|---|---|---|---|---|
 | Local/dev sandbox | Local/test only | Configurable | None | Free | Optional full info | Allowed with warnings |
 | Unranked | Queue | Strict player views | None | Mutual consent before hidden info; otherwise admin/server policy | `live-filtered` | Rejected unless vanilla-confirmed or explicitly supported |
-| Ranked | Queue | Strict player views | Elo | Judge/admin only after hidden info | `delayed-filtered` | Rejected |
+| Ranked | Queue | Strict player views | Elo | Judge/admin only after hidden info | `disabled` | Rejected |
 | Custom | Lobby (optional password) | Strict player views | None | Host/mutual consent before hidden info; otherwise admin/server policy | Host-configurable within allowed modes | Rejected by default outside dev overrides |
 | Replay | Completed artifact | Full info | Not applicable | Not applicable | Full info | Historical, version-pinned |
 

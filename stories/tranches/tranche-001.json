@@ -3,13 +3,13 @@
   "source_review": "stories/generated-review.json",
   "limit": 15,
   "summary": {
-    "generated_stories": 92,
-    "approved_or_done_stories": 17,
-    "candidate_keep_stories": 92,
+    "generated_stories": 90,
+    "approved_or_done_stories": 18,
+    "candidate_keep_stories": 90,
     "selected": 15,
-    "ready_now_remaining": 11,
-    "ready_after": 45,
-    "ambiguities": 6,
+    "ready_now_remaining": 10,
+    "ready_after": 43,
+    "ambiguities": 5,
     "merge_or_replace": 0,
     "reject_or_needs_edit": 0
   },
@@ -298,27 +298,6 @@
       ]
     },
     {
-      "id": "SRV-002",
-      "title": "Add reconnect, timer ownership, and spectator subscription handling",
-      "path": "stories/generated/SRV-002.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "high",
-      "score": 114,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "SRV-001"
-      ],
-      "reverse_dependency_count": 6,
-      "reasons": [
-        "priority=high",
-        "area=server",
-        "dependents=6"
-      ]
-    }
-  ],
-  "ready_now_remaining": [
-    {
       "id": "CON-002",
       "title": "Validate effect-definition fixtures against the canonical DSL schema",
       "path": "stories/generated/CON-002.story.yaml",
@@ -332,9 +311,13 @@
       ],
       "reverse_dependency_count": 1,
       "reasons": [
-        "ready with current approved/done dependencies"
+        "priority=high",
+        "area=contracts",
+        "dependents=1"
       ]
-    },
+    }
+  ],
+  "ready_now_remaining": [
     {
       "id": "EFF-017",
       "title": "Add DSL primitive selectCards (zone-based) with public/private visibility support",
@@ -363,24 +346,6 @@
       "unmet_story_dependencies": [],
       "story_dependencies": [],
       "reverse_dependency_count": 1,
-      "reasons": [
-        "ready with current approved/done dependencies"
-      ]
-    },
-    {
-      "id": "SRV-007",
-      "title": "Add visibility-category filter functions: PlayerView vs SpectatorView vs ReplayView serializers kept separate",
-      "path": "stories/generated/SRV-007.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "high",
-      "score": 100,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "ENG-004",
-        "ENG-009"
-      ],
-      "reverse_dependency_count": 3,
       "reasons": [
         "ready with current approved/done dependencies"
       ]
@@ -454,6 +419,24 @@
         "ENG-001"
       ],
       "reverse_dependency_count": 1,
+      "reasons": [
+        "ready with current approved/done dependencies"
+      ]
+    },
+    {
+      "id": "SRV-007",
+      "title": "Add visibility-category filter functions: PlayerView vs SpectatorView vs ReplayView serializers kept separate",
+      "path": "stories/generated/SRV-007.story.yaml",
+      "area": "server",
+      "type": "implementation",
+      "priority": "high",
+      "score": 96,
+      "unmet_story_dependencies": [],
+      "story_dependencies": [
+        "ENG-004",
+        "ENG-009"
+      ],
+      "reverse_dependency_count": 2,
       "reasons": [
         "ready with current approved/done dependencies"
       ]
@@ -588,6 +571,7 @@
       "score": 118,
       "unmet_story_dependencies": [
         "DB-001",
+        "SRV-002",
         "SRV-004",
         "RPL-001"
       ],
@@ -599,7 +583,7 @@
       ],
       "reverse_dependency_count": 1,
       "reasons": [
-        "waits on DB-001, SRV-004, RPL-001"
+        "waits on DB-001, SRV-002, SRV-004, RPL-001"
       ]
     },
     {
@@ -612,6 +596,7 @@
       "score": 116,
       "unmet_story_dependencies": [
         "SRV-003",
+        "SRV-002",
         "RPL-003",
         "AMB-001"
       ],
@@ -623,7 +608,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on SRV-003, RPL-003, AMB-001"
+        "waits on SRV-003, SRV-002, RPL-003, AMB-001"
       ]
     },
     {
@@ -656,6 +641,7 @@
       "unmet_story_dependencies": [
         "SRV-015",
         "RPL-003",
+        "SRV-002",
         "AMB-001"
       ],
       "story_dependencies": [
@@ -666,7 +652,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on SRV-015, RPL-003, AMB-001"
+        "waits on SRV-015, RPL-003, SRV-002, AMB-001"
       ]
     },
     {
@@ -713,7 +699,7 @@
         "RPL-003",
         "SRV-003",
         "SRV-004",
-        "AMB-007"
+        "SRV-002"
       ],
       "story_dependencies": [
         "RPL-003",
@@ -725,28 +711,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on RPL-003, SRV-003, SRV-004, AMB-007"
-      ]
-    },
-    {
-      "id": "EFF-001",
-      "title": "Bootstrap @optcg/effects with schema-valid fixture definitions",
-      "path": "stories/generated/EFF-001.story.yaml",
-      "area": "engine",
-      "type": "implementation",
-      "priority": "high",
-      "score": 108,
-      "unmet_story_dependencies": [
-        "CON-002"
-      ],
-      "story_dependencies": [
-        "INF-001",
-        "CON-001",
-        "CON-002"
-      ],
-      "reverse_dependency_count": 3,
-      "reasons": [
-        "waits on CON-002"
+        "waits on RPL-003, SRV-003, SRV-004, SRV-002"
       ]
     },
     {
@@ -915,25 +880,6 @@
       ]
     },
     {
-      "id": "FMT-003",
-      "title": "Implement spectator policy evaluation and filtering modes (live-filtered / delayed-filtered / delayed-full / disabled)",
-      "path": "stories/generated/FMT-003.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "high",
-      "score": 98,
-      "unmet_story_dependencies": [
-        "SRV-007"
-      ],
-      "story_dependencies": [
-        "SRV-007"
-      ],
-      "reverse_dependency_count": 2,
-      "reasons": [
-        "waits on SRV-007"
-      ]
-    },
-    {
       "id": "DB-005",
       "title": "Add loadout persistence model and validation (decklist + cosmetics; reject missing variant assets)",
       "path": "stories/generated/DB-005.story.yaml",
@@ -1039,6 +985,25 @@
       ]
     },
     {
+      "id": "FMT-003",
+      "title": "Implement spectator policy evaluation for opt-in live-filtered matches (disabled / live-filtered)",
+      "path": "stories/generated/FMT-003.story.yaml",
+      "area": "server",
+      "type": "implementation",
+      "priority": "high",
+      "score": 94,
+      "unmet_story_dependencies": [
+        "SRV-007"
+      ],
+      "story_dependencies": [
+        "SRV-007"
+      ],
+      "reverse_dependency_count": 1,
+      "reasons": [
+        "waits on SRV-007"
+      ]
+    },
+    {
       "id": "CLI-001",
       "title": "Implement @optcg/client PlayerView renderer skeleton that never requires raw GameState (Milestone 3 baseline)",
       "path": "stories/generated/CLI-001.story.yaml",
@@ -1116,28 +1081,6 @@
       "reverse_dependency_count": 0,
       "reasons": [
         "waits on SRV-010, EFF-038"
-      ]
-    },
-    {
-      "id": "FMT-006",
-      "title": "Enforce ranked default spectator policy: delayed-filtered with turn+time+minActionDelay constraints",
-      "path": "stories/generated/FMT-006.story.yaml",
-      "area": "server",
-      "type": "implementation",
-      "priority": "high",
-      "score": 88,
-      "unmet_story_dependencies": [
-        "FMT-003",
-        "SRV-007"
-      ],
-      "story_dependencies": [
-        "FMT-003",
-        "SRV-007",
-        "SRV-002"
-      ],
-      "reverse_dependency_count": 0,
-      "reasons": [
-        "waits on FMT-003, SRV-007"
       ]
     },
     {
@@ -1275,6 +1218,7 @@
       "priority": "high",
       "score": 86,
       "unmet_story_dependencies": [
+        "SRV-002",
         "SRV-003"
       ],
       "story_dependencies": [
@@ -1284,7 +1228,7 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on SRV-003"
+        "waits on SRV-002, SRV-003"
       ]
     },
     {
@@ -1461,7 +1405,7 @@
     },
     {
       "id": "LOB-006",
-      "title": "Custom lobby spectator policy validation: host may choose only allowed modes; enforce allowHandRevealAfterGame flag",
+      "title": "Custom lobby spectator policy validation: host may choose only disabled or live-filtered for opt-in spectating",
       "path": "stories/generated/LOB-006.story.yaml",
       "area": "server",
       "type": "implementation",
@@ -1470,8 +1414,7 @@
       "unmet_story_dependencies": [
         "LOB-001",
         "FMT-003",
-        "SRV-007",
-        "AMB-007"
+        "SRV-007"
       ],
       "story_dependencies": [
         "LOB-001",
@@ -1481,28 +1424,11 @@
       ],
       "reverse_dependency_count": 0,
       "reasons": [
-        "waits on LOB-001, FMT-003, SRV-007, AMB-007"
+        "waits on LOB-001, FMT-003, SRV-007"
       ]
     }
   ],
   "ambiguities": [
-    {
-      "id": "AMB-007",
-      "title": "Ambiguity: define SpectatorView and spectator-facing protocol contracts across filtered and delayed-full modes",
-      "path": "stories/generated/AMB-007.story.yaml",
-      "area": "contracts",
-      "type": "ambiguity",
-      "priority": "critical",
-      "score": 132,
-      "unmet_story_dependencies": [],
-      "story_dependencies": [
-        "CON-001"
-      ],
-      "reverse_dependency_count": 2,
-      "reasons": [
-        "clarification item; do not promote into implementation tranche"
-      ]
-    },
     {
       "id": "AMB-001",
       "title": "Ambiguity: define match_lost message contract and terminal handling when recovery data is unavailable",

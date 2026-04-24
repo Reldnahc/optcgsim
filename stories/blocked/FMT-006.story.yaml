@@ -1,0 +1,39 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: FMT-006
+title: "Enforce ranked default spectator policy: delayed-filtered with turn+time+minActionDelay constraints"
+type: implementation
+area: server
+priority: high
+status: replaced
+summary: >
+  Deferred. Ranked spectating and delayed spectator modes are out of scope for
+  the initial implementation. This story remains as a future placeholder if the
+  product later reintroduces delayed public spectating.
+spec_refs:
+  - 06-visibility-security.s008 (Spectator modes)
+  - 06-visibility-security.s020 (Original spectator model and v2 hardening)
+  - 12-roadmap.s013 (Open decisions)
+scope:
+  - Deferred from initial implementation scope.
+non_scope:
+  - Any initial spectator implementation work.
+  - Defining tournament/broadcast organizer workflows
+  - Client spectator UI
+dependencies:
+  - FMT-003
+  - SRV-007
+  - SRV-002
+acceptance_criteria:
+  - The story is not selected for initial implementation.
+  - The deferred scope is documented rather than partially implemented.
+required_tests:
+  - Spec and backlog references identify ranked/delayed spectator work as deferred.
+repo_rules:
+  - Do not partially implement delayed spectator modes under another story.
+ambiguity_policy: implement_if_clearly_implied
+agent:
+  packet_path: agent-packets/generated/FMT-006.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

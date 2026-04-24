@@ -20,7 +20,7 @@ scope:
   - "implement reconnect requests that restore the current filtered view, pending decision, and timer state"
   - enforce one primary game timer per player plus disconnect grace behavior
   - drain time only for the player currently holding up game progress
-  - add spectator subscription handling that selects an allowed mode from match configuration and policy
+  - add spectator subscription handling for explicitly spectatable matches using the allowed configured mode
 non_scope:
   - ranked queue creation
   - historical replay export
@@ -36,7 +36,7 @@ required_tests:
   - protocol test covering reconnect sends current filtered PlayerView
   - protocol test covering pending decision restoration after reconnect
   - protocol test covering timer drainage ownership
-  - spectator policy regression covering delayed-filtered delivery without early leakage
+  - spectator policy regression covering live-filtered delivery without hidden-information leakage
 repo_rules:
   - must pass pnpm verify
   - must preserve package boundary enforcement

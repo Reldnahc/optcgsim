@@ -1,0 +1,47 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: AMB-007
+title: "Ambiguity: define SpectatorView and spectator-facing protocol contracts across filtered and delayed-full modes"
+type: ambiguity
+area: contracts
+priority: critical
+status: done
+summary: >
+  Resolved by tightening the initial spectator scope to opt-in live-filtered
+  only. Ranked spectating is disabled in the initial implementation, and delayed
+  spectator modes are deferred.
+spec_refs:
+  - "15-implementation-kickoff.s005 (Step 1 - `@optcg/types`)"
+  - "01-system-architecture.s004 (`@optcg/types`)"
+  - 06-visibility-security.s002 (Security principle)
+  - 06-visibility-security.s008 (Spectator modes)
+  - 06-visibility-security.s020 (Original spectator model and v2 hardening)
+  - 06-visibility-security.s021 (Original state-filtering categories preserved)
+  - 07-match-server-protocol.s003 (Connection lifecycle)
+  - 07-match-server-protocol.s006 (Broadcast messages)
+scope:
+  - record the initial spectator decision: opt-in live-filtered only
+  - record that ranked matches are not spectatable in the initial implementation
+  - record that delayed spectator modes are deferred from implementation scope
+  - record that replay remains the post-match full-information surface
+non_scope:
+  - implementing spectator filtering or subscriptions
+  - client spectator UI
+  - future delayed spectator modes
+dependencies:
+  - CON-001
+acceptance_criteria:
+  - a written scope decision exists limiting initial spectating to disabled/live-filtered only
+  - the clarification explicitly states that ranked matches are not spectatable in the initial implementation
+  - the clarification explicitly states that delayed spectator modes are deferred
+required_tests:
+  - backlog and spec references updated to remove delayed spectator modes from initial implementation scope
+repo_rules:
+  - visibility ambiguity must fail closed
+  - hidden-information safety is a security boundary
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/generated/AMB-007.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review

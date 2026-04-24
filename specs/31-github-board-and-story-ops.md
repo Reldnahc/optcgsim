@@ -127,7 +127,7 @@ Section Ref: `31-github-board-and-story-ops.s009`
 
 ```md
 ## Summary
-Implement the default delayed-filtered spectator projection for ranked public matches.
+Implement opt-in live-filtered spectator projection for explicitly spectatable matches.
 
 ## Authoritative Spec References
 - 06-visibility-security.s008 (Spectator modes)

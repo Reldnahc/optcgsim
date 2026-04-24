@@ -35,7 +35,7 @@ Section Ref: `29-game-types-queues-and-lobbies.s004`
 
 | gameType | Entry model | Rating | Spectator default | Rollback posture | Notes |
 |---|---|---|---|---|---|
-| `ranked` | Queue only | Elo | `delayed-filtered` | judge/admin only after hidden info | Strictest fairness mode |
+| `ranked` | Queue only | Elo | `disabled` | judge/admin only after hidden info | Strictest fairness mode |
 | `unranked` | Queue only | none | `live-filtered` | mutual consent before hidden info, otherwise admin/server policy | Public practice without rating |
 | `custom` | Lobby only | none | host-configurable within allowed bounds | host/mutual consent before hidden info, otherwise admin/server policy | Optional password support |
 
@@ -106,7 +106,7 @@ interface LobbyConfig {
   passwordHash?: string;
   formatId: string;
   allowSpectators: boolean;
-  spectatorPolicyMode: 'disabled' | 'live-filtered' | 'delayed-filtered' | 'delayed-full';
+  spectatorPolicyMode: 'disabled' | 'live-filtered';
   allowRematch: boolean;
 }
 ```

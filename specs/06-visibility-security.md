@@ -144,14 +144,11 @@ Examples:
 <!-- SECTION_REF: 06-visibility-security.s008 -->
 Section Ref: `06-visibility-security.s008`
 
-The default spectator policy is mode-specific, not universally full-information. Public ranked spectating must not expose hidden information, even with a delay, unless an explicit tournament/broadcast policy allows it.
+Initial implementation spectator policy is intentionally narrow. Spectating is opt-in, not universally available on every match, and public ranked spectating is deferred. Delayed spectator modes are also deferred from initial implementation.
 
 ```ts
 type SpectatorPolicy = {
-  mode: 'disabled' | 'live-filtered' | 'delayed-filtered' | 'delayed-full';
-  delayTurns?: number;
-  delayMs?: number;
-  minActionDelay?: number;
+  mode: 'disabled' | 'live-filtered';
   allowHandRevealAfterGame: boolean;
 };
 ```
@@ -161,12 +158,12 @@ Canonical defaults:
 | Game type / context | Default spectator policy |
 |---|---|
 | Unranked queue | `live-filtered` |
-| Ranked queue | `delayed-filtered`, `delayTurns = 3`, plus server-configured time/action delay |
-| Custom lobby | Host-configurable among allowed modes |
-| Tournament/broadcast | Organizer-configured; default `delayed-filtered` |
+| Ranked queue | `disabled` |
+| Custom lobby | Host-configurable between `disabled` and `live-filtered` only |
+| Tournament/broadcast | Deferred from initial implementation |
 | Completed replay | Full information after match completion |
 
-A delay measured only in turns is weak because turns vary in duration. Public delayed modes should satisfy all configured constraints: turn delay, wall-clock delay, and minimum server-action delay.
+The initial spectator implementation supports only live filtered views for explicitly spectatable matches. Delayed spectator modes remain future work and must not be partially implemented.
 
 ## Anti-cheat layers
 <!-- SECTION_REF: 06-visibility-security.s009 -->
@@ -283,27 +280,16 @@ This split prevents accidental hidden-data leaks through optimistic UI logic.
 <!-- SECTION_REF: 06-visibility-security.s020 -->
 Section Ref: `06-visibility-security.s020`
 
-The original simulator plan used this spectator concept: spectators see full game state with a delay of `N` turns. That idea remains available as `delayed-full`, but it is not the public ranked default because delayed hidden information can still assist ghosting or coaching.
+The original simulator plan used a delayed spectator concept. That family is deferred from the initial implementation because it adds fairness, buffering, timer-consistency, and protocol complexity that is not required for the first spectating slice.
 
 Supported spectator policies:
 
 | Policy | Relationship to original plan | Use |
 |---|---|---|
-| `disabled` | No spectator stream | Ranked events or private games that disallow spectators |
-| `live-filtered` | New safer default | Public unranked queue; shows board and public zones only |
-| `delayed-filtered` | Hardened public mode | Ranked queue and tournament default |
-| `delayed-full` | Original N-turn full-state model, hardened with time/action delay | Custom lobby opt-in, judge-approved broadcast, post-game style delayed viewing |
+| `disabled` | No spectator stream | Ranked queue and any match that is not explicitly spectatable |
+| `live-filtered` | Initial supported mode | Explicitly spectatable open/custom matches; shows board and public zones only |
 
-A delayed spectator buffer may store full snapshots internally, but the server must filter or reveal them according to the selected policy only after all delay requirements pass:
-
-```ts
-interface DelayedSpectatorPolicy {
-  mode: 'delayed-filtered' | 'delayed-full';
-  delayTurns?: number;
-  delayMs: number;
-  minActionDelay: number;
-}
-```
+Delayed spectator policies, delay buffers, and delayed full-information spectator contracts are deferred. Replay remains the full-information post-match surface.
 
 ## Original state-filtering categories preserved
 <!-- SECTION_REF: 06-visibility-security.s021 -->

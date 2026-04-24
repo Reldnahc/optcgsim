@@ -240,7 +240,7 @@ Section Ref: `12-roadmap.s013`
 | WebSocket library | `ws` for control or `socket.io` for ergonomics | Milestone 4 |
 | Replay snapshot storage | Postgres JSONB first, object storage later | Milestone 6 |
 | Card images | Decide legal/content mode before public alpha | Milestone 7 |
-| Spectator ranked mode | `delayed-filtered` with turn + time + action delay | Milestone 8 |
+| Spectator ranked mode | Deferred; ranked matches are not spectatable in the initial implementation | Later milestone |
 | Ranking formula | Start simple Elo; migrate later if needed | Milestone 8 |
 
 ## Risk register

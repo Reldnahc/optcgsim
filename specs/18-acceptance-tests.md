@@ -101,7 +101,7 @@ M4-008 only the player currently holding up the game loses timer time
 M4-009 duplicate clientActionId with different actionHash is rejected as idempotencyConflict
 M4-010 all non-heartbeat server messages include monotonic serverSeq
 M4-011 respondToDecision routes to resumeDecision rather than applyAction
-M4-012 ranked spectators receive delayed-filtered, not delayed-full, by default
+M4-012 ranked matches are not spectatable in the initial implementation
 M4-013 queue-created unranked match stamps gameType and formatId correctly
 M4-014 custom lobby join rejects incorrect password
 ```

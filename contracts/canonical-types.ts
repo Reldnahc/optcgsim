@@ -1180,17 +1180,10 @@ export interface PlayerView {
   winner?: PlayerId | "draw";
 }
 
-export type SpectatorMode =
-  | "disabled"
-  | "live-filtered"
-  | "delayed-filtered"
-  | "delayed-full";
+export type SpectatorMode = "disabled" | "live-filtered";
 
 export interface SpectatorPolicy {
   mode: SpectatorMode;
-  delayTurns?: number;
-  delayMs?: number;
-  minActionDelay?: number;
   allowHandRevealAfterGame: boolean;
 }
 
