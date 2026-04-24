@@ -12,7 +12,7 @@ import {
 
 type WorkflowAction = "branch" | "pr";
 
-interface SyncMetadata {
+export interface SyncMetadata {
   story_id?: string;
   issue_number?: number;
   issue_url?: string;
@@ -114,7 +114,7 @@ function metadataPath(storyId: string): string {
   return path.resolve(ROOT, "stories/.sync", `${storyId}.github.json`);
 }
 
-function loadSyncMetadata(storyId: string): SyncMetadata {
+export function loadSyncMetadata(storyId: string): SyncMetadata {
   const filePath = metadataPath(storyId);
   if (!fs.existsSync(filePath)) {
     return { story_id: storyId };
@@ -203,7 +203,7 @@ function pushBranch(branchName: string): void {
   }
 }
 
-function loadRepo(): string {
+export function loadRepo(): string {
   const payload = JSON.parse(
     fs.readFileSync(
       path.resolve(ROOT, "tools/github-board.config.json"),
@@ -220,19 +220,28 @@ function buildPrTitle(story: Story): string {
   return `${story.id}: ${story.title}`;
 }
 
-function buildPrBody(
+export function buildPrBody(
   story: Story,
   storyPath: string,
   issueNumber: number
 ): string {
+  const packetPath =
+    story.agent?.packet_path ?? `agent-packets/approved/${story.id}.packet.md`;
   const lines: string[] = [];
   lines.push("## Story");
   lines.push(`- ID: \`${story.id}\``);
   lines.push(`- Issue: #${issueNumber}`);
   lines.push(`- Story file: \`${storyPath}\``);
-  if (story.agent?.packet_path) {
-    lines.push(`- Packet: \`${story.agent.packet_path}\``);
-  }
+  lines.push(`- Packet: \`${packetPath}\``);
+  lines.push(`- Status: \`${story.status}\``);
+  lines.push("");
+  lines.push("## Review Context");
+  lines.push(
+    "Review this PR against the approved story file and approved agent packet, not only against the code diff."
+  );
+  lines.push(
+    `Use \`${storyPath}\` as the canonical scope and \`${packetPath}\` as the implementation brief.`
+  );
   lines.push("");
   lines.push("## Summary");
   lines.push(story.summary.trim());
@@ -240,6 +249,20 @@ function buildPrBody(
   lines.push("## Spec Refs");
   for (const ref of story.spec_refs) {
     lines.push(`- ${ref}`);
+  }
+  if (story.scope.length > 0) {
+    lines.push("");
+    lines.push("## Scope");
+    for (const item of story.scope) {
+      lines.push(`- ${item}`);
+    }
+  }
+  if (story.non_scope.length > 0) {
+    lines.push("");
+    lines.push("## Non-scope");
+    for (const item of story.non_scope) {
+      lines.push(`- ${item}`);
+    }
   }
   lines.push("");
   lines.push("## Required Tests");
@@ -249,6 +272,48 @@ function buildPrBody(
   lines.push("");
   lines.push(`Refs #${issueNumber}`);
   return `${lines.join("\n").trimEnd()}\n`;
+}
+
+function updatePullRequestBody(
+  repo: string,
+  prNumber: number,
+  body: string
+): void {
+  const result = runCommand([
+    "gh",
+    "pr",
+    "edit",
+    String(prNumber),
+    "--repo",
+    repo,
+    "--body",
+    body
+  ]);
+  if (result.status !== 0) {
+    throw new Error(
+      `Failed to update pull request #${prNumber}.\n${result.stdout}\n${result.stderr}`
+    );
+  }
+}
+
+export function syncPullRequestContext(
+  storyId: string
+): SyncMetadata | undefined {
+  const { story, path: storyPath } = findStoryById(storyId);
+  const metadata = loadSyncMetadata(storyId);
+  if (
+    typeof metadata.pr_number !== "number" ||
+    typeof metadata.issue_number !== "number"
+  ) {
+    return undefined;
+  }
+  const repo = loadRepo();
+  updatePullRequestBody(
+    repo,
+    metadata.pr_number,
+    buildPrBody(story, storyPath, metadata.issue_number)
+  );
+  return metadata;
 }
 
 function ghJson(args: string[]): unknown {
@@ -465,6 +530,11 @@ function prWorkflow(
       metadata.issue_number,
       draft
     );
+  updatePullRequestBody(
+    repo,
+    pr.pr_number!,
+    buildPrBody(story, storyPath, metadata.issue_number)
+  );
   metadata.story_id = storyId;
   metadata.branch_name = branchName;
   metadata.branch_base = baseBranch;

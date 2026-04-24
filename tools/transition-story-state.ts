@@ -16,6 +16,7 @@ import {
   type StoryStatus
 } from "./spec_story_lib.ts";
 import { syncStories } from "./spec_board_sync.ts";
+import { syncPullRequestContext } from "./story-branch-pr.ts";
 
 type TransitionAction =
   | "start"
@@ -129,7 +130,7 @@ function transitionComment(plan: TransitionPlan, story: Story): string {
     case "start":
       return `Implementation started for \`${story.id}\` from approved packet \`${packetPath}\`.`;
     case "request-review":
-      return `Implementation finished for \`${story.id}\` and is ready for code review.`;
+      return `Implementation finished for \`${story.id}\` and is ready for code review on the PR diff. Review against approved story \`${story.id}\` and packet \`${packetPath}\`.`;
     case "changes-requested":
       return `Code review requested changes for \`${story.id}\`; returning the story to active implementation.`;
     case "complete":
@@ -517,6 +518,10 @@ export function transitionStory(options: TransitionOptions): {
     });
     if (!(sync as { ok?: boolean }).ok) {
       throw new Error(`Board sync failed for ${plan.storyId}.`);
+    }
+
+    if (plan.action === "request-review") {
+      syncPullRequestContext(plan.storyId);
     }
 
     const repo = loadRepoFullName();
