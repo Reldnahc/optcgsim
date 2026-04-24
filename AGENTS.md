@@ -44,12 +44,14 @@ Section Ref: `AGENTS.s003`
 - For gameplay, visibility, replay, fairness, timer, and persistence ambiguity, fail closed and escalate.
 - For approved stories, start from the approved agent packet when it exists in `agent-packets/approved/`, while treating the approved story file as canonical and the packet as the execution brief.
 - If a story cannot be completed safely because of a missing dependency, unresolved ambiguity, missing approved prerequisite, or contradictory spec/story inputs, stop at the narrowest safe point and return with the blocker plus concrete follow-up questions; do not force an implementation through.
+- If implementation reveals a required change to canonical contracts, shared specs, or repo-wide workflow outside the approved story scope, do not silently mix that change into the story branch. Stop and escalate, or get explicit approval to land the cross-story change separately on `main` first and then merge/rebase it into the story branch.
 - Add or update tests required by the story.
 - Keep deterministic engine behavior and hidden-information safety intact.
 - Do not hard-code OS-specific shells, executables, or command names in repository tests, smoke checks, or workflow helpers. Use cross-platform invocations or an explicit `process.platform` split when shelling out.
 - Prefer repo-owned workflow entrypoints under `npm run stories:*` and `npm run stories:verify` over invoking individual tool files directly, unless a story or review task explicitly requires the lower-level tool.
 - Use one branch and one pull request per story by default. Review should happen on the PR diff against the approved story and packet, not only on the issue.
 - Story execution lifecycle is: `approved` -> `in_progress` -> `in_review` -> `done`, with `changes_requested` and `blocked` as valid side states when review or execution finds real blockers.
+- A story PR should contain only changes that are in scope for that story against the current `main`. If a necessary prerequisite lands separately on `main`, merge or rebase `main` into the story branch before further review rather than carrying the prerequisite as story-only diff.
 - Standard story workflow is:
   - `npm run stories:branch -- --id STORY-ID`
   - `npm run stories:start -- --id STORY-ID`
