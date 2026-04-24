@@ -6,7 +6,7 @@ title: "Add public protocol and deck-validation DTOs to @optcg/types"
 type: implementation
 area: contracts
 priority: critical
-status: approved
+status: in_review
 summary: >
   Complete the shared protocol and deck-validation contract surface in @optcg/types so match-server, API, and client work use one source of truth for client envelopes, server messages, filtered PublicDecision payloads, and deck-validation I/O.
 spec_refs:
