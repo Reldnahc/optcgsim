@@ -3,6 +3,7 @@ import {
   applyAction,
   createInitialState,
   filterStateForPlayer,
+  getLegalActions,
   hashGameState,
   resumeDecision
 } from "../../packages/engine-core/src/index.ts";
@@ -323,6 +324,35 @@ describe("engine-core API skeleton", () => {
     ]);
   });
 
+  it("advances past the end phase without deadlocking", () => {
+    const state = createInitialState(makeInput());
+
+    const toEnd = applyAction(state, { type: "endMainPhase" });
+    expect(toEnd.state.turn.phase).toBe("end");
+    expect(
+      getLegalActions(toEnd.state, asId("p1")).map((action) => action.type)
+    ).toContain("endMainPhase");
+    expect(getLegalActions(toEnd.state, asId("p2"))).toEqual([]);
+
+    const nextTurn = applyAction(toEnd.state, { type: "endMainPhase" });
+    expect(nextTurn.state.turn.phase).toBe("refresh");
+    expect(nextTurn.state.turn.activePlayer).toBe(asId("p2"));
+    expect(nextTurn.state.turn.nonActivePlayer).toBe(asId("p1"));
+  });
+
+  it("treats concede as an active-player action and awards the win to the opponent", () => {
+    const state = createInitialState(makeInput());
+
+    expect(
+      getLegalActions(state, asId("p1")).map((action) => action.type)
+    ).toContain("concede");
+    expect(getLegalActions(state, asId("p2"))).toEqual([]);
+
+    const result = applyAction(state, { type: "concede" });
+    expect(result.state.status).toBe("completed");
+    expect(result.state.winner).toBe(asId("p2"));
+  });
+
   it("filters hidden information out of PlayerView", () => {
     const state = createInitialState(makeInput());
     const view = filterStateForPlayer(state, asId("p1"));
@@ -394,5 +424,73 @@ describe("engine-core API skeleton", () => {
         process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
       }
     }
+  });
+
+  it("does not advertise synthetic pass responses for pending decisions", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-2"),
+          type: "mulligan",
+          playerId: asId("p1"),
+          handCount: 5,
+          visibility: { type: "private", playerIds: [asId("p1")] }
+        } satisfies PendingDecision
+      })
+    );
+
+    const legal = getLegalActions(state, asId("p1"));
+    expect(legal).toEqual([
+      {
+        type: "respondToDecision",
+        decisionId: asId("decision-2"),
+        response: { type: "keepOpeningHand" }
+      },
+      {
+        type: "respondToDecision",
+        decisionId: asId("decision-2"),
+        response: { type: "mulligan" }
+      }
+    ]);
+  });
+
+  it("rejects invalid decision payloads before clearing the pending decision", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-3"),
+          type: "selectCards",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          request: {
+            chooser: "self",
+            zone: "hand",
+            player: "self",
+            min: 1,
+            max: 1,
+            allowFewerIfUnavailable: false,
+            visibility: "privateToChooser"
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-hand-1"),
+              cardId: asId("event-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "hand",
+                playerId: asId("p1"),
+                index: 0
+              }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(() =>
+      resumeDecision(state, { type: "cardSelection", selected: [] })
+    ).toThrow(/violates min\/max/);
+    expect(state.pendingDecision?.id).toBe(asId("decision-3"));
   });
 });

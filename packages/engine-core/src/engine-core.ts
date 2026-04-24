@@ -37,6 +37,7 @@ import type {
   PublicTriggerOrderOption,
   Keyword,
   Sha256,
+  TurnState,
   ZoneRef
 } from "@optcg/types";
 import type {
@@ -83,6 +84,57 @@ function getOpponentId(state: GameState, playerId: PlayerId): PlayerId {
   return (
     getPlayerIds(state).find((candidate) => candidate !== playerId) ?? playerId
   );
+}
+
+function arraysEqualUnordered(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  const leftSorted = [...left].sort();
+  const rightSorted = [...right].sort();
+  return leftSorted.every((value, index) => value === rightSorted[index]);
+}
+
+function chooseCombinations<T>(items: T[], count: number): T[][] {
+  if (count === 0) {
+    return [[]];
+  }
+  if (count > items.length) {
+    return [];
+  }
+
+  const results: T[][] = [];
+  const walk = (startIndex: number, current: T[]): void => {
+    if (current.length === count) {
+      results.push([...current]);
+      return;
+    }
+    for (let index = startIndex; index < items.length; index += 1) {
+      const item = items[index];
+      if (item === undefined) {
+        continue;
+      }
+      current.push(item);
+      walk(index + 1, current);
+      current.pop();
+    }
+  };
+  walk(0, []);
+  return results;
+}
+
+function choosePermutations<T>(items: T[]): T[][] {
+  if (items.length <= 1) {
+    return [items];
+  }
+  const results: T[][] = [];
+  items.forEach((item, index) => {
+    const rest = [...items.slice(0, index), ...items.slice(index + 1)];
+    for (const permutation of choosePermutations(rest)) {
+      results.push([item, ...permutation]);
+    }
+  });
+  return results;
 }
 
 function resolveCardMetadata(
@@ -1072,6 +1124,295 @@ export function hashGameState(state: GameState): Sha256 {
     .digest("hex") as Sha256;
 }
 
+function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
+  const respond = (response: DecisionResponse): Action => ({
+    type: "respondToDecision",
+    decisionId: pendingDecision.id,
+    response
+  });
+
+  switch (pendingDecision.type) {
+    case "mulligan":
+      return [
+        respond({ type: "keepOpeningHand" }),
+        respond({ type: "mulligan" })
+      ];
+    case "chooseTriggerOrder":
+      return choosePermutations(pendingDecision.triggerIds).map((ids) =>
+        respond({ type: "orderedIds", ids })
+      );
+    case "chooseOptionalActivation":
+      return [
+        respond({ type: "optionalActivationChoice", choice: "activate" }),
+        respond({ type: "optionalActivationChoice", choice: "decline" })
+      ];
+    case "payCost":
+      return pendingDecision.options
+        .filter(
+          (option) =>
+            option.min === 0 &&
+            option.max === 0 &&
+            (option.selectableCards?.length ?? 0) === 0 &&
+            (option.selectableDon?.length ?? 0) === 0
+        )
+        .map((option) =>
+          respond({ type: "payment", selection: { optionId: option.id } })
+        );
+    case "selectTargets":
+      return chooseCombinations(
+        pendingDecision.candidates.map((candidate) =>
+          requireInstanceId(candidate)
+        ),
+        pendingDecision.request.min
+      ).map((selected) =>
+        respond({
+          type: "targetSelection",
+          selected: selected.map((instanceId) => ({ instanceId }))
+        })
+      );
+    case "selectCards":
+      return chooseCombinations(
+        pendingDecision.candidates.map((candidate) =>
+          requireInstanceId(candidate)
+        ),
+        pendingDecision.request.min
+      ).map((selected) =>
+        respond({
+          type: "cardSelection",
+          selected: selected.map((instanceId) => ({ instanceId }))
+        })
+      );
+    case "chooseEffectOption":
+      return chooseCombinations(
+        pendingDecision.options.map((option) => option.id),
+        pendingDecision.min
+      ).map((optionIds) =>
+        respond({ type: "effectOptionSelection", optionIds })
+      );
+    case "confirmTriggerFromLife":
+      return [
+        respond({ type: "lifeTriggerChoice", choice: "activateTrigger" }),
+        respond({ type: "lifeTriggerChoice", choice: "addToHand" })
+      ];
+    case "chooseReplacement": {
+      const actions = pendingDecision.replacementIds.map((replacementId) =>
+        respond({ type: "replacementChoice", replacementId })
+      );
+      if (pendingDecision.optional) {
+        actions.push(
+          respond({ type: "replacementChoice", replacementId: null })
+        );
+      }
+      return actions;
+    }
+    case "orderCards":
+      return choosePermutations(
+        pendingDecision.cards.map((card) => requireInstanceId(card))
+      ).map((ordered) =>
+        respond({
+          type: "orderCards",
+          ordered: ordered.map((instanceId) => ({ instanceId }))
+        })
+      );
+    case "chooseCharacterToTrashForOverflow":
+      return pendingDecision.candidates.map((candidate) =>
+        respond({
+          type: "chooseCharacterToTrash",
+          instanceId: requireInstanceId(candidate)
+        })
+      );
+    default:
+      return [];
+  }
+}
+
+function assertValidDecisionResponse(
+  pendingDecision: PendingDecision,
+  response: DecisionResponse
+): void {
+  switch (pendingDecision.type) {
+    case "mulligan":
+    case "chooseOptionalActivation":
+    case "confirmTriggerFromLife":
+      return;
+    case "chooseTriggerOrder": {
+      const orderedIdsResponse = response as Extract<
+        DecisionResponse,
+        { type: "orderedIds" }
+      >;
+      if (orderedIdsResponse.ids.length !== pendingDecision.triggerIds.length) {
+        throw new Error(
+          "chooseTriggerOrder response must include every trigger exactly once"
+        );
+      }
+      if (
+        !arraysEqualUnordered(
+          orderedIdsResponse.ids,
+          pendingDecision.triggerIds
+        )
+      ) {
+        throw new Error(
+          "chooseTriggerOrder response must reference the pending trigger ids"
+        );
+      }
+      return;
+    }
+    case "payCost": {
+      const paymentResponse = response as Extract<
+        DecisionResponse,
+        { type: "payment" }
+      >;
+      const option = pendingDecision.options.find(
+        (candidate) => candidate.id === paymentResponse.selection.optionId
+      );
+      if (!option) {
+        throw new Error(
+          "payment response references an unknown payment option"
+        );
+      }
+      const selectedCards = paymentResponse.selection.selectedCards ?? [];
+      const selectedDon = paymentResponse.selection.selectedDon ?? [];
+      const totalSelected = selectedCards.length + selectedDon.length;
+      if (totalSelected < option.min || totalSelected > option.max) {
+        throw new Error("payment response does not satisfy the option min/max");
+      }
+      return;
+    }
+    case "selectTargets": {
+      const targetSelectionResponse = response as Extract<
+        DecisionResponse,
+        { type: "targetSelection" }
+      >;
+      const ids = pendingDecision.candidates.map((candidate) =>
+        requireInstanceId(candidate)
+      );
+      const selectedIds = targetSelectionResponse.selected.map(
+        (card) => card.instanceId
+      );
+      if (
+        selectedIds.length < pendingDecision.request.min ||
+        selectedIds.length > pendingDecision.request.max
+      ) {
+        throw new Error("targetSelection response violates min/max");
+      }
+      if (!selectedIds.every((instanceId) => ids.includes(instanceId))) {
+        throw new Error(
+          "targetSelection response references a non-candidate card"
+        );
+      }
+      return;
+    }
+    case "selectCards": {
+      const cardSelectionResponse = response as Extract<
+        DecisionResponse,
+        { type: "cardSelection" }
+      >;
+      const ids = pendingDecision.candidates.map((candidate) =>
+        requireInstanceId(candidate)
+      );
+      const selectedIds = cardSelectionResponse.selected.map(
+        (card) => card.instanceId
+      );
+      if (
+        selectedIds.length < pendingDecision.request.min ||
+        selectedIds.length > pendingDecision.request.max
+      ) {
+        throw new Error("cardSelection response violates min/max");
+      }
+      if (!selectedIds.every((instanceId) => ids.includes(instanceId))) {
+        throw new Error(
+          "cardSelection response references a non-candidate card"
+        );
+      }
+      return;
+    }
+    case "chooseEffectOption": {
+      const effectOptionResponse = response as Extract<
+        DecisionResponse,
+        { type: "effectOptionSelection" }
+      >;
+      if (
+        effectOptionResponse.optionIds.length < pendingDecision.min ||
+        effectOptionResponse.optionIds.length > pendingDecision.max
+      ) {
+        throw new Error("effectOptionSelection response violates min/max");
+      }
+      const optionIds = pendingDecision.options.map((option) => option.id);
+      if (
+        !effectOptionResponse.optionIds.every((optionId) =>
+          optionIds.includes(optionId)
+        )
+      ) {
+        throw new Error("effectOptionSelection references an unknown option");
+      }
+      return;
+    }
+    case "chooseReplacement": {
+      const replacementResponse = response as Extract<
+        DecisionResponse,
+        { type: "replacementChoice" }
+      >;
+      if (
+        replacementResponse.replacementId === null &&
+        !pendingDecision.optional
+      ) {
+        throw new Error(
+          "replacementChoice may only decline optional replacements"
+        );
+      }
+      if (
+        replacementResponse.replacementId !== null &&
+        !pendingDecision.replacementIds.includes(
+          replacementResponse.replacementId
+        )
+      ) {
+        throw new Error(
+          "replacementChoice references an unknown replacement id"
+        );
+      }
+      return;
+    }
+    case "orderCards": {
+      const orderCardsResponse = response as Extract<
+        DecisionResponse,
+        { type: "orderCards" }
+      >;
+      const ids = pendingDecision.cards.map((card) => requireInstanceId(card));
+      const orderedIds = orderCardsResponse.ordered.map(
+        (card) => card.instanceId
+      );
+      if (orderedIds.length !== ids.length) {
+        throw new Error(
+          "orderCards response must include every candidate card"
+        );
+      }
+      if (!arraysEqualUnordered(orderedIds, ids)) {
+        throw new Error(
+          "orderCards response must contain exactly the offered cards"
+        );
+      }
+      return;
+    }
+    case "chooseCharacterToTrashForOverflow": {
+      const chooseCharacterResponse = response as Extract<
+        DecisionResponse,
+        { type: "chooseCharacterToTrash" }
+      >;
+      const ids = pendingDecision.candidates.map((candidate) =>
+        requireInstanceId(candidate)
+      );
+      if (!ids.includes(chooseCharacterResponse.instanceId)) {
+        throw new Error(
+          "chooseCharacterToTrash response references an unknown candidate"
+        );
+      }
+      return;
+    }
+    default:
+      return;
+  }
+}
+
 export function getLegalActions(
   state: GameState,
   playerId: PlayerId
@@ -1088,17 +1429,15 @@ export function getLegalActions(
     if (state.pendingDecision.playerId !== playerId) {
       return [];
     }
-    return [
-      {
-        type: "respondToDecision",
-        decisionId: state.pendingDecision.id,
-        response: state.pendingDecision.defaultResponse ?? { type: "pass" }
-      }
-    ];
+    return legalResponsesForDecision(state.pendingDecision);
+  }
+
+  if (state.turn.activePlayer !== playerId) {
+    return [];
   }
 
   const legal: Action[] = [{ type: "concede" }];
-  if (state.turn.activePlayer === playerId && state.turn.phase === "main") {
+  if (state.turn.phase === "main" || state.turn.phase === "end") {
     legal.push({ type: "endMainPhase" });
   }
   return legal;
@@ -1131,20 +1470,39 @@ export function applyAction(state: GameState, action: Action): EngineResult {
       ]);
     }
     case "endMainPhase": {
-      if (state.turn.phase !== "main") {
-        throw new Error("endMainPhase is only valid during the main phase");
+      if (state.turn.phase === "main") {
+        nextState.turn.phase = "end";
+        return finalizeResult(state, nextState, [
+          {
+            type: "phaseEnded",
+            payload: { phase: "main", playerId: state.turn.activePlayer }
+          },
+          {
+            type: "phaseStarted",
+            payload: { phase: "end", playerId: state.turn.activePlayer }
+          }
+        ]);
       }
-      nextState.turn.phase = "end";
-      return finalizeResult(state, nextState, [
-        {
-          type: "phaseEnded",
-          payload: { phase: "main", playerId: state.turn.activePlayer }
-        },
-        {
-          type: "phaseStarted",
-          payload: { phase: "end", playerId: state.turn.activePlayer }
-        }
-      ]);
+      if (state.turn.phase === "end") {
+        nextState.turn.activePlayer = state.turn.nonActivePlayer;
+        nextState.turn.nonActivePlayer = state.turn.activePlayer;
+        nextState.turn.globalTurnNumber = (state.turn.globalTurnNumber +
+          1) as TurnState["globalTurnNumber"];
+        nextState.turn.phase = "refresh";
+        return finalizeResult(state, nextState, [
+          {
+            type: "phaseEnded",
+            payload: { phase: "end", playerId: state.turn.activePlayer }
+          },
+          {
+            type: "phaseStarted",
+            payload: { phase: "refresh", playerId: nextState.turn.activePlayer }
+          }
+        ]);
+      }
+      throw new Error(
+        "endMainPhase is only valid during the main or end phase"
+      );
     }
     default:
       throw new Error(`Action ${action.type} is not implemented in ENG-001`);
@@ -1160,6 +1518,7 @@ export function resumeDecision(
   }
 
   assertPendingDecisionResponseMatches(state.pendingDecision, response);
+  assertValidDecisionResponse(state.pendingDecision, response);
 
   const nextState = cloneStateForMutation(state);
   const pendingDecision = cloneValue(state.pendingDecision);
