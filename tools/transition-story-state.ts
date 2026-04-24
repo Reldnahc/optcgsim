@@ -50,6 +50,21 @@ interface TransitionOptions {
   dryRun?: boolean;
 }
 
+interface ContractAuditRecord {
+  version: 1;
+  story_id: string;
+  story_path: string;
+  area: Story["area"];
+  packet_path?: string;
+  git_head: string;
+  reviewed_at: string;
+  verify_command: string;
+  verify_ok: boolean;
+  worktree_clean: boolean;
+  checklist: Array<{ id: string; label: string; status: "pass" }>;
+  notes?: string;
+}
+
 function allowsMissingPrForTransition(
   storyId: string,
   action: TransitionAction
@@ -58,6 +73,50 @@ function allowsMissingPrForTransition(
 }
 
 function resolveCommand(command: string): string {
+  if (command === "git") {
+    const candidates =
+      process.platform === "win32"
+        ? [
+            "git",
+            "git.exe",
+            path.join(
+              process.env["ProgramFiles"] ?? "",
+              "Git",
+              "cmd",
+              "git.exe"
+            ),
+            path.join(
+              process.env["ProgramFiles"] ?? "",
+              "Git",
+              "bin",
+              "git.exe"
+            ),
+            path.join(
+              process.env["ProgramFiles(x86)"] ?? "",
+              "Git",
+              "cmd",
+              "git.exe"
+            ),
+            path.join(
+              process.env["ProgramFiles(x86)"] ?? "",
+              "Git",
+              "bin",
+              "git.exe"
+            )
+          ].filter(Boolean)
+        : ["git"];
+
+    for (const candidate of candidates) {
+      const probe = spawnSync(candidate, ["--version"], {
+        cwd: ROOT,
+        encoding: "utf8"
+      });
+      if ((probe.status ?? 1) === 0) {
+        return candidate;
+      }
+    }
+  }
+
   if (command !== "gh") {
     return command;
   }
@@ -87,6 +146,22 @@ function runCommand(args: string[]): {
   stdout: string;
   stderr: string;
 } {
+  if (process.platform === "win32" && args[0] === "git") {
+    const result = spawnSync(
+      process.env["ComSpec"] ?? "cmd.exe",
+      ["/d", "/s", "/c", `git ${args.slice(1).join(" ")}`],
+      {
+        cwd: ROOT,
+        encoding: "utf8"
+      }
+    );
+    return {
+      status: result.status ?? 1,
+      stdout: result.stdout ?? "",
+      stderr: result.stderr ?? ""
+    };
+  }
+
   const executable = resolveCommand(args[0]);
   const result = spawnSync(executable, args.slice(1), {
     cwd: ROOT,
@@ -97,6 +172,29 @@ function runCommand(args: string[]): {
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? ""
   };
+}
+
+function gitHead(): string {
+  const result = runCommand(["git", "rev-parse", "HEAD"]);
+  if (result.status !== 0) {
+    throw new Error(
+      `Failed to resolve git HEAD.\n${result.stdout}\n${result.stderr}`.trim()
+    );
+  }
+  return result.stdout.trim();
+}
+
+function gitDirtyEntries(): string[] {
+  const result = runCommand(["git", "status", "--porcelain"]);
+  if (result.status !== 0) {
+    throw new Error(
+      `Failed to inspect git worktree.\n${result.stdout}\n${result.stderr}`.trim()
+    );
+  }
+  return result.stdout
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter(Boolean);
 }
 
 function findStoryById(storyId: string): StoryLocation {
@@ -121,6 +219,55 @@ function findStoryById(storyId: string): StoryLocation {
   throw new Error(
     `Could not locate story ${storyId} in generated/approved/blocked/done.`
   );
+}
+
+function loadContractAudit(storyId: string): ContractAuditRecord | null {
+  const relativePath = `stories/.review/${storyId}.contract-audit.json`;
+  const absolutePath = path.resolve(ROOT, relativePath);
+  if (!fs.existsSync(absolutePath)) {
+    return null;
+  }
+  return JSON.parse(
+    fs.readFileSync(absolutePath, "utf8")
+  ) as ContractAuditRecord;
+}
+
+function assertContractAuditReady(location: StoryLocation): void {
+  if (location.story.area !== "contracts") {
+    return;
+  }
+
+  const audit = loadContractAudit(location.story.id);
+  if (!audit) {
+    throw new Error(
+      `Story ${location.story.id} requires a passing contract audit before request-review. Run "npm run stories:contract-audit -- --id ${location.story.id}".`
+    );
+  }
+
+  if (audit.story_id !== location.story.id || audit.area !== "contracts") {
+    throw new Error(
+      `Contract audit for ${location.story.id} is invalid. Re-run "npm run stories:contract-audit -- --id ${location.story.id}".`
+    );
+  }
+
+  if (!audit.verify_ok || !audit.worktree_clean) {
+    throw new Error(
+      `Contract audit for ${location.story.id} is not passing. Re-run "npm run stories:contract-audit -- --id ${location.story.id}".`
+    );
+  }
+
+  if (audit.git_head !== gitHead()) {
+    throw new Error(
+      `Contract audit for ${location.story.id} is stale for the current commit. Re-run "npm run stories:contract-audit -- --id ${location.story.id}".`
+    );
+  }
+
+  const dirty = gitDirtyEntries();
+  if (dirty.length > 0) {
+    throw new Error(
+      `Story ${location.story.id} requires a clean worktree before request-review. Dirty entries:\n${dirty.join("\n")}`
+    );
+  }
 }
 
 function transitionComment(plan: TransitionPlan, story: Story): string {
@@ -450,6 +597,10 @@ export function transitionStory(options: TransitionOptions): {
   const plan = transitionPlan(location, options.action);
   const sectionLookup = buildSectionLookup(loadSectionIndex());
   const syncMeta = loadSyncMetadata(plan.storyId);
+
+  if (!options.dryRun && plan.action === "request-review") {
+    assertContractAuditReady(location);
+  }
 
   if (
     !options.dryRun &&
