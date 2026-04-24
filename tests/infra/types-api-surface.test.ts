@@ -391,7 +391,12 @@ describe("@optcg/types API surface", () => {
     const input: DeckValidationInput = {
       gameType: "unranked" satisfies GameType,
       formatId: asBrand<FormatId>("format-1"),
-      leaderCardId: asBrand<CardId>("OP01-001"),
+      leaders: [
+        {
+          cardId: asBrand<CardId>("OP01-001"),
+          quantity: 2
+        }
+      ],
       mainDeck: [
         {
           cardId: asBrand<CardId>("OP01-025"),

@@ -1157,7 +1157,7 @@ export interface PublicChoiceSummary {
 }
 
 export interface PublicCardRef {
-  instanceId?: InstanceId;
+  instanceId: InstanceId;
   cardId: CardId;
   owner: PlayerId;
   controller: PlayerId;
@@ -1606,7 +1606,7 @@ export interface DeckCardInput {
 export interface DeckValidationInput {
   gameType: GameType;
   formatId: FormatId;
-  leaderCardId: CardId;
+  leaders: DeckCardInput[];
   mainDeck: DeckCardInput[];
   donDeck: DeckCardInput[];
 }
