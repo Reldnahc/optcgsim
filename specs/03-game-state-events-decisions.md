@@ -363,7 +363,7 @@ type Action =
   | { type: 'activateBlocker'; blocker: CardRef }
   | { type: 'useCounter'; cardInstanceId: InstanceId; target: CardRef }
   | { type: 'endMainPhase' }
-  | { type: 'concede' }
+  | { type: 'concede'; playerId: PlayerId }
   | { type: 'respondToDecision'; decisionId: string; response: DecisionResponse };
 ```
 

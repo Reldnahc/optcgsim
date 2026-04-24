@@ -199,7 +199,7 @@ export type Action =
   | { type: 'useCounter'; handInstanceId: InstanceId; targetInstanceId: InstanceId }
   | { type: 'respondToDecision'; decisionId: DecisionId; response: DecisionResponse }
   | { type: 'endMainPhase' }
-  | { type: 'concede' };
+  | { type: 'concede'; playerId: PlayerId };
 
 export type PendingDecision =
   | { type: 'chooseTriggerOrder'; id: DecisionId; playerId: PlayerId; triggerIds: string[] }
