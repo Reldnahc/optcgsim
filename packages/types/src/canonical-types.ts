@@ -1095,7 +1095,7 @@ export type PendingDecision =
       id: DecisionId;
       playerId: PlayerId;
       request: CardSelectionRequest;
-      candidates?: CardRef[];
+      candidates: CardRef[];
     }
   | {
       type: "chooseEffectOption";
