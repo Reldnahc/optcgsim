@@ -73,8 +73,48 @@ function allowsMissingPrForTransition(
 }
 
 function resolveCommand(command: string): string {
-  if (command === "git" && process.platform === "win32") {
-    return "git.exe";
+  if (command === "git") {
+    const candidates =
+      process.platform === "win32"
+        ? [
+            "git",
+            "git.exe",
+            path.join(
+              process.env["ProgramFiles"] ?? "",
+              "Git",
+              "cmd",
+              "git.exe"
+            ),
+            path.join(
+              process.env["ProgramFiles"] ?? "",
+              "Git",
+              "bin",
+              "git.exe"
+            ),
+            path.join(
+              process.env["ProgramFiles(x86)"] ?? "",
+              "Git",
+              "cmd",
+              "git.exe"
+            ),
+            path.join(
+              process.env["ProgramFiles(x86)"] ?? "",
+              "Git",
+              "bin",
+              "git.exe"
+            )
+          ].filter(Boolean)
+        : ["git"];
+
+    for (const candidate of candidates) {
+      const probe = spawnSync(candidate, ["--version"], {
+        cwd: ROOT,
+        encoding: "utf8"
+      });
+      if ((probe.status ?? 1) === 0) {
+        return candidate;
+      }
+    }
   }
 
   if (command !== "gh") {
