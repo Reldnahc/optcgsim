@@ -1195,7 +1195,29 @@ export interface PublicReplacementOption {
   sourceInstanceId?: InstanceId;
 }
 
-export type PublicLegalAction = Action;
+export type PublicLegalAction =
+  | { type: "keepOpeningHand" }
+  | { type: "mulligan" }
+  | { type: "playCard"; handInstanceId: InstanceId }
+  | {
+      type: "attachDon";
+      donInstanceId: InstanceId;
+      targetInstanceId: InstanceId;
+    }
+  | {
+      type: "declareAttack";
+      attackerInstanceId: InstanceId;
+      target: BattleTarget;
+    }
+  | { type: "activateEffect"; sourceInstanceId: InstanceId; effectId: EffectId }
+  | {
+      type: "useCounter";
+      handInstanceId: InstanceId;
+      targetInstanceId: InstanceId;
+    }
+  | { type: "respondToDecision"; decisionId: DecisionId }
+  | { type: "endMainPhase" }
+  | { type: "concede" };
 
 export type RevealReason =
   | "play"
@@ -1357,21 +1379,36 @@ export interface PublicCardView {
   keywords: Keyword[];
 }
 
-export interface PlayerViewState {
+export type PublicLifeCardView =
+  | { faceUp: false }
+  | { faceUp: true; card: PublicCardView };
+
+export interface VisiblePlayerState {
   playerId: PlayerId;
   deck: HiddenZoneView;
   donDeck: HiddenZoneView;
-  hand: PublicCardView[] | HiddenZoneView;
+  hand: PublicCardView[];
   trash: PublicCardView[];
   leader: PublicCardView;
   characters: PublicCardView[];
   stage?: PublicCardView;
   costArea: PublicCardView[];
-  life: Array<{ faceUp: boolean; card?: PublicCardView }> | HiddenZoneView;
+  life: PublicLifeCardView[] | HiddenZoneView;
 }
 
-export type VisiblePlayerState = PlayerViewState;
-export type OpponentVisibleState = PlayerViewState;
+export interface OpponentVisibleState {
+  playerId: PlayerId;
+  deck: HiddenZoneView;
+  donDeck: HiddenZoneView;
+  hand: HiddenZoneView;
+  trash: PublicCardView[];
+  leader: PublicCardView;
+  characters: PublicCardView[];
+  stage?: PublicCardView;
+  costArea: PublicCardView[];
+  life: PublicLifeCardView[] | HiddenZoneView;
+}
+
 export type PublicTurnState = TurnState;
 export type PublicBattleState = BattleState;
 

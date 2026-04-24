@@ -143,7 +143,17 @@ describe("@optcg/types API surface", () => {
           playerId,
           deck: { count: 40 },
           donDeck: { count: 10 },
-          hand: { count: 5 },
+          hand: [
+            {
+              instanceId: asBrand("hand-1"),
+              cardId: asBrand<CardId>("OP01-011"),
+              controller: playerId,
+              owner: playerId,
+              state: "active",
+              attachedDonCount: 0,
+              keywords: []
+            }
+          ],
           trash: [],
           leader: {
             instanceId: asBrand("leader-1"),
@@ -156,7 +166,7 @@ describe("@optcg/types API surface", () => {
           },
           characters: [],
           costArea: [],
-          life: { count: 5 }
+          life: [{ faceUp: false }]
         },
         opponent: {
           playerId: asBrand<PlayerId>("player-2"),
@@ -175,7 +185,7 @@ describe("@optcg/types API surface", () => {
           },
           characters: [],
           costArea: [],
-          life: { count: 5 }
+          life: [{ faceUp: false }]
         },
         turn: {
           activePlayer: playerId,
@@ -185,7 +195,10 @@ describe("@optcg/types API surface", () => {
           phase: "main"
         },
         pendingDecision: decision,
-        legalActions: [action],
+        legalActions: [
+          { type: "playCard", handInstanceId: asBrand("hand-1") },
+          { type: "respondToDecision", decisionId }
+        ],
         revealedCards: [
           {
             id: "reveal-1",
@@ -225,8 +238,13 @@ describe("@optcg/types API surface", () => {
         type: string;
         view: {
           playerId: string;
+          self: { hand: Array<{ instanceId: string }> };
+          opponent: {
+            hand: { count: number };
+            life: Array<{ faceUp: boolean; card?: { cardId: string } }>;
+          };
           pendingDecision: { type: string; triggers: Array<{ label: string }> };
-          legalActions: Array<{ type: string }>;
+          legalActions: Array<{ type: string; decisionId?: string }>;
           revealedCards: Array<{ reason: string }>;
           timers: { players: Record<string, { remainingMs: number }> };
         };
@@ -246,13 +264,18 @@ describe("@optcg/types API surface", () => {
     expect(payload.actionResult.events[0]?.visibleTo).toBe("replayOnly");
     expect(payload.message.type).toBe("stateSync");
     expect(payload.message.view.playerId).toBe("player-1");
+    expect(payload.message.view.self.hand[0]?.instanceId).toBe("hand-1");
+    expect(payload.message.view.opponent.hand.count).toBe(5);
+    expect(payload.message.view.opponent.life[0]?.faceUp).toBe(false);
+    expect(payload.message.view.opponent.life[0]?.card).toBeUndefined();
     expect(payload.message.view.pendingDecision.type).toBe(
       "chooseTriggerOrder"
     );
     expect(payload.message.view.pendingDecision.triggers[0]?.label).toBe(
       "Leader trigger"
     );
-    expect(payload.message.view.legalActions[0]?.type).toBe("endMainPhase");
+    expect(payload.message.view.legalActions[0]?.type).toBe("playCard");
+    expect(payload.message.view.legalActions[1]?.decisionId).toBe("decision-1");
     expect(payload.message.view.revealedCards[0]?.reason).toBe("trigger");
     expect(payload.replacementDecision.replacements[0]?.label).toBe(
       "Use replacement shield"
