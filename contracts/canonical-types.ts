@@ -1000,8 +1000,6 @@ export interface EffectDefinition {
 }
 
 export type Action =
-  | { type: "keepOpeningHand" }
-  | { type: "mulligan" }
   | {
       type: "playCard";
       handInstanceId: InstanceId;
@@ -1069,6 +1067,7 @@ export interface PendingDecisionBase {
   prompt?: string;
   timeoutMs?: number;
   defaultResponse?: DecisionResponse;
+  visibility: EventVisibility;
 }
 
 export type PendingDecision =
@@ -1130,6 +1129,7 @@ export interface PublicDecisionBase {
   prompt?: string;
   timeoutMs?: number;
   defaultResponse?: DecisionResponse;
+  visibility: EventVisibility;
 }
 
 export interface TargetCandidate {
@@ -1224,8 +1224,6 @@ export interface PublicReplacementOption {
 }
 
 export type PublicLegalAction =
-  | { type: "keepOpeningHand" }
-  | { type: "mulligan" }
   | { type: "playCard"; handInstanceId: InstanceId }
   | {
       type: "attachDon";

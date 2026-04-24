@@ -52,6 +52,7 @@ describe("@optcg/types API surface", () => {
       id: decisionId,
       type: "chooseTriggerOrder",
       playerId,
+      visibility: { type: "public" },
       prompt: "Choose trigger order",
       triggers: [
         {
@@ -68,6 +69,7 @@ describe("@optcg/types API surface", () => {
       id: asBrand<DecisionId>("decision-4"),
       type: "chooseOptionalActivation",
       playerId,
+      visibility: { type: "private", playerIds: [playerId] },
       effectId: asBrand("effect-3"),
       timeoutMs: 15000,
       defaultResponse: {
@@ -87,6 +89,7 @@ describe("@optcg/types API surface", () => {
       id: asBrand<DecisionId>("decision-6"),
       type: "payCost",
       playerId,
+      visibility: { type: "private", playerIds: [playerId] },
       cost: { type: "trashFromField", count: 1, chooser: "self" },
       options: [
         {
@@ -124,6 +127,7 @@ describe("@optcg/types API surface", () => {
       id: asBrand<DecisionId>("decision-5"),
       type: "selectTargets",
       playerId,
+      visibility: { type: "public" },
       request: {
         timing: "onResolution",
         chooser: "self",
@@ -151,6 +155,7 @@ describe("@optcg/types API surface", () => {
       id: replacementDecisionId,
       type: "chooseReplacement",
       playerId,
+      visibility: { type: "private", playerIds: [playerId] },
       prompt: "Choose replacement",
       processId: "process-1",
       optional: true,
@@ -168,6 +173,7 @@ describe("@optcg/types API surface", () => {
       id: asBrand<DecisionId>("decision-3"),
       type: "confirmTriggerFromLife",
       playerId,
+      visibility: { type: "private", playerIds: [playerId] },
       card: {
         cardId: asBrand<CardId>("OP01-003"),
         controller: playerId,
@@ -368,7 +374,11 @@ describe("@optcg/types API surface", () => {
             hand: { count: number };
             life: Array<{ faceUp: boolean; card?: { cardId: string } }>;
           };
-          pendingDecision: { type: string; triggers: Array<{ label: string }> };
+          pendingDecision: {
+            type: string;
+            visibility: { type: string; playerIds?: string[] };
+            triggers: Array<{ label: string }>;
+          };
           legalActions: Array<{
             type: string;
             decisionId?: string;
@@ -383,6 +393,7 @@ describe("@optcg/types API surface", () => {
       };
       optionalActivationDecision: {
         options: string[];
+        visibility: { type: string; playerIds?: string[] };
         timeoutMs?: number;
         defaultResponse?: { type: string; choice: string };
       };
@@ -436,6 +447,9 @@ describe("@optcg/types API surface", () => {
     expect(payload.message.view.pendingDecision.type).toBe(
       "chooseTriggerOrder"
     );
+    expect(payload.message.view.pendingDecision.visibility).toEqual({
+      type: "public"
+    });
     expect(payload.message.view.pendingDecision.triggers[0]?.label).toBe(
       "Leader trigger"
     );
@@ -445,6 +459,12 @@ describe("@optcg/types API surface", () => {
     });
     expect(payload.message.view.legalActions[1]?.type).toBe("playCard");
     expect(payload.message.view.legalActions[2]?.decisionId).toBe("decision-1");
+    expect(
+      payload.message.view.legalActions.some(
+        (action) =>
+          action.type === "mulligan" || action.type === "keepOpeningHand"
+      )
+    ).toBe(false);
     expect(payload.message.view.revealedCards[0]?.reason).toBe("trigger");
     expect(payload.message.view.revealedCards[0]?.visibleTo).toBe("both");
     expect(payload.replacementDecision.replacements[0]?.label).toBe(
@@ -454,6 +474,10 @@ describe("@optcg/types API surface", () => {
       "activate",
       "decline"
     ]);
+    expect(payload.optionalActivationDecision.visibility).toEqual({
+      type: "private",
+      playerIds: ["player-1"]
+    });
     expect(payload.optionalActivationDecision.timeoutMs).toBe(15000);
     expect(payload.optionalActivationDecision.defaultResponse).toEqual({
       type: "optionalActivationChoice",
