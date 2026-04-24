@@ -95,6 +95,10 @@ function arraysEqualUnordered(left: string[], right: string[]): boolean {
   return leftSorted.every((value, index) => value === rightSorted[index]);
 }
 
+function hasDuplicateValues(values: string[]): boolean {
+  return new Set(values).size !== values.length;
+}
+
 function chooseCombinations<T>(items: T[], count: number): T[][] {
   if (count === 0) {
     return [[]];
@@ -120,6 +124,22 @@ function chooseCombinations<T>(items: T[], count: number): T[][] {
     }
   };
   walk(0, []);
+  return results;
+}
+
+function chooseCombinationsInRange<T>(
+  items: T[],
+  minCount: number,
+  maxCount: number
+): T[][] {
+  const normalizedMin = Math.max(0, minCount);
+  const normalizedMax = Math.min(items.length, maxCount);
+  const results: T[][] = [];
+
+  for (let count = normalizedMin; count <= normalizedMax; count += 1) {
+    results.push(...chooseCombinations(items, count));
+  }
+
   return results;
 }
 
@@ -1124,6 +1144,55 @@ export function hashGameState(state: GameState): Sha256 {
     .digest("hex") as Sha256;
 }
 
+function legalPaymentSelections(
+  option: Extract<PendingDecision, { type: "payCost" }>["options"][number]
+): Array<{
+  selectedCards?: PublicPaymentCardRef[];
+  selectedDon?: PublicPaymentCardRef[];
+}> {
+  const selectableCards = option.selectableCards ?? [];
+  const selectableDon = option.selectableDon ?? [];
+  const cardSelections = chooseCombinationsInRange(
+    selectableCards,
+    0,
+    selectableCards.length
+  );
+  const donSelections = chooseCombinationsInRange(
+    selectableDon,
+    0,
+    selectableDon.length
+  );
+  const results: Array<{
+    selectedCards?: PublicPaymentCardRef[];
+    selectedDon?: PublicPaymentCardRef[];
+  }> = [];
+
+  for (const selectedCards of cardSelections) {
+    for (const selectedDon of donSelections) {
+      const totalSelected = selectedCards.length + selectedDon.length;
+      if (totalSelected < option.min || totalSelected > option.max) {
+        continue;
+      }
+
+      const selection: {
+        selectedCards?: PublicPaymentCardRef[];
+        selectedDon?: PublicPaymentCardRef[];
+      } = {};
+
+      if (selectedCards.length > 0) {
+        selection.selectedCards = selectedCards.map(toPublicPaymentCardRef);
+      }
+      if (selectedDon.length > 0) {
+        selection.selectedDon = selectedDon.map(toPublicPaymentCardRef);
+      }
+
+      results.push(selection);
+    }
+  }
+
+  return results;
+}
+
 function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
   const respond = (response: DecisionResponse): Action => ({
     type: "respondToDecision",
@@ -1147,23 +1216,21 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         respond({ type: "optionalActivationChoice", choice: "decline" })
       ];
     case "payCost":
-      return pendingDecision.options
-        .filter(
-          (option) =>
-            option.min === 0 &&
-            option.max === 0 &&
-            (option.selectableCards?.length ?? 0) === 0 &&
-            (option.selectableDon?.length ?? 0) === 0
+      return pendingDecision.options.flatMap((option) =>
+        legalPaymentSelections(option).map((selection) =>
+          respond({
+            type: "payment",
+            selection: { optionId: option.id, ...selection }
+          })
         )
-        .map((option) =>
-          respond({ type: "payment", selection: { optionId: option.id } })
-        );
+      );
     case "selectTargets":
-      return chooseCombinations(
+      return chooseCombinationsInRange(
         pendingDecision.candidates.map((candidate) =>
           requireInstanceId(candidate)
         ),
-        pendingDecision.request.min
+        pendingDecision.request.min,
+        pendingDecision.request.max
       ).map((selected) =>
         respond({
           type: "targetSelection",
@@ -1171,11 +1238,12 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         })
       );
     case "selectCards":
-      return chooseCombinations(
+      return chooseCombinationsInRange(
         pendingDecision.candidates.map((candidate) =>
           requireInstanceId(candidate)
         ),
-        pendingDecision.request.min
+        pendingDecision.request.min,
+        pendingDecision.request.max
       ).map((selected) =>
         respond({
           type: "cardSelection",
@@ -1183,9 +1251,10 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         })
       );
     case "chooseEffectOption":
-      return chooseCombinations(
+      return chooseCombinationsInRange(
         pendingDecision.options.map((option) => option.id),
-        pendingDecision.min
+        pendingDecision.min,
+        pendingDecision.max
       ).map((optionIds) =>
         respond({ type: "effectOptionSelection", optionIds })
       );
@@ -1272,9 +1341,38 @@ function assertValidDecisionResponse(
       }
       const selectedCards = paymentResponse.selection.selectedCards ?? [];
       const selectedDon = paymentResponse.selection.selectedDon ?? [];
+      const selectedCardIds = selectedCards.map((card) => card.instanceId);
+      const selectedDonIds = selectedDon.map((card) => card.instanceId);
       const totalSelected = selectedCards.length + selectedDon.length;
       if (totalSelected < option.min || totalSelected > option.max) {
         throw new Error("payment response does not satisfy the option min/max");
+      }
+      if (hasDuplicateValues([...selectedCardIds, ...selectedDonIds])) {
+        throw new Error("payment response may not include duplicate cards");
+      }
+      const selectableCardIds = (option.selectableCards ?? []).map((card) =>
+        requireInstanceId(card)
+      );
+      const selectableDonIds = (option.selectableDon ?? []).map((card) =>
+        requireInstanceId(card)
+      );
+      if (
+        !selectedCardIds.every((instanceId) =>
+          selectableCardIds.includes(instanceId)
+        )
+      ) {
+        throw new Error(
+          "payment response references a non-selectable payment card"
+        );
+      }
+      if (
+        !selectedDonIds.every((instanceId) =>
+          selectableDonIds.includes(instanceId)
+        )
+      ) {
+        throw new Error(
+          "payment response references a non-selectable DON card"
+        );
       }
       return;
     }
@@ -1294,6 +1392,9 @@ function assertValidDecisionResponse(
         selectedIds.length > pendingDecision.request.max
       ) {
         throw new Error("targetSelection response violates min/max");
+      }
+      if (hasDuplicateValues(selectedIds)) {
+        throw new Error("targetSelection response may not contain duplicates");
       }
       if (!selectedIds.every((instanceId) => ids.includes(instanceId))) {
         throw new Error(
@@ -1319,6 +1420,9 @@ function assertValidDecisionResponse(
       ) {
         throw new Error("cardSelection response violates min/max");
       }
+      if (hasDuplicateValues(selectedIds)) {
+        throw new Error("cardSelection response may not contain duplicates");
+      }
       if (!selectedIds.every((instanceId) => ids.includes(instanceId))) {
         throw new Error(
           "cardSelection response references a non-candidate card"
@@ -1336,6 +1440,11 @@ function assertValidDecisionResponse(
         effectOptionResponse.optionIds.length > pendingDecision.max
       ) {
         throw new Error("effectOptionSelection response violates min/max");
+      }
+      if (hasDuplicateValues(effectOptionResponse.optionIds)) {
+        throw new Error(
+          "effectOptionSelection response may not contain duplicates"
+        );
       }
       const optionIds = pendingDecision.options.map((option) => option.id);
       if (

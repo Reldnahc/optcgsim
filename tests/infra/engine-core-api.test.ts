@@ -493,4 +493,261 @@ describe("engine-core API skeleton", () => {
     ).toThrow(/violates min\/max/);
     expect(state.pendingDecision?.id).toBe(asId("decision-3"));
   });
+
+  it("enumerates pay-cost responses for selectable cards and DON", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-4"),
+          type: "payCost",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          cost: { type: "restDon", count: 1 },
+          options: [
+            {
+              id: "option-1",
+              cost: { type: "restDon", count: 1 },
+              selectableCards: [
+                {
+                  instanceId: asId("p1-char-1"),
+                  cardId: asId("char-1"),
+                  owner: asId("p1"),
+                  controller: asId("p1"),
+                  zone: {
+                    zone: "characterArea",
+                    playerId: asId("p1"),
+                    index: 0
+                  }
+                }
+              ],
+              selectableDon: [
+                {
+                  instanceId: asId("p1-cost-1"),
+                  cardId: asId("don-1"),
+                  owner: asId("p1"),
+                  controller: asId("p1"),
+                  zone: {
+                    zone: "costArea",
+                    playerId: asId("p1"),
+                    index: 0
+                  }
+                }
+              ],
+              min: 1,
+              max: 1
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    const legal = getLegalActions(state, asId("p1"));
+    expect(legal).toHaveLength(2);
+    expect(legal).toEqual(
+      expect.arrayContaining([
+        {
+          type: "respondToDecision",
+          decisionId: asId("decision-4"),
+          response: {
+            type: "payment",
+            selection: {
+              optionId: "option-1",
+              selectedCards: [
+                {
+                  instanceId: asId("p1-char-1"),
+                  cardId: asId("char-1"),
+                  owner: asId("p1"),
+                  controller: asId("p1"),
+                  zone: {
+                    zone: "characterArea",
+                    playerId: asId("p1"),
+                    index: 0
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          type: "respondToDecision",
+          decisionId: asId("decision-4"),
+          response: {
+            type: "payment",
+            selection: {
+              optionId: "option-1",
+              selectedDon: [
+                {
+                  instanceId: asId("p1-cost-1"),
+                  cardId: asId("don-1"),
+                  owner: asId("p1"),
+                  controller: asId("p1"),
+                  zone: {
+                    zone: "costArea",
+                    playerId: asId("p1"),
+                    index: 0
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ])
+    );
+  });
+
+  it("enumerates ranged select-card responses beyond the minimum", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-5"),
+          type: "selectCards",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          request: {
+            chooser: "self",
+            zone: "hand",
+            player: "self",
+            min: 1,
+            max: 2,
+            allowFewerIfUnavailable: false,
+            visibility: "privateToChooser"
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-hand-1"),
+              cardId: asId("event-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: { zone: "hand", playerId: asId("p1"), index: 0 }
+            },
+            {
+              instanceId: asId("p1-char-1"),
+              cardId: asId("char-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: { zone: "characterArea", playerId: asId("p1"), index: 0 }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    const legal = getLegalActions(state, asId("p1"));
+    expect(legal).toContainEqual({
+      type: "respondToDecision",
+      decisionId: asId("decision-5"),
+      response: {
+        type: "cardSelection",
+        selected: [
+          { instanceId: asId("p1-hand-1") },
+          { instanceId: asId("p1-char-1") }
+        ]
+      }
+    });
+  });
+
+  it("rejects payment selections outside the offered candidates", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-6"),
+          type: "payCost",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          cost: { type: "restDon", count: 1 },
+          options: [
+            {
+              id: "option-2",
+              cost: { type: "restDon", count: 1 },
+              selectableCards: [
+                {
+                  instanceId: asId("p1-char-1"),
+                  cardId: asId("char-1"),
+                  owner: asId("p1"),
+                  controller: asId("p1"),
+                  zone: {
+                    zone: "characterArea",
+                    playerId: asId("p1"),
+                    index: 0
+                  }
+                }
+              ],
+              min: 1,
+              max: 1
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(() =>
+      resumeDecision(state, {
+        type: "payment",
+        selection: {
+          optionId: "option-2",
+          selectedCards: [
+            {
+              instanceId: asId("p2-char-1"),
+              cardId: asId("char-1"),
+              owner: asId("p2"),
+              controller: asId("p2"),
+              zone: {
+                zone: "characterArea",
+                playerId: asId("p2"),
+                index: 0
+              }
+            }
+          ]
+        }
+      })
+    ).toThrow(/non-selectable payment card/);
+  });
+
+  it("rejects duplicate cards in multi-select decision responses", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-7"),
+          type: "selectTargets",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          request: {
+            timing: "onActivation",
+            chooser: "self",
+            zone: "characterArea",
+            player: "self",
+            min: 2,
+            max: 2,
+            allowFewerIfUnavailable: false
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-char-1"),
+              cardId: asId("char-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: { zone: "characterArea", playerId: asId("p1"), index: 0 }
+            },
+            {
+              instanceId: asId("p2-char-1"),
+              cardId: asId("char-1"),
+              owner: asId("p2"),
+              controller: asId("p2"),
+              zone: { zone: "characterArea", playerId: asId("p2"), index: 0 }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(() =>
+      resumeDecision(state, {
+        type: "targetSelection",
+        selected: [
+          { instanceId: asId("p1-char-1") },
+          { instanceId: asId("p1-char-1") }
+        ]
+      })
+    ).toThrow(/may not contain duplicates/);
+  });
 });
