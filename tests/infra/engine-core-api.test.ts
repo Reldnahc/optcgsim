@@ -36,6 +36,25 @@ function asId<T extends string>(value: string): T {
   return value as T;
 }
 
+function runNpmScript(cwd: string, script: string): void {
+  if (process.platform === "win32") {
+    execFileSync(
+      process.env["ComSpec"] ?? "cmd.exe",
+      ["/c", "npm.cmd", "run", script],
+      {
+        cwd,
+        stdio: "pipe"
+      }
+    );
+    return;
+  }
+
+  execFileSync("npm", ["run", script], {
+    cwd,
+    stdio: "pipe"
+  });
+}
+
 function makeResolvedCard(
   cardId: string,
   category: CardCategory
@@ -335,7 +354,9 @@ describe("engine-core API skeleton", () => {
     expect(
       getLegalActions(toEnd.state, asId("p1")).map((action) => action.type)
     ).toContain("endMainPhase");
-    expect(getLegalActions(toEnd.state, asId("p2"))).toEqual([]);
+    expect(
+      getLegalActions(toEnd.state, asId("p2")).map((action) => action.type)
+    ).toEqual(["concede"]);
 
     const nextTurn = applyAction(toEnd.state, { type: "endMainPhase" });
     expect(nextTurn.state.turn.phase).toBe("refresh");
@@ -343,13 +364,15 @@ describe("engine-core API skeleton", () => {
     expect(nextTurn.state.turn.nonActivePlayer).toBe(asId("p1"));
   });
 
-  it("treats concede as an active-player action and awards the win to the opponent", () => {
+  it("keeps concede legal for both players and awards the active player's concession correctly", () => {
     const state = createInitialState(makeInput());
 
     expect(
       getLegalActions(state, asId("p1")).map((action) => action.type)
     ).toContain("concede");
-    expect(getLegalActions(state, asId("p2"))).toEqual([]);
+    expect(
+      getLegalActions(state, asId("p2")).map((action) => action.type)
+    ).toContain("concede");
 
     const result = applyAction(state, { type: "concede" });
     expect(result.state.status).toBe("completed");
@@ -579,7 +602,7 @@ describe("engine-core API skeleton", () => {
     const opponentView = filterStateForPlayer(state, asId("p2"));
 
     expect(chooserView.pendingDecision?.type).toBe("confirmTriggerFromLife");
-    expect(opponentView.pendingDecision?.type).toBe("confirmTriggerFromLife");
+    expect(opponentView.pendingDecision).toBeUndefined();
     expect(
       opponentView.pendingDecision?.type === "confirmTriggerFromLife"
         ? opponentView.pendingDecision.card.cardId
@@ -677,6 +700,9 @@ describe("engine-core API skeleton", () => {
     const legal = getLegalActions(state, asId("p1"));
     expect(legal).toEqual([
       {
+        type: "concede"
+      },
+      {
         type: "respondToDecision",
         decisionId: asId("decision-2"),
         response: { type: "keepOpeningHand" }
@@ -687,6 +713,27 @@ describe("engine-core API skeleton", () => {
         response: { type: "mulligan" }
       }
     ]);
+  });
+
+  it("keeps concede legal while a decision is pending for both players", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-concede"),
+          type: "mulligan",
+          playerId: asId("p1"),
+          handCount: 5,
+          visibility: { type: "private", playerIds: [asId("p1")] }
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(
+      getLegalActions(state, asId("p1")).map((action) => action.type)
+    ).toContain("concede");
+    expect(
+      getLegalActions(state, asId("p2")).map((action) => action.type)
+    ).toContain("concede");
   });
 
   it("rejects non-decision actions while a decision is pending", () => {
@@ -796,9 +843,12 @@ describe("engine-core API skeleton", () => {
     );
 
     const legal = getLegalActions(state, asId("p1"));
-    expect(legal).toHaveLength(2);
+    expect(legal).toHaveLength(3);
     expect(legal).toEqual(
       expect.arrayContaining([
+        {
+          type: "concede"
+        },
         {
           type: "respondToDecision",
           decisionId: asId("decision-4"),
@@ -1110,6 +1160,9 @@ describe("engine-core API skeleton", () => {
 
     expect(getLegalActions(state, asId("p1"))).toEqual([
       {
+        type: "concede"
+      },
+      {
         type: "respondToDecision",
         decisionId: asId("decision-9"),
         response: {
@@ -1135,26 +1188,12 @@ describe("engine-core API skeleton", () => {
     rmSync(distTestDir, { recursive: true, force: true });
 
     try {
-      execFileSync(
-        process.env["ComSpec"] ?? "cmd.exe",
-        ["/c", "npm.cmd", "run", "build"],
-        {
-          cwd: packageDir,
-          stdio: "pipe"
-        }
-      );
+      runNpmScript(packageDir, "build");
 
       expect(existsSync(resolve(distDir, "index.js"))).toBe(true);
       expect(existsSync(resolve(distDir, "index.d.ts"))).toBe(true);
 
-      execFileSync(
-        process.env["ComSpec"] ?? "cmd.exe",
-        ["/c", "npm.cmd", "run", "typecheck"],
-        {
-          cwd: packageDir,
-          stdio: "pipe"
-        }
-      );
+      runNpmScript(packageDir, "typecheck");
     } finally {
       rmSync(distDir, { recursive: true, force: true });
       rmSync(distTestDir, { recursive: true, force: true });

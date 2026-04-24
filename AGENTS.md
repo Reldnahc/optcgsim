@@ -46,6 +46,7 @@ Section Ref: `AGENTS.s003`
 - If a story cannot be completed safely because of a missing dependency, unresolved ambiguity, missing approved prerequisite, or contradictory spec/story inputs, stop at the narrowest safe point and return with the blocker plus concrete follow-up questions; do not force an implementation through.
 - Add or update tests required by the story.
 - Keep deterministic engine behavior and hidden-information safety intact.
+- Do not hard-code OS-specific shells, executables, or command names in repository tests, smoke checks, or workflow helpers. Use cross-platform invocations or an explicit `process.platform` split when shelling out.
 - Prefer repo-owned workflow entrypoints under `npm run stories:*` and `npm run stories:verify` over invoking individual tool files directly, unless a story or review task explicitly requires the lower-level tool.
 - Use one branch and one pull request per story by default. Review should happen on the PR diff against the approved story and packet, not only on the issue.
 - Story execution lifecycle is: `approved` -> `in_progress` -> `in_review` -> `done`, with `changes_requested` and `blocked` as valid side states when review or execution finds real blockers.

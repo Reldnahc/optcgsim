@@ -465,6 +465,13 @@ function toPublicDecision(
     return undefined;
   }
 
+  if (
+    pendingDecision.type === "confirmTriggerFromLife" &&
+    viewerId !== pendingDecision.playerId
+  ) {
+    return undefined;
+  }
+
   const visibility = toPublicDecisionVisibility(
     pendingDecision.visibility,
     viewerId
@@ -1677,18 +1684,19 @@ export function getLegalActions(
     return [];
   }
 
+  const legal: Action[] = [{ type: "concede" }];
+
   if (state.pendingDecision) {
     if (state.pendingDecision.playerId !== playerId) {
-      return [];
+      return legal;
     }
-    return legalResponsesForDecision(state.pendingDecision);
+    return [...legal, ...legalResponsesForDecision(state.pendingDecision)];
   }
 
   if (state.turn.activePlayer !== playerId) {
-    return [];
+    return legal;
   }
 
-  const legal: Action[] = [{ type: "concede" }];
   if (state.turn.phase === "main" || state.turn.phase === "end") {
     legal.push({ type: "endMainPhase" });
   }
@@ -1702,6 +1710,25 @@ export function applyAction(state: GameState, action: Action): EngineResult {
 
   if (state.status === "frozen") {
     throw new Error("Actions are not allowed while the match is frozen");
+  }
+
+  if (action.type === "concede") {
+    const nextState = cloneStateForMutation(state);
+    const concedingPlayerId =
+      (action as Action & { playerId?: PlayerId }).playerId ??
+      state.pendingDecision?.playerId ??
+      state.turn.activePlayer;
+    nextState.status = "completed";
+    nextState.winner = getOpponentId(state, concedingPlayerId);
+    return finalizeResult(state, nextState, [
+      {
+        type: "gameOver",
+        payload: {
+          reason: "concede",
+          winner: nextState.winner
+        }
+      }
+    ]);
   }
 
   if (action.type === "respondToDecision") {
@@ -1722,19 +1749,6 @@ export function applyAction(state: GameState, action: Action): EngineResult {
 
   const nextState = cloneStateForMutation(state);
   switch (action.type) {
-    case "concede": {
-      nextState.status = "completed";
-      nextState.winner = getOpponentId(state, state.turn.activePlayer);
-      return finalizeResult(state, nextState, [
-        {
-          type: "gameOver",
-          payload: {
-            reason: "concede",
-            winner: nextState.winner
-          }
-        }
-      ]);
-    }
     case "endMainPhase": {
       if (state.turn.phase === "main") {
         nextState.turn.phase = "end";
