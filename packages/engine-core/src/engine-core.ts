@@ -404,6 +404,49 @@ function shouldExposeDecisionCandidatesToViewer(
   return pendingDecision.request.visibility !== "privateToChooser";
 }
 
+function toPublicDefaultResponse(
+  pendingDecision: PendingDecision,
+  viewerId: PlayerId
+): DecisionResponse | undefined {
+  const response = pendingDecision.defaultResponse;
+  if (!response) {
+    return undefined;
+  }
+
+  if (viewerId === pendingDecision.playerId) {
+    return response;
+  }
+
+  switch (response.type) {
+    case "keepOpeningHand":
+    case "mulligan":
+    case "orderedIds":
+    case "optionalActivationChoice":
+    case "lifeTriggerChoice":
+    case "effectOptionSelection":
+    case "replacementChoice":
+    case "pass":
+      return response;
+    case "payment":
+    case "targetSelection":
+    case "cardSelection":
+    case "orderCards":
+    case "chooseCharacterToTrash":
+    case "yesNo":
+      return undefined;
+    default:
+      return undefined;
+  }
+}
+
+function minSelectionsRequired(
+  min: number,
+  candidateCount: number,
+  allowFewerIfUnavailable: boolean
+): number {
+  return allowFewerIfUnavailable ? Math.min(min, candidateCount) : min;
+}
+
 function toPublicDecision(
   pendingDecision: PendingDecision | undefined,
   viewerId: PlayerId
@@ -441,8 +484,12 @@ function toPublicDecision(
     if (pendingDecision.timeoutMs !== undefined) {
       next.timeoutMs = pendingDecision.timeoutMs;
     }
-    if (pendingDecision.defaultResponse !== undefined) {
-      next.defaultResponse = pendingDecision.defaultResponse;
+    const publicDefaultResponse = toPublicDefaultResponse(
+      pendingDecision,
+      viewerId
+    );
+    if (publicDefaultResponse !== undefined) {
+      next.defaultResponse = publicDefaultResponse;
     }
     return next as T;
   };
@@ -1254,7 +1301,11 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         pendingDecision.candidates.map((candidate) =>
           requireInstanceId(candidate)
         ),
-        pendingDecision.request.min,
+        minSelectionsRequired(
+          pendingDecision.request.min,
+          pendingDecision.candidates.length,
+          pendingDecision.request.allowFewerIfUnavailable
+        ),
         pendingDecision.request.max
       ).map((selected) =>
         respond({
@@ -1267,7 +1318,11 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         pendingDecision.candidates.map((candidate) =>
           requireInstanceId(candidate)
         ),
-        pendingDecision.request.min,
+        minSelectionsRequired(
+          pendingDecision.request.min,
+          pendingDecision.candidates.length,
+          pendingDecision.request.allowFewerIfUnavailable
+        ),
         pendingDecision.request.max
       ).map((selected) =>
         respond({
@@ -1277,7 +1332,9 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
       );
     case "chooseEffectOption":
       return chooseCombinationsInRange(
-        pendingDecision.options.map((option) => option.id),
+        pendingDecision.options
+          .filter((option) => option.availability !== "unavailable")
+          .map((option) => option.id),
         pendingDecision.min,
         pendingDecision.max
       ).map((optionIds) =>
@@ -1440,8 +1497,13 @@ function assertValidDecisionResponse(
       const selectedIds = targetSelectionResponse.selected.map(
         (card) => card.instanceId
       );
+      const minSelections = minSelectionsRequired(
+        pendingDecision.request.min,
+        pendingDecision.candidates.length,
+        pendingDecision.request.allowFewerIfUnavailable
+      );
       if (
-        selectedIds.length < pendingDecision.request.min ||
+        selectedIds.length < minSelections ||
         selectedIds.length > pendingDecision.request.max
       ) {
         throw new Error("targetSelection response violates min/max");
@@ -1467,8 +1529,13 @@ function assertValidDecisionResponse(
       const selectedIds = cardSelectionResponse.selected.map(
         (card) => card.instanceId
       );
+      const minSelections = minSelectionsRequired(
+        pendingDecision.request.min,
+        pendingDecision.candidates.length,
+        pendingDecision.request.allowFewerIfUnavailable
+      );
       if (
-        selectedIds.length < pendingDecision.request.min ||
+        selectedIds.length < minSelections ||
         selectedIds.length > pendingDecision.request.max
       ) {
         throw new Error("cardSelection response violates min/max");
@@ -1499,7 +1566,9 @@ function assertValidDecisionResponse(
           "effectOptionSelection response may not contain duplicates"
         );
       }
-      const optionIds = pendingDecision.options.map((option) => option.id);
+      const optionIds = pendingDecision.options
+        .filter((option) => option.availability !== "unavailable")
+        .map((option) => option.id);
       if (
         !effectOptionResponse.optionIds.every((optionId) =>
           optionIds.includes(optionId)

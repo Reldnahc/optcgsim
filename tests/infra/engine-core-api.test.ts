@@ -1,3 +1,6 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   applyAction,
@@ -425,6 +428,54 @@ describe("engine-core API skeleton", () => {
     ).toEqual([]);
   });
 
+  it("strips hidden default responses from non-chooser views", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-hidden-default"),
+          type: "selectCards",
+          playerId: asId("p1"),
+          visibility: { type: "public" },
+          request: {
+            chooser: "self",
+            zone: "hand",
+            player: "self",
+            min: 1,
+            max: 1,
+            allowFewerIfUnavailable: false,
+            visibility: "privateToChooser"
+          },
+          defaultResponse: {
+            type: "cardSelection",
+            selected: [{ instanceId: asId("p1-hand-1") }]
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-hand-1"),
+              cardId: asId("event-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "hand",
+                playerId: asId("p1"),
+                index: 0
+              }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    const opponentView = filterStateForPlayer(state, asId("p2"));
+
+    expect(chooserView.pendingDecision?.defaultResponse).toEqual({
+      type: "cardSelection",
+      selected: [{ instanceId: asId("p1-hand-1") }]
+    });
+    expect(opponentView.pendingDecision?.defaultResponse).toBeUndefined();
+  });
+
   it("runs invariant checks after actions in test mode", () => {
     const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
     process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
@@ -719,6 +770,53 @@ describe("engine-core API skeleton", () => {
     });
   });
 
+  it("honors allowFewerIfUnavailable for selection decisions", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-allow-fewer"),
+          type: "selectCards",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          request: {
+            chooser: "self",
+            zone: "hand",
+            player: "self",
+            min: 2,
+            max: 2,
+            allowFewerIfUnavailable: true,
+            visibility: "privateToChooser"
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-hand-1"),
+              cardId: asId("event-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: { zone: "hand", playerId: asId("p1"), index: 0 }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(getLegalActions(state, asId("p1"))).toContainEqual({
+      type: "respondToDecision",
+      decisionId: asId("decision-allow-fewer"),
+      response: {
+        type: "cardSelection",
+        selected: [{ instanceId: asId("p1-hand-1") }]
+      }
+    });
+
+    expect(() =>
+      resumeDecision(state, {
+        type: "cardSelection",
+        selected: [{ instanceId: asId("p1-hand-1") }]
+      })
+    ).not.toThrow();
+  });
+
   it("rejects payment selections outside the offered candidates", () => {
     const state = createInitialState(
       makeInput({
@@ -851,5 +949,76 @@ describe("engine-core API skeleton", () => {
       } as unknown as { type: "optionalActivationChoice"; choice: never })
     ).toThrow(/unknown choice/);
     expect(state.pendingDecision?.id).toBe(asId("decision-8"));
+  });
+
+  it("filters unavailable effect options out of legal actions and validation", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-9"),
+          type: "chooseEffectOption",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          min: 1,
+          max: 1,
+          options: [
+            {
+              id: "available-option",
+              label: "Available",
+              effect: { type: "draw", count: 1, player: "self" }
+            },
+            {
+              id: "unavailable-option",
+              label: "Unavailable",
+              effect: { type: "draw", count: 1, player: "self" },
+              availability: "unavailable"
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(getLegalActions(state, asId("p1"))).toEqual([
+      {
+        type: "respondToDecision",
+        decisionId: asId("decision-9"),
+        response: {
+          type: "effectOptionSelection",
+          optionIds: ["available-option"]
+        }
+      }
+    ]);
+
+    expect(() =>
+      resumeDecision(state, {
+        type: "effectOptionSelection",
+        optionIds: ["unavailable-option"]
+      })
+    ).toThrow(/unknown option/);
+  });
+
+  it("builds @optcg/engine-core to the published dist entrypoint", () => {
+    const packageDir = resolve("packages/engine-core");
+    const distDir = resolve(packageDir, "dist");
+    const distTestDir = resolve(packageDir, "dist_test");
+    rmSync(distDir, { recursive: true, force: true });
+    rmSync(distTestDir, { recursive: true, force: true });
+
+    try {
+      execFileSync(
+        process.env["ComSpec"] ?? "cmd.exe",
+        ["/c", "npm.cmd", "run", "build"],
+        {
+          cwd: packageDir,
+          stdio: "pipe"
+        }
+      );
+
+      expect(existsSync(resolve(distDir, "index.js"))).toBe(true);
+      expect(existsSync(resolve(distDir, "index.d.ts"))).toBe(true);
+    } finally {
+      rmSync(distDir, { recursive: true, force: true });
+      rmSync(distTestDir, { recursive: true, force: true });
+    }
   });
 });

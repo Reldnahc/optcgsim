@@ -5,7 +5,11 @@
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true,
-    "noEmit": true
+    "noEmit": false,
+    "baseUrl": ".",
+    "paths": {
+      "@optcg/types": ["../types/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"]
 }
