@@ -1073,6 +1073,78 @@ describe("engine-core API skeleton", () => {
     }
   });
 
+  it("includes attached-zone cards in location invariants in test mode", () => {
+    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
+    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
+
+    const input = makeInput();
+    const host = input.players[asId<PlayerId>("p1")]!.leader;
+    const attachedCard = makeCard({
+      instanceId: "p1-attached-don-wrong-player",
+      cardId: "don-1",
+      owner: "p1",
+      zone: {
+        zone: "attached",
+        playerId: asId("p2"),
+        hostInstanceId: host.instanceId,
+        index: 0
+      },
+      state: "none"
+    });
+    (
+      input.players[asId<PlayerId>("p1")] as PlayerState & {
+        attachedCards?: CardInstance[];
+      }
+    ).attachedCards = [attachedCard];
+
+    try {
+      expect(() => createInitialState(input)).toThrow(
+        /Attached card .* inconsistent zone metadata/
+      );
+    } finally {
+      if (originalFlag === undefined) {
+        delete process.env["OPTCG_ENGINE_TEST_MODE"];
+      } else {
+        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
+      }
+    }
+  });
+
+  it("rejects overlapping attached card storage in test mode", () => {
+    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
+    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
+
+    const input = makeInput();
+    const host = input.players[asId<PlayerId>("p1")]!.leader;
+    const attachedCard = makeCard({
+      instanceId: input.players[asId<PlayerId>("p1")]!.deck[0]!.instanceId,
+      cardId: "don-1",
+      owner: "p1",
+      zone: {
+        zone: "attached",
+        playerId: asId("p1"),
+        hostInstanceId: host.instanceId,
+        index: 0
+      },
+      state: "none"
+    });
+    (
+      input.players[asId<PlayerId>("p1")] as PlayerState & {
+        attachedCards?: CardInstance[];
+      }
+    ).attachedCards = [attachedCard];
+
+    try {
+      expect(() => createInitialState(input)).toThrow(/multiple locations/);
+    } finally {
+      if (originalFlag === undefined) {
+        delete process.env["OPTCG_ENGINE_TEST_MODE"];
+      } else {
+        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
+      }
+    }
+  });
+
   it("does not advertise synthetic pass responses for pending decisions", () => {
     const state = createInitialState(
       makeInput({

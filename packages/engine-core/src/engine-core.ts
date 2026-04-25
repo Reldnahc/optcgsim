@@ -930,42 +930,60 @@ function isCardInstanceLike(value: unknown): value is CardInstance {
   );
 }
 
-function collectAllCards(state: GameState): CardInstance[] {
-  const cards: CardInstance[] = [];
-  const visitedNodes = new Set<object>();
-  const seenInstanceIds = new Set<InstanceId>();
+type PlayerCardEntry = {
+  card: CardInstance;
+  path: string;
+};
 
-  const visitValue = (value: unknown): void => {
+function collectCardsFromPlayerState(player: PlayerState): PlayerCardEntry[] {
+  const cards: PlayerCardEntry[] = [];
+  const visitedNodes = new Set<object>();
+
+  const visitValue = (value: unknown, path: string): void => {
     if (!value || typeof value !== "object") {
       return;
     }
+
+    if (isCardInstanceLike(value)) {
+      cards.push({ card: value, path });
+      return;
+    }
+
     if (visitedNodes.has(value)) {
       return;
     }
     visitedNodes.add(value);
 
-    if (isCardInstanceLike(value)) {
-      if (!seenInstanceIds.has(value.instanceId)) {
-        seenInstanceIds.add(value.instanceId);
-        cards.push(value);
-      }
-    }
-
     if (Array.isArray(value)) {
-      for (const entry of value) {
-        visitValue(entry);
-      }
+      value.forEach((entry, index) => {
+        visitValue(entry, `${path}[${index}]`);
+      });
       return;
     }
 
-    for (const entry of Object.values(value)) {
-      visitValue(entry);
+    for (const [key, entry] of Object.entries(value)) {
+      visitValue(entry, path ? `${path}.${key}` : key);
     }
   };
 
+  visitValue(player, "player");
+  return cards;
+}
+
+function collectAllCards(state: GameState): CardInstance[] {
+  const cards: CardInstance[] = [];
+  const seenInstanceIds = new Set<InstanceId>();
+
   for (const player of Object.values(state.players)) {
-    visitValue(player);
+    for (const { card } of collectCardsFromPlayerState(player)) {
+      if (seenInstanceIds.has(card.instanceId)) {
+        continue;
+      }
+      seenInstanceIds.add(card.instanceId);
+      cards.push(card);
+    }
   }
+
   return cards;
 }
 
@@ -1086,16 +1104,30 @@ function assertAllCardsInExactlyOneLocation(state: GameState): void {
       }
       visit(lifeCard.card, `${player.playerId}:life:${index}`);
     });
+
+    for (const { card, path } of collectCardsFromPlayerState(player)) {
+      if (card.zone.zone !== "attached") {
+        continue;
+      }
+      if (card.zone.playerId !== player.playerId) {
+        throw new Error(
+          `Attached card ${card.instanceId} has inconsistent zone metadata`
+        );
+      }
+      visit(card, `${player.playerId}:${path}`);
+    }
   }
 }
 
 function assertNoDuplicateInstanceIds(state: GameState): void {
   const seen = new Set<InstanceId>();
-  for (const card of collectAllCards(state)) {
-    if (seen.has(card.instanceId)) {
-      throw new Error(`Duplicate instanceId detected: ${card.instanceId}`);
+  for (const player of Object.values(state.players)) {
+    for (const { card } of collectCardsFromPlayerState(player)) {
+      if (seen.has(card.instanceId)) {
+        throw new Error(`Duplicate instanceId detected: ${card.instanceId}`);
+      }
+      seen.add(card.instanceId);
     }
-    seen.add(card.instanceId);
   }
 }
 
