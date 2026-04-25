@@ -1,0 +1,48 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-012
+title: Implement main-phase play legality for Characters, Stages, and event-card skeleton
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement actionable main-phase play paths for vanilla milestone gameplay: legal play-card actions for Characters and Stages, cost payment plumbing, and a minimal event-card skeleton.
+spec_refs:
+  - 15-implementation-kickoff.s008 (First milestone scope)
+  - 15-implementation-kickoff.s011 (Definition of done for kickoff)
+  - 02-engine-mechanics.s010 (Turn structure)
+  - 03-game-state-events-decisions.s016 (Action envelope inside the engine)
+  - 03-game-state-events-decisions.s017 (Canonical decision routing)
+scope:
+  - "Implement Action.playCard legality during Main Phase for Character and Stage cards in hand, using authoritative state and cost availability."
+  - "Integrate implemented play flows with PendingDecision/payment routing from ENG-015 where a choice is required to pay or select cards."
+  - "Move played Characters into characterArea with turnPlayed metadata and enforce character-area size limits."
+  - "Move played Stages into stageArea with stage-area legality checks."
+  - "Implement an explicit event-card skeleton path: legal to play when costs can be paid, emits canonical events, and resolves through a no-effect / unsupported placeholder without inventing full effect runtime."
+non_scope:
+  - Full effect DSL execution or card-specific abilities.
+  - Attack resolution, damage, or K.O. handling.
+  - Counter timing and blocker/counter battle windows.
+dependencies:
+  - ENG-010
+  - ENG-015
+  - ENG-004
+acceptance_criteria:
+  - "getLegalActions exposes play-card actions during the active player's Main Phase when a Character or Stage can legally be played."
+  - "Applying a legal Character or Stage play updates zones, costs, and state sequencing authoritatively and emits canonical events."
+  - "Character and stage area limits remain enforced after plays."
+  - "Event-card skeleton actions do not invent runtime effects; they resolve through an explicit placeholder path that preserves sequencing and event emission."
+required_tests:
+  - "Integration: play a Character in Main Phase and assert cost payment, zone move, turnPlayed metadata, and emitted events."
+  - "Integration: reject an illegal second Stage while one is already present."
+  - "Integration: event-card skeleton path emits canonical events and ends in an explicit placeholder/no-effect state without mutating unrelated state."
+repo_rules:
+  - Legal play actions must be derived from authoritative state, not view hints.
+  - Do not bypass pending-decision routing for costs or selections that require player choice.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/ENG-012.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review
