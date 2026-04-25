@@ -101,6 +101,20 @@ function chooseCombinationsInRange<T>(
   return results;
 }
 
+function getSelectableCountRange(
+  candidateCount: number,
+  minCount: number,
+  maxCount: number,
+  allowFewerIfUnavailable: boolean
+): { min: number; max: number } {
+  const max = Math.min(candidateCount, maxCount);
+  const min = allowFewerIfUnavailable
+    ? Math.min(minCount, candidateCount)
+    : minCount;
+
+  return { min, max };
+}
+
 function choosePermutations<T>(items: T[]): T[][] {
   if (items.length <= 1) {
     return [items];
@@ -113,6 +127,54 @@ function choosePermutations<T>(items: T[]): T[][] {
     }
   });
   return results;
+}
+
+function enumeratePaymentSelections(
+  option: Extract<PendingDecision, { type: "payCost" }>["options"][number]
+): Extract<DecisionResponse, { type: "payment" }>["selection"][] {
+  const selectableCards = option.selectableCards ?? [];
+  const selectableDon = option.selectableDon ?? [];
+  const combined = [
+    ...selectableCards.map((card) => ({ kind: "card" as const, card })),
+    ...selectableDon.map((card) => ({ kind: "don" as const, card }))
+  ];
+
+  const counts = getSelectableCountRange(
+    combined.length,
+    option.min,
+    option.max,
+    false
+  );
+  if (counts.min > counts.max) {
+    return [];
+  }
+
+  return chooseCombinationsInRange(combined, counts.min, counts.max).map(
+    (selected) => {
+      const selection: Extract<
+        DecisionResponse,
+        { type: "payment" }
+      >["selection"] = {
+        optionId: option.id
+      };
+
+      const selectedCards = selected
+        .filter((entry) => entry.kind === "card")
+        .map((entry) => toPublicPaymentCardRef(entry.card));
+      const selectedDon = selected
+        .filter((entry) => entry.kind === "don")
+        .map((entry) => toPublicPaymentCardRef(entry.card));
+
+      if (selectedCards.length > 0) {
+        selection.selectedCards = selectedCards;
+      }
+      if (selectedDon.length > 0) {
+        selection.selectedDon = selectedDon;
+      }
+
+      return selection;
+    }
+  );
 }
 
 function stableStringify(value: unknown): string {
@@ -1057,37 +1119,27 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         }
       }));
     case "payCost":
-      return pendingDecision.options.map((option) => {
-        const selection: Extract<
-          DecisionResponse,
-          { type: "payment" }
-        >["selection"] = {
-          optionId: option.id
-        };
-        if (option.selectableCards !== undefined) {
-          selection.selectedCards = option.selectableCards
-            .slice(0, Math.min(option.min, option.selectableCards.length))
-            .map((card) => ({ ...toPublicPaymentCardRef(card) }));
-        }
-        if (option.selectableDon !== undefined) {
-          selection.selectedDon = option.selectableDon
-            .slice(0, Math.min(option.min, option.selectableDon.length))
-            .map((card) => ({ ...toPublicPaymentCardRef(card) }));
-        }
-        return {
-          type: "respondToDecision",
+      return pendingDecision.options.flatMap((option) =>
+        enumeratePaymentSelections(option).map((selection) => ({
+          type: "respondToDecision" as const,
           decisionId: pendingDecision.id,
           response: {
-            type: "payment",
+            type: "payment" as const,
             selection
           }
-        };
-      });
+        }))
+      );
     case "selectTargets": {
+      const counts = getSelectableCountRange(
+        pendingDecision.candidates.length,
+        pendingDecision.request.min,
+        pendingDecision.request.max,
+        pendingDecision.request.allowFewerIfUnavailable
+      );
       const combos = chooseCombinationsInRange(
         pendingDecision.candidates,
-        pendingDecision.request.min,
-        pendingDecision.request.max
+        counts.min,
+        counts.max
       );
       return combos.map((selected) => ({
         type: "respondToDecision",
@@ -1099,10 +1151,16 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
       }));
     }
     case "selectCards": {
+      const counts = getSelectableCountRange(
+        pendingDecision.candidates.length,
+        pendingDecision.request.min,
+        pendingDecision.request.max,
+        pendingDecision.request.allowFewerIfUnavailable
+      );
       const combos = chooseCombinationsInRange(
         pendingDecision.candidates,
-        pendingDecision.request.min,
-        pendingDecision.request.max
+        counts.min,
+        counts.max
       );
       return combos.map((selected) => ({
         type: "respondToDecision",

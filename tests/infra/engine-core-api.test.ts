@@ -568,6 +568,105 @@ describe("engine-core bootstrap surface", () => {
     ).toThrowError(/no legal responses/i);
   });
 
+  it("honors allowFewerIfUnavailable when enumerating selection responses", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = {
+      id: asId("decision-allow-fewer"),
+      type: "selectCards",
+      playerId: asId("p1"),
+      visibility: { type: "private", playerIds: [asId("p1")] },
+      request: {
+        chooser: "self",
+        min: 2,
+        max: 2,
+        allowFewerIfUnavailable: true,
+        visibility: "privateToChooser"
+      },
+      candidates: [
+        {
+          instanceId: asId("p1-hand-1"),
+          cardId: asId("char-2"),
+          owner: asId("p1"),
+          controller: asId("p1")
+        }
+      ]
+    };
+
+    const state = createInitialState(input);
+    const actions = getLegalActions(state, asId("p1"));
+
+    expect(actions).toContainEqual({
+      type: "respondToDecision",
+      decisionId: asId("decision-allow-fewer"),
+      response: {
+        type: "cardSelection",
+        selected: [{ instanceId: asId("p1-hand-1") }]
+      }
+    });
+
+    expect(() =>
+      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () => createInitialState(input))
+    ).not.toThrow();
+  });
+
+  it("does not fabricate impossible payCost responses", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = {
+      id: asId("decision-pay-cost"),
+      type: "payCost",
+      playerId: asId("p1"),
+      visibility: { type: "private", playerIds: [asId("p1")] },
+      cost: { type: "restDon", count: 1 },
+      options: [
+        {
+          id: "pay-1",
+          cost: { type: "restDon", count: 1 },
+          selectableCards: [
+            {
+              instanceId: asId("p1-hand-1"),
+              cardId: asId("char-2"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: makeZone("hand", "p1", 0)
+            }
+          ],
+          selectableDon: [
+            {
+              instanceId: asId("p1-cost-1"),
+              cardId: asId("don-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: makeZone("costArea", "p1", 0)
+            }
+          ],
+          min: 1,
+          max: 1
+        }
+      ]
+    };
+
+    const actions = getLegalActions(
+      createInitialState(input),
+      asId("p1")
+    ).filter((action) => action.type === "respondToDecision");
+
+    expect(actions).toHaveLength(2);
+    for (const action of actions) {
+      if (action.type !== "respondToDecision") {
+        continue;
+      }
+
+      expect(action.response.type).toBe("payment");
+      if (action.response.type !== "payment") {
+        continue;
+      }
+      const selectedCount =
+        (action.response.selection.selectedCards?.length ?? 0) +
+        (action.response.selection.selectedDon?.length ?? 0);
+      expect(selectedCount).toBe(1);
+    }
+  });
+
   it("computes a conservative bootstrap view for cards", () => {
     const state = createInitialState(makeBaseInput());
     const computed = computeView(state);
