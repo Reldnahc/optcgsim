@@ -450,6 +450,7 @@ describe("engine-core bootstrap surface", () => {
 
   it("routes paused states through respondToDecision actions", () => {
     const input = makeBaseInput();
+    input.status = "setup";
     input.pendingDecision = makePendingDecision();
     const state = createInitialState(input);
 
@@ -467,6 +468,7 @@ describe("engine-core bootstrap surface", () => {
 
   it("applies legal mulligan respondToDecision actions through applyAction", () => {
     const input = makeBaseInput();
+    input.status = "setup";
     input.pendingDecision = makePendingDecision();
     const state = createInitialState(input);
     const mulliganAction = getLegalActions(state, asId("p1")).find(
@@ -478,7 +480,8 @@ describe("engine-core bootstrap surface", () => {
     expect(mulliganAction).toBeDefined();
     const result = applyAction(state, mulliganAction!);
 
-    expect(result.state.pendingDecision).toBeUndefined();
+    expect(result.state.pendingDecision?.type).toBe("mulligan");
+    expect(result.state.pendingDecision?.playerId).toBe(asId("p2"));
     expect(result.state.players[asId<PlayerId>("p1")]?.keptOpeningHand).toBe(
       true
     );
@@ -487,6 +490,7 @@ describe("engine-core bootstrap surface", () => {
 
   it("concede completes the match, increments sequencing, and clears pending state", () => {
     const input = makeBaseInput();
+    input.status = "setup";
     input.pendingDecision = makePendingDecision();
 
     const result = applyAction(createInitialState(input), concedeAction("p1"));
@@ -510,6 +514,7 @@ describe("engine-core bootstrap surface", () => {
     expect(hashGameState(baseState)).toBe(baselineHash);
 
     const inputWithDecision = makeBaseInput();
+    inputWithDecision.status = "setup";
     inputWithDecision.pendingDecision = makePendingDecision();
     const stateWithDecision = createInitialState(inputWithDecision);
     const decisionHash = hashGameState(stateWithDecision);
@@ -543,6 +548,7 @@ describe("engine-core bootstrap surface", () => {
 
   it("includes the active pendingDecision in chooser PlayerView", () => {
     const input = makeBaseInput();
+    input.status = "setup";
     input.pendingDecision = makePendingDecision();
     const state = createInitialState(input);
 
@@ -569,6 +575,7 @@ describe("engine-core bootstrap surface", () => {
 
   it("shows public pending decisions to non-choosing recipients", () => {
     const input = makeBaseInput();
+    input.status = "setup";
     input.pendingDecision = {
       id: asId("decision-public"),
       type: "mulligan",
@@ -588,6 +595,7 @@ describe("engine-core bootstrap surface", () => {
 
   it("rejects replayOnly pending decisions from live states", () => {
     const input = makeBaseInput();
+    input.status = "setup";
     input.pendingDecision = {
       id: asId("decision-replay-only"),
       type: "mulligan",
@@ -601,6 +609,7 @@ describe("engine-core bootstrap surface", () => {
 
   it("rejects chooser-invisible pending decisions from live states", () => {
     const invalidInput = makeBaseInput();
+    invalidInput.status = "setup";
     invalidInput.pendingDecision = {
       id: asId("decision-chooser-hidden"),
       type: "mulligan",
@@ -665,7 +674,14 @@ describe("engine-core bootstrap surface", () => {
 
   it("resolves keepOpeningHand mulligans", () => {
     const input = makeBaseInput();
-    input.pendingDecision = makePendingDecision();
+    input.status = "setup";
+    input.players[asId<PlayerId>("p1")]!.keptOpeningHand = true;
+    input.pendingDecision = {
+      ...makePendingDecision(),
+      id: asId("decision-2"),
+      playerId: asId("p2"),
+      visibility: { type: "private", playerIds: [asId("p2")] }
+    };
     const result = resumeDecision(createInitialState(input), {
       type: "keepOpeningHand"
     });
@@ -674,6 +690,9 @@ describe("engine-core bootstrap surface", () => {
     expect(result.state.stateSeq).toBe(1);
     expect(result.state.actionSeq).toBe(1);
     expect(result.state.players[asId<PlayerId>("p1")]?.keptOpeningHand).toBe(
+      true
+    );
+    expect(result.state.players[asId<PlayerId>("p2")]?.keptOpeningHand).toBe(
       true
     );
     expect(result.state.players[asId<PlayerId>("p1")]?.hasMulliganed).toBe(
@@ -708,6 +727,7 @@ describe("engine-core bootstrap surface", () => {
 
   it("resolves mulligan redraws deterministically", () => {
     const input = makeBaseInput();
+    input.status = "setup";
     input.pendingDecision = makePendingDecision();
     const before = createInitialState(input);
     const originalHandIds = before.players[asId<PlayerId>("p1")]!.hand.map(
@@ -716,7 +736,8 @@ describe("engine-core bootstrap surface", () => {
     const result = resumeDecision(before, { type: "mulligan" });
     const nextPlayer = result.state.players[asId<PlayerId>("p1")]!;
 
-    expect(result.state.pendingDecision).toBeUndefined();
+    expect(result.state.pendingDecision?.type).toBe("mulligan");
+    expect(result.state.pendingDecision?.playerId).toBe(asId("p2"));
     expect(nextPlayer.hasMulliganed).toBe(true);
     expect(nextPlayer.keptOpeningHand).toBe(false);
     expect(result.state.rng.callCount).toBe(1);
@@ -727,6 +748,44 @@ describe("engine-core bootstrap surface", () => {
     expect(originalHandIds).not.toEqual(
       nextPlayer.hand.map((card) => card.instanceId)
     );
+  });
+
+  it("rejects mulligan pending decisions outside setup", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = makePendingDecision();
+
+    expect(() => createInitialState(input)).toThrowError(
+      /only valid during setup/i
+    );
+  });
+
+  it("rejects out-of-order setup mulligans before the first player resolves", () => {
+    const input = makeBaseInput();
+    input.status = "setup";
+    input.pendingDecision = {
+      ...makePendingDecision(),
+      playerId: asId("p2"),
+      visibility: { type: "private", playerIds: [asId("p2")] }
+    };
+
+    expect(() => createInitialState(input)).toThrowError(
+      /setup mulligan order/i
+    );
+  });
+
+  it("rejects mulligan resolution after setup completes", () => {
+    const input = makeBaseInput();
+    input.status = "setup";
+    input.pendingDecision = makePendingDecision();
+    const setupState = createInitialState(input);
+    const malformedActiveState = {
+      ...setupState,
+      status: "active" as const
+    };
+
+    expect(() =>
+      resumeDecision(malformedActiveState, { type: "keepOpeningHand" })
+    ).toThrowError(/setup completes/i);
   });
 
   it("runs constructor invariants in test mode", () => {

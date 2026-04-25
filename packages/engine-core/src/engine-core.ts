@@ -312,9 +312,11 @@ function canViewerSeePendingDecisionLive(
 }
 
 function canChooserAnswerPendingDecisionLive(
+  state: Pick<GameState, "status">,
   pendingDecision: PendingDecision
 ): boolean {
   return (
+    state.status === "setup" &&
     pendingDecision.type === "mulligan" &&
     canViewerSeePendingDecisionLive(pendingDecision, pendingDecision.playerId)
   );
@@ -327,6 +329,46 @@ function canChooserSeePendingDecisionLive(
     pendingDecision,
     pendingDecision.playerId
   );
+}
+
+function hasResolvedSetupMulligan(player: PlayerState): boolean {
+  return player.hasMulliganed || player.keptOpeningHand;
+}
+
+function assertSetupMulliganOrder(state: GameState): void {
+  if (!state.pendingDecision || state.pendingDecision.type !== "mulligan") {
+    return;
+  }
+
+  const firstPlayerId = state.turn.firstPlayer;
+  const secondPlayerId = getOpponentId(state, firstPlayerId);
+  const firstPlayer = state.players[firstPlayerId];
+  const secondPlayer = state.players[secondPlayerId];
+  if (!firstPlayer || !secondPlayer) {
+    throw new Error("Setup mulligan order references a missing player");
+  }
+
+  const firstResolved = hasResolvedSetupMulligan(firstPlayer);
+  const secondResolved = hasResolvedSetupMulligan(secondPlayer);
+  if (!firstResolved && secondResolved) {
+    throw new Error("Setup mulligan order is invalid");
+  }
+
+  if (state.pendingDecision.playerId === firstPlayerId) {
+    if (firstResolved || secondResolved) {
+      throw new Error("Setup mulligan order is invalid");
+    }
+    return;
+  }
+
+  if (state.pendingDecision.playerId === secondPlayerId) {
+    if (!firstResolved || secondResolved) {
+      throw new Error("Setup mulligan order is invalid");
+    }
+    return;
+  }
+
+  throw new Error("Setup mulligan chooser is not part of this match");
 }
 
 function requireInstanceId(
@@ -915,8 +957,15 @@ function assertPendingDecisionIsValid(state: GameState): void {
     throw new Error("Pending decision chooser cannot see the live decision");
   }
 
+  if (state.pendingDecision.type === "mulligan") {
+    if (state.status !== "setup") {
+      throw new Error("Mulligan decisions are only valid during setup");
+    }
+    assertSetupMulliganOrder(state);
+  }
+
   if (
-    canChooserAnswerPendingDecisionLive(state.pendingDecision) &&
+    canChooserAnswerPendingDecisionLive(state, state.pendingDecision) &&
     !hasLegalResponsesForDecision(state.pendingDecision)
   ) {
     throw new Error("Pending decision has no legal responses");
@@ -1197,7 +1246,7 @@ export function getLegalActions(
   if (state.pendingDecision) {
     if (
       state.pendingDecision.playerId !== playerId ||
-      !canChooserAnswerPendingDecisionLive(state.pendingDecision)
+      !canChooserAnswerPendingDecisionLive(state, state.pendingDecision)
     ) {
       return [{ type: "concede", playerId }];
     }
@@ -1286,6 +1335,10 @@ export function resumeDecision(
     throw new Error(
       `Unsupported pending decision in ENG-001 bootstrap: ${state.pendingDecision.type}`
     );
+  }
+
+  if (state.status !== "setup") {
+    throw new Error("Mulligan decisions cannot resolve after setup completes");
   }
 
   if (response.type !== "keepOpeningHand" && response.type !== "mulligan") {
