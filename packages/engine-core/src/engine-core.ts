@@ -897,6 +897,7 @@ function buildPublicLegalActions(
     if (
       state.pendingDecision.playerId === playerId &&
       projectedDecision !== undefined &&
+      canResolveDecisionInBootstrap(state.pendingDecision) &&
       hasLegalResponsesForDecision(state.pendingDecision)
     ) {
       legal.push({
@@ -1687,19 +1688,10 @@ function initializeSetupPlayer(
   }
 
   const hand = deck.slice(0, OPENING_HAND_SIZE);
-  const remainingDeck = deck.slice(OPENING_HAND_SIZE);
-  const life = remainingDeck
-    .slice(0, lifeCount)
-    .reverse()
-    .map((card) => ({
-      card,
-      faceUp: false
-    }));
-  const startingDeck = remainingDeck.slice(lifeCount);
+  const startingDeck = deck.slice(OPENING_HAND_SIZE);
 
   setIndexedZone(hand, "hand", player.playerId);
   setIndexedZone(startingDeck, "deck", player.playerId);
-  setLifeZone(life, player.playerId);
 
   return {
     playerId: player.playerId,
@@ -1711,7 +1703,7 @@ function initializeSetupPlayer(
     characters: [],
     costArea: [],
     attachedCards: [],
-    life,
+    life: [],
     hasMulliganed: false,
     keptOpeningHand: false,
     turnCount: 0
@@ -1791,6 +1783,36 @@ function applyMulliganRedraw(player: PlayerState, rng: GameState["rng"]): void {
   player.deck = shuffled.slice(handCount);
   setIndexedZone(player.hand, "hand", player.playerId);
   setIndexedZone(player.deck, "deck", player.playerId);
+}
+
+function finalizeSetupLife(
+  player: PlayerState,
+  cardManifest: GameState["cardManifest"]
+): void {
+  const lifeCount = leaderLifeTotal(cardManifest, player.leader);
+  if (player.deck.length < lifeCount) {
+    throw new Error(
+      `Player ${player.playerId} setup deck is too small for life placement`
+    );
+  }
+
+  player.life = player.deck
+    .slice(0, lifeCount)
+    .reverse()
+    .map((card) => ({
+      card,
+      faceUp: false
+    }));
+  player.deck = player.deck.slice(lifeCount);
+
+  setLifeZone(player.life, player.playerId);
+  setIndexedZone(player.deck, "deck", player.playerId);
+}
+
+function canResolveDecisionInBootstrap(
+  pendingDecision: PendingDecision
+): boolean {
+  return pendingDecision.type === "mulligan";
 }
 
 function moveTopDeckCardToHand(
@@ -2294,6 +2316,9 @@ export function getLegalActions(
     if (state.pendingDecision.playerId !== playerId) {
       return legal;
     }
+    if (!canResolveDecisionInBootstrap(state.pendingDecision)) {
+      return legal;
+    }
     return [...legal, ...legalResponsesForDecision(state.pendingDecision)];
   }
 
@@ -2544,6 +2569,11 @@ export function resumeDecision(
 
   assertPendingDecisionResponseMatches(state.pendingDecision, response);
   assertValidDecisionResponse(state.pendingDecision, response);
+  if (!canResolveDecisionInBootstrap(state.pendingDecision)) {
+    throw new Error(
+      `Decision type ${state.pendingDecision.type} is not implemented in ENG-001`
+    );
+  }
 
   const nextState = cloneStateForMutation(state);
   const pendingDecision = cloneValue(state.pendingDecision);
@@ -2586,6 +2616,9 @@ export function resumeDecision(
           visibility: { type: "private", playerIds: [waitingPlayerId] }
         };
       } else {
+        for (const player of Object.values(nextState.players)) {
+          finalizeSetupLife(player, nextState.cardManifest);
+        }
         nextState.status = "active";
         nextState.turn.phase = "refresh";
         const activePlayer = nextState.players[nextState.turn.activePlayer];
@@ -2641,6 +2674,7 @@ export function computeView(state: GameState): ComputedGameView {
         keywords: [...metadata.keywords],
         canAttack:
           inPlay &&
+          card.controller === state.turn.activePlayer &&
           card.state === "active" &&
           !summoningSick &&
           !firstTurnAttackLocked,

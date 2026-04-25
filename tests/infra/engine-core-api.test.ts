@@ -638,8 +638,8 @@ describe("engine-core API skeleton", () => {
     expect(state.pendingDecision?.type).toBe("mulligan");
     expect(state.pendingDecision?.playerId).toBe(asId("p1"));
     expect(state.players[asId<PlayerId>("p1")]!.hand).toHaveLength(5);
-    expect(state.players[asId<PlayerId>("p1")]!.life).toHaveLength(5);
-    expect(state.players[asId<PlayerId>("p1")]!.deck).toHaveLength(2);
+    expect(state.players[asId<PlayerId>("p1")]!.life).toHaveLength(0);
+    expect(state.players[asId<PlayerId>("p1")]!.deck).toHaveLength(7);
     expect(state.players[asId<PlayerId>("p1")]!.characters).toEqual([]);
     expect(state.players[asId<PlayerId>("p1")]!.costArea).toEqual([]);
     expect(
@@ -647,11 +647,7 @@ describe("engine-core API skeleton", () => {
         (card: CardInstance) => card.zone.zone
       )
     ).toEqual(["hand", "hand", "hand", "hand", "hand"]);
-    expect(
-      state.players[asId<PlayerId>("p1")]!.life.map(
-        (lifeCard) => lifeCard.card.zone.zone
-      )
-    ).toEqual(["life", "life", "life", "life", "life"]);
+    expect(state.players[asId<PlayerId>("p1")]!.life).toEqual([]);
     expect(getLegalActions(state, asId("p1"))).toEqual([
       {
         type: "concede",
@@ -713,7 +709,7 @@ describe("engine-core API skeleton", () => {
     );
   });
 
-  it("preserves non-mulligan decision payloads in rule-processing events", () => {
+  it("rejects unimplemented non-mulligan decisions instead of accepting them", () => {
     const state = createInitialState(
       makeInput({
         status: "active",
@@ -748,23 +744,13 @@ describe("engine-core API skeleton", () => {
       })
     );
 
-    const result = resumeDecision(state, {
-      type: "cardSelection",
-      selected: [{ instanceId: asId("p1-hand-1") }]
-    });
-
-    const event = result.events.find(
-      (candidate) => candidate.type === "ruleProcessing"
-    );
-    expect(event?.payload).toEqual({
-      decisionId: asId("decision-select-cards"),
-      decisionType: "selectCards",
-      responseType: "cardSelection",
-      response: {
+    expect(() =>
+      resumeDecision(state, {
         type: "cardSelection",
         selected: [{ instanceId: asId("p1-hand-1") }]
-      }
-    });
+      })
+    ).toThrow(/not implemented in ENG-001/);
+    expect(state.pendingDecision?.id).toBe(asId("decision-select-cards"));
   });
 
   it("filters hidden information out of PlayerView", () => {
@@ -1070,10 +1056,12 @@ describe("engine-core API skeleton", () => {
     const state = createInitialState(makeInput());
     const view = computeView(state);
     const inPlayId = asId<CardInstance["instanceId"]>("p1-char-1");
+    const inactiveInPlayId = asId<CardInstance["instanceId"]>("p2-char-1");
     const handId = asId<CardInstance["instanceId"]>("p1-hand-1");
     const deckId = asId<CardInstance["instanceId"]>("p1-deck-1");
 
     expect(view.cards[inPlayId]?.canAttack).toBe(true);
+    expect(view.cards[inactiveInPlayId]?.canAttack).toBe(false);
     expect(view.cards[inPlayId]?.canBlock).toBe(true);
     expect(view.cards[handId]?.canAttack).toBe(false);
     expect(view.cards[handId]?.canBlock).toBe(false);
@@ -1561,7 +1549,7 @@ describe("engine-core API skeleton", () => {
     expect(opponentView.pendingDecision).toBeUndefined();
   });
 
-  it("deduplicates public legalActions for pending decisions", () => {
+  it("does not advertise respondToDecision for unimplemented pending decisions", () => {
     const state = createInitialState(
       makeInput({
         pendingDecision: {
@@ -1604,10 +1592,6 @@ describe("engine-core API skeleton", () => {
       {
         type: "concede",
         playerId: asId("p1")
-      },
-      {
-        type: "respondToDecision",
-        decisionId: asId("decision-dedupe-legal-actions")
       }
     ]);
   });
@@ -1707,10 +1691,6 @@ describe("engine-core API skeleton", () => {
       {
         type: "concede",
         playerId: asId("p1")
-      },
-      {
-        type: "respondToDecision",
-        decisionId: asId("decision-hidden-live-side")
       }
     ]);
     expect(
@@ -1776,6 +1756,18 @@ describe("engine-core API skeleton", () => {
     expect(finishedSetup.state.players[asId<PlayerId>("p1")]?.turnCount).toBe(
       1
     );
+    expect(
+      finishedSetup.state.players[asId<PlayerId>("p1")]!.life
+    ).toHaveLength(5);
+    expect(
+      finishedSetup.state.players[asId<PlayerId>("p2")]!.life
+    ).toHaveLength(5);
+    expect(
+      finishedSetup.state.players[asId<PlayerId>("p1")]!.deck
+    ).toHaveLength(2);
+    expect(
+      finishedSetup.state.players[asId<PlayerId>("p2")]!.deck
+    ).toHaveLength(2);
   });
 
   it("applies mulligan redraws to hand, deck, and rng state", () => {
@@ -1802,7 +1794,8 @@ describe("engine-core API skeleton", () => {
     expect(player.keptOpeningHand).toBe(false);
     expect(result.state.rng.callCount).toBe(state.rng.callCount + 1);
     expect(player.hand).toHaveLength(5);
-    expect(player.deck).toHaveLength(2);
+    expect(player.life).toHaveLength(0);
+    expect(player.deck).toHaveLength(7);
     expect(player.hand.map((card: CardInstance) => card.zone.zone)).toEqual([
       "hand",
       "hand",
@@ -1811,6 +1804,11 @@ describe("engine-core API skeleton", () => {
       "hand"
     ]);
     expect(player.deck.map((card: CardInstance) => card.zone.zone)).toEqual([
+      "deck",
+      "deck",
+      "deck",
+      "deck",
+      "deck",
       "deck",
       "deck"
     ]);
@@ -1878,7 +1876,7 @@ describe("engine-core API skeleton", () => {
     expect(state.pendingDecision?.id).toBe(asId("decision-3"));
   });
 
-  it("enumerates pay-cost responses for selectable cards and DON", () => {
+  it("does not expose unimplemented pay-cost decisions as legal actions", () => {
     const state = createInitialState(
       makeInput({
         pendingDecision: {
@@ -1925,65 +1923,15 @@ describe("engine-core API skeleton", () => {
       })
     );
 
-    const legal = getLegalActions(state, asId("p1"));
-    expect(legal).toHaveLength(3);
-    expect(legal).toEqual(
-      expect.arrayContaining([
-        {
-          type: "concede",
-          playerId: asId("p1")
-        },
-        {
-          type: "respondToDecision",
-          decisionId: asId("decision-4"),
-          response: {
-            type: "payment",
-            selection: {
-              optionId: "option-1",
-              selectedCards: [
-                {
-                  instanceId: asId("p1-char-1"),
-                  cardId: asId("char-1"),
-                  owner: asId("p1"),
-                  controller: asId("p1"),
-                  zone: {
-                    zone: "characterArea",
-                    playerId: asId("p1"),
-                    index: 0
-                  }
-                }
-              ]
-            }
-          }
-        },
-        {
-          type: "respondToDecision",
-          decisionId: asId("decision-4"),
-          response: {
-            type: "payment",
-            selection: {
-              optionId: "option-1",
-              selectedDon: [
-                {
-                  instanceId: asId("p1-cost-1"),
-                  cardId: asId("don-1"),
-                  owner: asId("p1"),
-                  controller: asId("p1"),
-                  zone: {
-                    zone: "costArea",
-                    playerId: asId("p1"),
-                    index: 0
-                  }
-                }
-              ]
-            }
-          }
-        }
-      ])
-    );
+    expect(getLegalActions(state, asId("p1"))).toEqual([
+      {
+        type: "concede",
+        playerId: asId("p1")
+      }
+    ]);
   });
 
-  it("enumerates ranged select-card responses beyond the minimum", () => {
+  it("does not expose unimplemented select-card decisions as legal actions", () => {
     const state = createInitialState(
       makeInput({
         pendingDecision: {
@@ -2020,21 +1968,15 @@ describe("engine-core API skeleton", () => {
       })
     );
 
-    const legal = getLegalActions(state, asId("p1"));
-    expect(legal).toContainEqual({
-      type: "respondToDecision",
-      decisionId: asId("decision-5"),
-      response: {
-        type: "cardSelection",
-        selected: [
-          { instanceId: asId("p1-hand-1") },
-          { instanceId: asId("p1-char-1") }
-        ]
+    expect(getLegalActions(state, asId("p1"))).toEqual([
+      {
+        type: "concede",
+        playerId: asId("p1")
       }
-    });
+    ]);
   });
 
-  it("honors allowFewerIfUnavailable for selection decisions", () => {
+  it("does not expose allowFewerIfUnavailable decisions before they are implemented", () => {
     const state = createInitialState(
       makeInput({
         pendingDecision: {
@@ -2064,21 +2006,12 @@ describe("engine-core API skeleton", () => {
       })
     );
 
-    expect(getLegalActions(state, asId("p1"))).toContainEqual({
-      type: "respondToDecision",
-      decisionId: asId("decision-allow-fewer"),
-      response: {
-        type: "cardSelection",
-        selected: [{ instanceId: asId("p1-hand-1") }]
+    expect(getLegalActions(state, asId("p1"))).toEqual([
+      {
+        type: "concede",
+        playerId: asId("p1")
       }
-    });
-
-    expect(() =>
-      resumeDecision(state, {
-        type: "cardSelection",
-        selected: [{ instanceId: asId("p1-hand-1") }]
-      })
-    ).not.toThrow();
+    ]);
   });
 
   it("rejects payment selections outside the offered candidates", () => {
@@ -2215,7 +2148,7 @@ describe("engine-core API skeleton", () => {
     expect(state.pendingDecision?.id).toBe(asId("decision-8"));
   });
 
-  it("filters unavailable effect options out of legal actions and validation", () => {
+  it("does not expose unimplemented effect-option decisions as legal actions", () => {
     const state = createInitialState(
       makeInput({
         pendingDecision: {
@@ -2246,14 +2179,6 @@ describe("engine-core API skeleton", () => {
       {
         type: "concede",
         playerId: asId("p1")
-      },
-      {
-        type: "respondToDecision",
-        decisionId: asId("decision-9"),
-        response: {
-          type: "effectOptionSelection",
-          optionIds: ["available-option"]
-        }
       }
     ]);
 
