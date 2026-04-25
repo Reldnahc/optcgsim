@@ -1231,7 +1231,7 @@ export interface PublicPaymentOption {
 
 export interface PublicTriggerOrderOption {
   triggerId: QueueEntryId;
-  label: string;
+  label?: string;
   sourceCardId?: CardId;
   sourceInstanceId?: InstanceId;
   effectId?: EffectId;
@@ -1239,7 +1239,7 @@ export interface PublicTriggerOrderOption {
 
 export interface PublicReplacementOption {
   replacementId: EffectId;
-  label: string;
+  label?: string;
   sourceCardId?: CardId;
   sourceInstanceId?: InstanceId;
 }
