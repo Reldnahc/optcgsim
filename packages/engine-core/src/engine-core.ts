@@ -378,7 +378,14 @@ function toPublicDecision(
   pendingDecision: PendingDecision,
   viewerId: PlayerId
 ): PublicDecision | undefined {
-  if (pendingDecision.playerId !== viewerId) {
+  const viewerIsChooser = pendingDecision.playerId === viewerId;
+  const viewerCanSeeDecision =
+    viewerIsChooser ||
+    pendingDecision.visibility.type === "public" ||
+    (pendingDecision.visibility.type === "private" &&
+      pendingDecision.visibility.playerIds.includes(viewerId));
+
+  if (!viewerCanSeeDecision) {
     return undefined;
   }
 
@@ -402,7 +409,7 @@ function toPublicDecision(
   if (pendingDecision.timeoutMs !== undefined) {
     base.timeoutMs = pendingDecision.timeoutMs;
   }
-  if (pendingDecision.defaultResponse !== undefined) {
+  if (viewerIsChooser && pendingDecision.defaultResponse !== undefined) {
     base.defaultResponse = cloneValue(pendingDecision.defaultResponse);
   }
 
@@ -444,12 +451,12 @@ function toPublicDecision(
             min: option.min,
             max: option.max
           };
-          if (option.selectableCards !== undefined) {
+          if (viewerIsChooser && option.selectableCards !== undefined) {
             publicOption.selectableCards = option.selectableCards.map(
               toPublicPaymentCardRef
             );
           }
-          if (option.selectableDon !== undefined) {
+          if (viewerIsChooser && option.selectableDon !== undefined) {
             publicOption.selectableDon = option.selectableDon.map(
               toPublicPaymentCardRef
             );
@@ -462,18 +469,24 @@ function toPublicDecision(
         ...base,
         type: "selectTargets",
         request: toPublicTargetRequest(pendingDecision.request),
-        candidates: pendingDecision.candidates.map((candidate) => ({
-          card: toPublicDecisionCardRef(candidate)
-        }))
+        candidates:
+          viewerIsChooser || pendingDecision.request.visibility === "public"
+            ? pendingDecision.candidates.map((candidate) => ({
+                card: toPublicDecisionCardRef(candidate)
+              }))
+            : []
       };
     case "selectCards":
       return {
         ...base,
         type: "selectCards",
         request: toPublicCardSelectionRequest(pendingDecision.request),
-        candidates: pendingDecision.candidates.map((candidate) => ({
-          card: toPublicDecisionCardRef(candidate)
-        }))
+        candidates:
+          viewerIsChooser || pendingDecision.request.visibility === "public"
+            ? pendingDecision.candidates.map((candidate) => ({
+                card: toPublicDecisionCardRef(candidate)
+              }))
+            : []
       };
     case "chooseEffectOption":
       return {
@@ -516,14 +529,18 @@ function toPublicDecision(
       return {
         ...base,
         type: "orderCards",
-        cards: pendingDecision.cards.map(toPublicDecisionCardRef),
+        cards: viewerIsChooser
+          ? pendingDecision.cards.map(toPublicDecisionCardRef)
+          : [],
         destination: pendingDecision.destination
       };
     case "chooseCharacterToTrashForOverflow":
       return {
         ...base,
         type: "chooseCharacterToTrashForOverflow",
-        candidates: pendingDecision.candidates.map(toPublicCardRef)
+        candidates: viewerIsChooser
+          ? pendingDecision.candidates.map(toPublicCardRef)
+          : []
       };
   }
 }
@@ -851,6 +868,10 @@ function assertPendingDecisionIsValid(state: GameState): void {
   if (!(state.pendingDecision.playerId in state.players)) {
     throw new Error("Pending decision references a missing player");
   }
+
+  if (legalResponsesForDecision(state.pendingDecision).length === 0) {
+    throw new Error("Pending decision has no legal responses");
+  }
 }
 
 function assertEffectQueueEntriesAreResolvableOrCancelled(
@@ -992,8 +1013,16 @@ export function createInitialState(input: CreateInitialStateInput): GameState {
 }
 
 export function hashGameState(state: GameState): Sha256 {
+  const sanitizedState = cloneValue(state);
+  sanitizedState.cardManifest = {
+    ...sanitizedState.cardManifest,
+    createdAt: ""
+  };
+
   return toSha256(
-    createHash("sha256").update(stableStringify(state), "utf8").digest("hex")
+    createHash("sha256")
+      .update(stableStringify(sanitizedState), "utf8")
+      .digest("hex")
   );
 }
 
@@ -1299,9 +1328,23 @@ export function filterStateForPlayer(
     throw new Error(`Unknown opponent for PlayerView: ${playerId}`);
   }
 
-  const legalActions = getLegalActions(state, playerId).map(
-    (action): PublicLegalAction => ({ ...action })
-  );
+  const legalActions: PublicLegalAction[] = [];
+  const seenDecisionIds = new Set<string>();
+  for (const action of getLegalActions(state, playerId)) {
+    if (action.type === "respondToDecision") {
+      if (seenDecisionIds.has(action.decisionId)) {
+        continue;
+      }
+      seenDecisionIds.add(action.decisionId);
+      legalActions.push({
+        type: "respondToDecision",
+        decisionId: action.decisionId
+      });
+      continue;
+    }
+
+    legalActions.push(cloneValue(action) as PublicLegalAction);
+  }
 
   const view: PlayerView = {
     matchId: state.matchId,

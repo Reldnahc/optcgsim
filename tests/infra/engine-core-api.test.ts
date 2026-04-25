@@ -383,6 +383,18 @@ describe("engine-core bootstrap surface", () => {
     expect(hashGameState(resultA.state)).toBe(hashGameState(resultB.state));
   });
 
+  it("excludes manifest timestamps from deterministic state hashing", () => {
+    const inputA = makeBaseInput();
+    const inputB = makeBaseInput();
+
+    inputA.cardManifest.createdAt = "2026-04-25T00:00:00Z";
+    inputB.cardManifest.createdAt = "2026-04-25T12:34:56Z";
+
+    expect(hashGameState(createInitialState(inputA))).toBe(
+      hashGameState(createInitialState(inputB))
+    );
+  });
+
   it("filters hidden information out of PlayerView", () => {
     const state = createInitialState(makeBaseInput());
     const view = filterStateForPlayer(state, asId("p1"));
@@ -481,7 +493,32 @@ describe("engine-core bootstrap surface", () => {
           action.decisionId === input.pendingDecision!.id
       )
     ).toBe(true);
+    expect(chooserView.legalActions).not.toContainEqual(
+      expect.objectContaining({
+        type: "respondToDecision",
+        response: expect.anything()
+      })
+    );
     expect(opponentView.pendingDecision).toBeUndefined();
+  });
+
+  it("shows public pending decisions to non-choosing recipients", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = {
+      id: asId("decision-public"),
+      type: "chooseTriggerOrder",
+      playerId: asId("p1"),
+      visibility: { type: "public" },
+      triggerIds: [asId("trigger-1"), asId("trigger-2")]
+    };
+
+    const opponentView = filterStateForPlayer(
+      createInitialState(input),
+      asId("p2")
+    );
+
+    expect(opponentView.pendingDecision?.id).toBe(asId("decision-public"));
+    expect(opponentView.pendingDecision?.type).toBe("chooseTriggerOrder");
   });
 
   it("runs constructor invariants in test mode", () => {
@@ -505,6 +542,30 @@ describe("engine-core bootstrap surface", () => {
         createInitialState(invalidInput)
       )
     ).toThrowError(/Duplicate instance id/);
+  });
+
+  it("rejects deadlocked pending decisions in test mode", () => {
+    const invalidInput = makeBaseInput();
+    invalidInput.pendingDecision = {
+      id: asId("decision-deadlocked"),
+      type: "selectCards",
+      playerId: asId("p1"),
+      visibility: { type: "private", playerIds: [asId("p1")] },
+      request: {
+        chooser: "self",
+        min: 1,
+        max: 1,
+        allowFewerIfUnavailable: false,
+        visibility: "privateToChooser"
+      },
+      candidates: []
+    };
+
+    expect(() =>
+      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () =>
+        createInitialState(invalidInput)
+      )
+    ).toThrowError(/no legal responses/i);
   });
 
   it("computes a conservative bootstrap view for cards", () => {
