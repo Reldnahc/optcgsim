@@ -1096,6 +1096,34 @@ describe("engine-core bootstrap surface", () => {
     );
   });
 
+  it("rejects setup mulligans whose handCount does not match the chooser hand", () => {
+    const input = makeBaseInput();
+    input.status = "setup";
+    const pendingDecision = makePendingDecision() as Extract<
+      PendingDecision,
+      { type: "mulligan" }
+    >;
+    pendingDecision.handCount = 99;
+    input.pendingDecision = pendingDecision;
+
+    expect(() => createInitialState(input)).toThrowError(/handCount/i);
+  });
+
+  it("hands setup mulligan to the second player from firstPlayer order even if turn roles are stale", () => {
+    const input = makeBaseInput();
+    input.status = "setup";
+    input.turn.activePlayer = asId("p2");
+    input.turn.nonActivePlayer = asId("p1");
+    input.pendingDecision = makePendingDecision();
+
+    const result = resumeDecision(createInitialState(input), {
+      type: "keepOpeningHand"
+    });
+
+    expect(result.state.pendingDecision?.type).toBe("mulligan");
+    expect(result.state.pendingDecision?.playerId).toBe(asId("p2"));
+  });
+
   it("rejects mulligan resolution after setup completes", () => {
     const input = makeBaseInput();
     input.status = "setup";

@@ -393,6 +393,12 @@ function assertSetupMulliganOrder(state: GameState): void {
   throw new Error("Setup mulligan chooser is not part of this match");
 }
 
+function getSetupMulliganPlayerOrder(state: GameState): [PlayerId, PlayerId] {
+  const firstPlayerId = state.turn.firstPlayer;
+  const secondPlayerId = getOpponentId(state, firstPlayerId);
+  return [firstPlayerId, secondPlayerId];
+}
+
 function requireInstanceId(
   ref: CardRef,
   context: string
@@ -1009,6 +1015,13 @@ function assertPendingDecisionIsValid(state: GameState): void {
     if (state.status !== "setup") {
       throw new Error("Mulligan decisions are only valid during setup");
     }
+    const pendingPlayer = state.players[state.pendingDecision.playerId];
+    if (!pendingPlayer) {
+      throw new Error("Pending decision references a missing player");
+    }
+    if (state.pendingDecision.handCount !== pendingPlayer.hand.length) {
+      throw new Error("Mulligan handCount does not match the chooser hand");
+    }
     assertSetupMulliganOrder(state);
   }
 
@@ -1409,6 +1422,9 @@ export function resumeDecision(
   if (!player) {
     throw new Error(`Unknown player ${pendingDecision.playerId} for mulligan`);
   }
+  if (pendingDecision.handCount !== player.hand.length) {
+    throw new Error("Mulligan handCount does not match the chooser hand");
+  }
 
   if (response.type === "mulligan") {
     applyMulliganRedraw(player, nextState.rng);
@@ -1420,16 +1436,16 @@ export function resumeDecision(
   }
 
   if (state.status === "setup") {
-    const waitingPlayerId = (
-      [state.turn.activePlayer, state.turn.nonActivePlayer] as PlayerId[]
-    ).find((candidateId) => {
-      const candidate = nextState.players[candidateId];
-      return (
-        candidate !== undefined &&
-        !candidate.hasMulliganed &&
-        !candidate.keptOpeningHand
-      );
-    });
+    const waitingPlayerId = getSetupMulliganPlayerOrder(state).find(
+      (candidateId) => {
+        const candidate = nextState.players[candidateId];
+        return (
+          candidate !== undefined &&
+          !candidate.hasMulliganed &&
+          !candidate.keptOpeningHand
+        );
+      }
+    );
 
     if (waitingPlayerId && waitingPlayerId !== pendingDecision.playerId) {
       const waitingPlayer = nextState.players[waitingPlayerId];
