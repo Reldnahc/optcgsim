@@ -915,61 +915,48 @@ function buildPublicLegalActions(
   return result;
 }
 
-function isCardInstanceLike(value: unknown): value is CardInstance {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Partial<CardInstance>;
-  return (
-    typeof candidate.instanceId === "string" &&
-    typeof candidate.cardId === "string" &&
-    typeof candidate.owner === "string" &&
-    typeof candidate.controller === "string" &&
-    candidate.zone !== undefined &&
-    Array.isArray(candidate.attachedDon) &&
-    "createdAtStateSeq" in candidate
-  );
-}
-
 type PlayerCardEntry = {
   card: CardInstance;
   path: string;
 };
 
 function collectCardsFromPlayerState(player: PlayerState): PlayerCardEntry[] {
-  const cards: PlayerCardEntry[] = [];
-  const visitedNodes = new Set<object>();
-
-  const visitValue = (value: unknown, path: string): void => {
-    if (!value || typeof value !== "object") {
-      return;
-    }
-
-    if (isCardInstanceLike(value)) {
-      cards.push({ card: value, path });
-      return;
-    }
-
-    if (visitedNodes.has(value)) {
-      return;
-    }
-    visitedNodes.add(value);
-
-    if (Array.isArray(value)) {
-      value.forEach((entry, index) => {
-        visitValue(entry, `${path}[${index}]`);
-      });
-      return;
-    }
-
-    for (const [key, entry] of Object.entries(value)) {
-      visitValue(entry, path ? `${path}.${key}` : key);
-    }
-  };
-
-  visitValue(player, "player");
-  return cards;
+  return [
+    ...player.deck.map((card, index) => ({
+      card,
+      path: `player.deck[${index}]`
+    })),
+    ...player.donDeck.map((card, index) => ({
+      card,
+      path: `player.donDeck[${index}]`
+    })),
+    ...player.hand.map((card, index) => ({
+      card,
+      path: `player.hand[${index}]`
+    })),
+    ...player.trash.map((card, index) => ({
+      card,
+      path: `player.trash[${index}]`
+    })),
+    { card: player.leader, path: "player.leader" },
+    ...player.characters.map((card, index) => ({
+      card,
+      path: `player.characters[${index}]`
+    })),
+    ...(player.stage ? [{ card: player.stage, path: "player.stage" }] : []),
+    ...player.costArea.map((card, index) => ({
+      card,
+      path: `player.costArea[${index}]`
+    })),
+    ...player.attachedCards.map((card, index) => ({
+      card,
+      path: `player.attachedCards[${index}]`
+    })),
+    ...player.life.map((lifeCard, index) => ({
+      card: lifeCard.card,
+      path: `player.life[${index}].card`
+    }))
+  ];
 }
 
 function collectAllCards(state: GameState): CardInstance[] {
@@ -1703,6 +1690,50 @@ function moveTopDonDeckCardToCostArea(
   return donCard;
 }
 
+function readyCard(card: CardInstance | undefined): void {
+  if (!card || card.state !== "rested") {
+    return;
+  }
+  card.state = "active";
+}
+
+function returnAttachedDonToCostArea(player: PlayerState): CardInstance[] {
+  const attachedById = new Map(
+    player.attachedCards.map((card) => [card.instanceId, card] as const)
+  );
+  const returnedIds = new Set<InstanceId>();
+  const returnedCards: CardInstance[] = [];
+  const hosts = [
+    player.leader,
+    ...player.characters,
+    ...(player.stage ? [player.stage] : [])
+  ];
+
+  for (const host of hosts) {
+    for (const attachedDonId of host.attachedDon) {
+      const attachedCard = attachedById.get(attachedDonId);
+      if (!attachedCard) {
+        continue;
+      }
+      returnedIds.add(attachedDonId);
+      returnedCards.push(attachedCard);
+    }
+    host.attachedDon = [];
+  }
+
+  if (returnedCards.length === 0) {
+    return [];
+  }
+
+  player.attachedCards = player.attachedCards.filter(
+    (card) => !returnedIds.has(card.instanceId)
+  );
+  player.costArea.push(...returnedCards);
+  setIndexedZone(player.costArea, "costArea", player.playerId);
+
+  return returnedCards;
+}
+
 function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
   const respond = (response: DecisionResponse): Action => ({
     type: "respondToDecision",
@@ -2175,6 +2206,15 @@ export function applyAction(state: GameState, action: Action): EngineResult {
   switch (action.type) {
     case "endMainPhase": {
       if (state.turn.phase === "refresh") {
+        const activePlayer = nextState.players[state.turn.activePlayer];
+        if (!activePlayer) {
+          throw new Error(`Unknown player ${state.turn.activePlayer}`);
+        }
+        readyCard(activePlayer.leader);
+        activePlayer.characters.forEach((card) => readyCard(card));
+        readyCard(activePlayer.stage);
+        activePlayer.costArea.forEach((card) => readyCard(card));
+        returnAttachedDonToCostArea(activePlayer);
         nextState.turn.phase = "draw";
         return finalizeResult(state, nextState, [
           {

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -251,6 +251,7 @@ function makePlayerState(
         zone: makeZone("costArea", playerId, 0)
       })
     ],
+    attachedCards: [],
     life: [
       makeLifeCard(
         makeCard({
@@ -391,6 +392,48 @@ describe("engine-core API skeleton", () => {
     expect(toMain.state.players[asId<PlayerId>("p2")]?.donDeck).toHaveLength(1);
     expect(toMain.state.players[asId<PlayerId>("p2")]?.costArea).toHaveLength(
       2
+    );
+  });
+
+  it("applies refresh state changes before advancing to draw", () => {
+    const state = createInitialState(makeInput());
+    const activePlayer = state.players[asId<PlayerId>("p1")]!;
+    activePlayer.leader.state = "rested";
+    activePlayer.characters[0]!.state = "rested";
+    activePlayer.stage!.state = "rested";
+    activePlayer.costArea[0]!.state = "rested";
+    const attachedCard = makeCard({
+      instanceId: "p1-attached-don-refresh",
+      cardId: "don-1",
+      owner: "p1",
+      zone: {
+        zone: "attached",
+        playerId: asId("p1"),
+        hostInstanceId: activePlayer.leader.instanceId,
+        index: 0
+      },
+      state: "none"
+    });
+    activePlayer.leader.attachedDon = [attachedCard.instanceId];
+    activePlayer.attachedCards = [attachedCard];
+    state.turn.phase = "refresh";
+
+    const result = applyAction(state, { type: "endMainPhase" });
+    const refreshedPlayer = result.state.players[asId<PlayerId>("p1")]!;
+
+    expect(result.state.turn.phase).toBe("draw");
+    expect(refreshedPlayer.leader.state).toBe("active");
+    expect(refreshedPlayer.characters[0]!.state).toBe("active");
+    expect(refreshedPlayer.stage!.state).toBe("active");
+    expect(refreshedPlayer.costArea[0]!.state).toBe("active");
+    expect(refreshedPlayer.leader.attachedDon).toEqual([]);
+    expect(refreshedPlayer.attachedCards).toEqual([]);
+    expect(refreshedPlayer.costArea).toHaveLength(2);
+    expect(refreshedPlayer.costArea[1]!.instanceId).toBe(
+      attachedCard.instanceId
+    );
+    expect(refreshedPlayer.costArea[1]!.zone).toEqual(
+      makeZone("costArea", "p1", 1)
     );
   });
 
@@ -1117,11 +1160,7 @@ describe("engine-core API skeleton", () => {
       state: "none"
     });
     host.attachedDon = [attachedCard.instanceId];
-    (
-      input.players[asId<PlayerId>("p1")] as PlayerState & {
-        attachedCards?: CardInstance[];
-      }
-    ).attachedCards = [attachedCard];
+    input.players[asId<PlayerId>("p1")]!.attachedCards = [attachedCard];
 
     try {
       expect(() => createInitialState(input)).toThrow(/wrong host instance/);
@@ -1152,11 +1191,7 @@ describe("engine-core API skeleton", () => {
       },
       state: "none"
     });
-    (
-      input.players[asId<PlayerId>("p1")] as PlayerState & {
-        attachedCards?: CardInstance[];
-      }
-    ).attachedCards = [attachedCard];
+    input.players[asId<PlayerId>("p1")]!.attachedCards = [attachedCard];
 
     try {
       expect(() => createInitialState(input)).toThrow(
@@ -1189,11 +1224,7 @@ describe("engine-core API skeleton", () => {
       },
       state: "none"
     });
-    (
-      input.players[asId<PlayerId>("p1")] as PlayerState & {
-        attachedCards?: CardInstance[];
-      }
-    ).attachedCards = [attachedCard];
+    input.players[asId<PlayerId>("p1")]!.attachedCards = [attachedCard];
 
     try {
       expect(() => createInitialState(input)).toThrow(/multiple locations/);
@@ -2009,6 +2040,13 @@ describe("engine-core API skeleton", () => {
     rmSync(distTestDir, { recursive: true, force: true });
 
     try {
+      const packageJson = JSON.parse(
+        readFileSync(resolve(packageDir, "package.json"), "utf8")
+      ) as {
+        dependencies?: Record<string, string>;
+      };
+      expect(packageJson.dependencies?.["@optcg/types"]).toBe("workspace:*");
+
       runNpmScript(packageDir, "build");
 
       expect(existsSync(resolve(distDir, "index.js"))).toBe(true);
@@ -2037,11 +2075,7 @@ describe("engine-core API skeleton", () => {
       state: "none"
     });
     host.attachedDon = [attachedCard.instanceId];
-    (
-      state.players[asId<PlayerId>("p1")] as PlayerState & {
-        attachedCards?: CardInstance[];
-      }
-    ).attachedCards = [attachedCard];
+    state.players[asId<PlayerId>("p1")]!.attachedCards = [attachedCard];
 
     const view = computeView(state);
     expect(view.cards[attachedCard.instanceId]?.instanceId).toBe(
