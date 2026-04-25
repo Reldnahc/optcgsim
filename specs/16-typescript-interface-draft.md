@@ -102,6 +102,7 @@ export interface PlayerState {
   characters: CardInstance[];
   stage?: CardInstance;
   costArea: CardInstance[];
+  attachedCards: CardInstance[];
   life: LifeCard[];
   hasMulliganed: boolean;
   turnCount: number;
