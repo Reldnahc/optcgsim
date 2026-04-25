@@ -796,6 +796,13 @@ describe("engine-core API skeleton", () => {
         ? chooserView.pendingDecision.candidates
         : []
     ).toHaveLength(2);
+    expect(
+      chooserView.pendingDecision?.type === "selectCards"
+        ? chooserView.pendingDecision.candidates.map(
+            (candidate) => candidate.card.cardId
+          )
+        : []
+    ).toEqual([asId("char-3"), asId("char-4")]);
   });
 
   it("redacts hidden public decision candidates for non-choosers", () => {
@@ -895,6 +902,11 @@ describe("engine-core API skeleton", () => {
         ? chooserView.pendingDecision.cards
         : []
     ).toHaveLength(2);
+    expect(
+      chooserView.pendingDecision?.type === "orderCards"
+        ? chooserView.pendingDecision.cards.map((card) => card.cardId)
+        : []
+    ).toEqual([asId("char-3"), asId("char-4")]);
     expect(opponentView.pendingDecision?.type).toBe("orderCards");
     expect(
       opponentView.pendingDecision?.type === "orderCards"
@@ -1100,6 +1112,43 @@ describe("engine-core API skeleton", () => {
       {
         type: "respondToDecision",
         decisionId: asId("decision-dedupe-legal-actions")
+      }
+    ]);
+  });
+
+  it("does not advertise respondToDecision when no legal responses exist", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-no-legal-response"),
+          type: "chooseEffectOption",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          min: 1,
+          max: 1,
+          options: [
+            {
+              id: "unavailable-option",
+              label: "Unavailable",
+              effect: { type: "draw", count: 1, player: "self" },
+              availability: "unavailable"
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(getLegalActions(state, asId("p1"))).toEqual([
+      {
+        type: "concede",
+        playerId: asId("p1")
+      }
+    ]);
+
+    expect(filterStateForPlayer(state, asId("p1")).legalActions).toEqual([
+      {
+        type: "concede",
+        playerId: asId("p1")
       }
     ]);
   });

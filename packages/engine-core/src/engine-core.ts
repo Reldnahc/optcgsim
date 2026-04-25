@@ -294,7 +294,8 @@ function toPublicCardRef(ref: CardRef): PublicCardRef {
 
 function toPublicDecisionCardRef(
   ref: CardRef,
-  viewerId: PlayerId
+  viewerId: PlayerId,
+  exposeCardIdentity = false
 ): PublicDecisionCardRef {
   const base: PublicDecisionCardRef = {
     instanceId: requireInstanceId(ref),
@@ -303,6 +304,7 @@ function toPublicDecisionCardRef(
   };
 
   if (
+    exposeCardIdentity ||
     isZoneIdentityVisible(ref.zone, viewerId) ||
     isSnapshotVisible(ref.snapshot, viewerId)
   ) {
@@ -598,8 +600,17 @@ function toPublicDecision(
           viewerId
         )
           ? pendingDecision.candidates.flatMap((candidate) =>
+              viewerId === pendingDecision.playerId ||
               shouldExposeDecisionCandidateToViewer(candidate, viewerId)
-                ? [{ card: toPublicDecisionCardRef(candidate, viewerId) }]
+                ? [
+                    {
+                      card: toPublicDecisionCardRef(
+                        candidate,
+                        viewerId,
+                        viewerId === pendingDecision.playerId
+                      )
+                    }
+                  ]
                 : []
             )
           : []
@@ -616,7 +627,15 @@ function toPublicDecision(
           ? pendingDecision.candidates.flatMap((candidate) =>
               viewerId === pendingDecision.playerId ||
               shouldExposeDecisionCandidateToViewer(candidate, viewerId)
-                ? [{ card: toPublicDecisionCardRef(candidate, viewerId) }]
+                ? [
+                    {
+                      card: toPublicDecisionCardRef(
+                        candidate,
+                        viewerId,
+                        viewerId === pendingDecision.playerId
+                      )
+                    }
+                  ]
                 : []
             )
           : []
@@ -670,7 +689,13 @@ function toPublicDecision(
         cards: pendingDecision.cards.flatMap((card) =>
           viewerId === pendingDecision.playerId ||
           shouldExposeDecisionCandidateToViewer(card, viewerId)
-            ? [toPublicDecisionCardRef(card, viewerId)]
+            ? [
+                toPublicDecisionCardRef(
+                  card,
+                  viewerId,
+                  viewerId === pendingDecision.playerId
+                )
+              ]
             : []
         )
       }) as PublicDecision;
@@ -820,17 +845,6 @@ function buildPublicLegalActions(
   state: GameState,
   playerId: PlayerId
 ): PublicLegalAction[] {
-  if (state.pendingDecision) {
-    if (state.pendingDecision.playerId === playerId) {
-      return [
-        { type: "concede", playerId },
-        { type: "respondToDecision", decisionId: state.pendingDecision.id }
-      ];
-    }
-
-    return [{ type: "concede", playerId }];
-  }
-
   const seen = new Set<string>();
   const result: PublicLegalAction[] = [];
 
