@@ -8,19 +8,24 @@ area: engine
 priority: critical
 status: approved
 summary: >
-  Create the authoritative engine-core package with the canonical entry points, deterministic state hashing, and player-view filtering contracts.
+  Create the authoritative engine-core package with the canonical entry points, deterministic hashing/filtering contracts, and invariant-backed bootstrap safety baseline.
 spec_refs:
   - "15-implementation-kickoff.s006 (Step 2 - `@optcg/engine-core`)"
-  - 15-implementation-kickoff.s008 (First milestone scope)
-  - 15-implementation-kickoff.s011 (Definition of done for kickoff)
   - "01-system-architecture.s005 (`@optcg/engine-core`)"
+  - 03-game-state-events-decisions.s020 (State hashing)
+  - 03-game-state-events-decisions.s021 (Invariant hooks)
   - 11-testing-quality.s008 (Invariant tests)
 scope:
   - "create packages/engine-core with the canonical createInitialState, getLegalActions, applyAction, resumeDecision, computeView, filterStateForPlayer, and hashGameState exports"
-  - "establish a deterministic GameState skeleton with hidden zones, event journal, and state sequence handling"
-  - wire invariant assertions and state hashing into engine test mode
-  - preserve the server-only boundary for authoritative state handling
+  - "establish a deterministic server-only GameState / EngineResult skeleton with state sequencing, event journal plumbing, and hidden-zone-safe filtering entry points"
+  - implement deterministic hashGameState and baseline filterStateForPlayer behavior for the canonical contracts
+  - wire invariant assertions into engine test mode and preserve the server-only package boundary
 non_scope:
+  - deterministic setup, opening-hand, mulligan, and life-placement flow (ENG-007)
+  - turn-engine first-turn restrictions and draw/DON phase semantics beyond the bootstrap boundary (ENG-010)
+  - DON attach/return mechanics (ENG-011)
+  - non-mulligan PendingDecision runtime and generic decision progression (ENG-015)
+  - main-phase play/attach/attack legality and vanilla combat/damage completion flows (ENG-012, ENG-013)
   - full non-vanilla effect runtime behavior
   - websocket room management
   - browser-safe presentation helpers

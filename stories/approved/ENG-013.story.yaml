@@ -1,0 +1,50 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-013
+title: Implement vanilla attack, damage, K.O., and terminal combat flows
+type: implementation
+area: engine
+priority: critical
+status: approved
+summary: >
+  Implement the vanilla combat slice needed for milestone gameplay: declareAttack legality, leader/rested-character targets, life-to-hand damage, character K.O., and terminal damage/deck-out resolution.
+spec_refs:
+  - 15-implementation-kickoff.s008 (First milestone scope)
+  - 15-implementation-kickoff.s011 (Definition of done for kickoff)
+  - 02-engine-mechanics.s010 (Turn structure)
+  - 02-engine-mechanics.s037 (First-turn restrictions)
+  - 03-game-state-events-decisions.s016 (Action envelope inside the engine)
+scope:
+  - "Implement Action.declareAttack legality for active-player attackers in Main / battle entry, respecting first-turn restrictions and summoning sickness."
+  - "Support vanilla attack targets: opponent Leader and rested opposing Characters where legal."
+  - "Implement vanilla damage resolution: leader damage moves top life to hand; empty life causes loss at rule processing."
+  - "Implement vanilla character K.O. from legal attacks and move K.O.'d characters to trash with required attached DON return behavior."
+  - "Complete milestone terminal paths needed for vanilla matches: damage-based loss and deck-out loss, alongside existing concession handling."
+non_scope:
+  - Counter step cards, blockers, and battle power modification windows.
+  - Full triggered-effect runtime during battle or damage processing.
+  - Card-specific combat exceptions beyond vanilla legality rules.
+dependencies:
+  - ENG-010
+  - ENG-011
+  - ENG-015
+  - ENG-004
+acceptance_criteria:
+  - "getLegalActions exposes declareAttack only for legal current-turn attackers and targets."
+  - "Successful attacks mutate authoritative state for life loss / K.O. and emit canonical attack/damage/K.O. events."
+  - "Leader damage at zero remaining life ends the match correctly."
+  - "A vanilla match can reach terminal state by combat damage or deck-out when combined with earlier milestone stories."
+required_tests:
+  - "Integration: legal leader attack moves top Life card to hand and updates life count/order."
+  - "Integration: attacking a rested Character K.O.s it and returns attached DON correctly."
+  - "Integration: attack legality is absent on illegal turns/attackers and present for legal vanilla attackers."
+  - "Integration: drawing from empty deck or losing final Life reaches terminal game-over state deterministically."
+repo_rules:
+  - Combat legality must be derived from authoritative state, not client hints.
+  - Do not invent blocker/counter timing or card-specific battle exceptions inside this vanilla slice.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/ENG-013.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review
