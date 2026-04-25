@@ -376,6 +376,25 @@ function canViewerSeePendingDecisionLive(
   );
 }
 
+function canChooserAnswerPendingDecisionLive(
+  pendingDecision: PendingDecision
+): boolean {
+  if (
+    !canViewerSeePendingDecisionLive(pendingDecision, pendingDecision.playerId)
+  ) {
+    return false;
+  }
+
+  if (
+    pendingDecision.type === "selectCards" &&
+    pendingDecision.request.visibility === "replayOnly"
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 function requireInstanceId(
   ref: CardRef,
   context: string
@@ -950,13 +969,8 @@ function assertPendingDecisionIsValid(state: GameState): void {
     throw new Error("Pending decision references a missing player");
   }
 
-  if (
-    !canViewerSeePendingDecisionLive(
-      state.pendingDecision,
-      state.pendingDecision.playerId
-    )
-  ) {
-    throw new Error("Pending decision chooser cannot see the live decision");
+  if (!canChooserAnswerPendingDecisionLive(state.pendingDecision)) {
+    throw new Error("Pending decision chooser cannot answer the live decision");
   }
 
   if (legalResponsesForDecision(state.pendingDecision).length === 0) {
@@ -1094,6 +1108,8 @@ export function createInitialState(input: CreateInitialStateInput): GameState {
   if (input.winner !== undefined) {
     state.winner = cloneValue(input.winner);
   }
+
+  assertPendingDecisionIsValid(state);
 
   if (isTestMode()) {
     runInvariantChecks(state);
@@ -1304,7 +1320,7 @@ export function getLegalActions(
   if (state.pendingDecision) {
     if (
       state.pendingDecision.playerId !== playerId ||
-      !canViewerSeePendingDecisionLive(state.pendingDecision, playerId)
+      !canChooserAnswerPendingDecisionLive(state.pendingDecision)
     ) {
       return [{ type: "concede", playerId }];
     }

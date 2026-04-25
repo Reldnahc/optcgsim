@@ -531,10 +531,10 @@ describe("engine-core bootstrap surface", () => {
       triggerIds: [asId("trigger-1"), asId("trigger-2")]
     };
 
-    expect(() => createInitialState(input)).toThrowError(/chooser cannot see/i);
+    expect(() => createInitialState(input)).toThrowError(/cannot answer/i);
   });
 
-  it("rejects chooser-invisible pending decisions in test mode", () => {
+  it("rejects chooser-invisible pending decisions from live states", () => {
     const invalidInput = makeBaseInput();
     invalidInput.pendingDecision = {
       id: asId("decision-chooser-hidden"),
@@ -544,14 +544,12 @@ describe("engine-core bootstrap surface", () => {
       triggerIds: [asId("trigger-1"), asId("trigger-2")]
     };
 
-    expect(() =>
-      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () =>
-        createInitialState(invalidInput)
-      )
-    ).toThrowError(/chooser cannot see/i);
+    expect(() => createInitialState(invalidInput)).toThrowError(
+      /cannot answer/i
+    );
   });
 
-  it("hides replayOnly card-selection candidates from live chooser views", () => {
+  it("rejects replayOnly card-selection requests from live states", () => {
     const input = makeBaseInput();
     input.pendingDecision = {
       id: asId("decision-selection-replay-only"),
@@ -577,16 +575,7 @@ describe("engine-core bootstrap surface", () => {
       ]
     };
 
-    const chooserView = filterStateForPlayer(
-      createInitialState(input),
-      asId("p1")
-    );
-
-    expect(chooserView.pendingDecision?.type).toBe("selectCards");
-    if (chooserView.pendingDecision?.type !== "selectCards") {
-      throw new Error("expected selectCards pending decision");
-    }
-    expect(chooserView.pendingDecision.candidates).toEqual([]);
+    expect(() => createInitialState(input)).toThrowError(/cannot answer/i);
   });
 
   it("fails closed when a live public decision card ref has no instanceId", () => {
