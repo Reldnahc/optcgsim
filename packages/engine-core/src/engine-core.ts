@@ -848,10 +848,22 @@ function buildPublicLegalActions(
   state: GameState,
   playerId: PlayerId
 ): PublicLegalAction[] {
+  if (
+    !(playerId in state.players) ||
+    state.status === "setup" ||
+    state.status === "frozen" ||
+    state.status === "completed" ||
+    state.status === "errored"
+  ) {
+    return [];
+  }
+
   if (state.pendingDecision) {
     const legal: PublicLegalAction[] = [{ type: "concede", playerId }];
+    const projectedDecision = toPublicDecision(state.pendingDecision, playerId);
     if (
       state.pendingDecision.playerId === playerId &&
+      projectedDecision !== undefined &&
       hasLegalResponsesForDecision(state.pendingDecision)
     ) {
       legal.push({
@@ -878,20 +890,58 @@ function buildPublicLegalActions(
   return result;
 }
 
+function isCardInstanceLike(value: unknown): value is CardInstance {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<CardInstance>;
+  return (
+    typeof candidate.instanceId === "string" &&
+    typeof candidate.cardId === "string" &&
+    typeof candidate.owner === "string" &&
+    typeof candidate.controller === "string" &&
+    candidate.zone !== undefined &&
+    Array.isArray(candidate.attachedDon) &&
+    "createdAtStateSeq" in candidate
+  );
+}
+
 function collectAllCards(state: GameState): CardInstance[] {
   const cards: CardInstance[] = [];
-  for (const player of Object.values(state.players)) {
-    cards.push(...player.deck);
-    cards.push(...player.donDeck);
-    cards.push(...player.hand);
-    cards.push(...player.trash);
-    cards.push(player.leader);
-    cards.push(...player.characters);
-    if (player.stage) {
-      cards.push(player.stage);
+  const visitedNodes = new Set<object>();
+  const seenInstanceIds = new Set<InstanceId>();
+
+  const visitValue = (value: unknown): void => {
+    if (!value || typeof value !== "object") {
+      return;
     }
-    cards.push(...player.costArea);
-    cards.push(...player.life.map((lifeCard) => lifeCard.card));
+    if (visitedNodes.has(value)) {
+      return;
+    }
+    visitedNodes.add(value);
+
+    if (isCardInstanceLike(value)) {
+      if (!seenInstanceIds.has(value.instanceId)) {
+        seenInstanceIds.add(value.instanceId);
+        cards.push(value);
+      }
+    }
+
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        visitValue(entry);
+      }
+      return;
+    }
+
+    for (const entry of Object.values(value)) {
+      visitValue(entry);
+    }
+  };
+
+  for (const player of Object.values(state.players)) {
+    visitValue(player);
   }
   return cards;
 }

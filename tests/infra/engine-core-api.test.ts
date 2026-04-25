@@ -1167,6 +1167,48 @@ describe("engine-core API skeleton", () => {
     ]);
   });
 
+  it("does not advertise respondToDecision for hidden live-side pending decisions", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-hidden-live-side"),
+          type: "selectCards",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          request: {
+            chooser: "self",
+            zone: "deck",
+            player: "self",
+            min: 1,
+            max: 1,
+            allowFewerIfUnavailable: false,
+            visibility: "replayOnly"
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-deck-1"),
+              cardId: asId("char-3"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "deck",
+                playerId: asId("p1"),
+                index: 0
+              }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(filterStateForPlayer(state, asId("p1")).legalActions).toEqual([
+      {
+        type: "concede",
+        playerId: asId("p1")
+      }
+    ]);
+  });
+
   it("hides replay-only selectCards decisions from live player views", () => {
     const state = createInitialState(
       makeInput({
@@ -1673,5 +1715,36 @@ describe("engine-core API skeleton", () => {
       rmSync(distDir, { recursive: true, force: true });
       rmSync(distTestDir, { recursive: true, force: true });
     }
+  });
+
+  it("traverses attached-zone cards stored under player state", () => {
+    const state = createInitialState(makeInput());
+    const host = state.players[asId<PlayerId>("p1")]!.leader;
+    const attachedCard = makeCard({
+      instanceId: "p1-attached-don-1",
+      cardId: "don-1",
+      owner: "p1",
+      zone: {
+        zone: "attached",
+        playerId: asId("p1"),
+        hostInstanceId: host.instanceId,
+        index: 0
+      },
+      state: "none"
+    });
+    host.attachedDon = [attachedCard.instanceId];
+    (
+      state.players[asId<PlayerId>("p1")] as PlayerState & {
+        attachedCards?: CardInstance[];
+      }
+    ).attachedCards = [attachedCard];
+
+    const view = computeView(state);
+    expect(view.cards[attachedCard.instanceId]?.instanceId).toBe(
+      attachedCard.instanceId
+    );
+    expect(view.cards[attachedCard.instanceId]?.cardId).toBe(
+      attachedCard.cardId
+    );
   });
 });
