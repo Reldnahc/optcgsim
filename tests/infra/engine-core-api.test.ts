@@ -378,12 +378,20 @@ describe("engine-core API skeleton", () => {
 
     const toDraw = applyAction(nextTurn.state, { type: "endMainPhase" });
     expect(toDraw.state.turn.phase).toBe("draw");
+    expect(toDraw.state.players[asId<PlayerId>("p2")]?.hand).toHaveLength(1);
+    expect(toDraw.state.players[asId<PlayerId>("p2")]?.deck).toHaveLength(2);
 
     const toDon = applyAction(toDraw.state, { type: "endMainPhase" });
     expect(toDon.state.turn.phase).toBe("don");
+    expect(toDon.state.players[asId<PlayerId>("p2")]?.hand).toHaveLength(2);
+    expect(toDon.state.players[asId<PlayerId>("p2")]?.deck).toHaveLength(1);
 
     const toMain = applyAction(toDon.state, { type: "endMainPhase" });
     expect(toMain.state.turn.phase).toBe("main");
+    expect(toMain.state.players[asId<PlayerId>("p2")]?.donDeck).toHaveLength(1);
+    expect(toMain.state.players[asId<PlayerId>("p2")]?.costArea).toHaveLength(
+      2
+    );
   });
 
   it("keeps concede legal for both players and awards the active player's concession correctly", () => {
@@ -469,6 +477,26 @@ describe("engine-core API skeleton", () => {
 
     expect(getLegalActions(state, asId("p1"))).toEqual([]);
     expect(() => applyAction(state, { type: "endMainPhase" })).toThrow(
+      /terminal/
+    );
+  });
+
+  it("rejects decision resolution once the match is terminal", () => {
+    const state = createInitialState(
+      makeInput({
+        status: "completed",
+        winner: asId<PlayerId>("p1"),
+        pendingDecision: {
+          id: asId("decision-terminal"),
+          type: "mulligan",
+          playerId: asId("p1"),
+          handCount: 1,
+          visibility: { type: "private", playerIds: [asId("p1")] }
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(() => resumeDecision(state, { type: "keepOpeningHand" })).toThrow(
       /terminal/
     );
   });

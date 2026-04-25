@@ -1599,7 +1599,7 @@ function createSetupMulliganDecision(
 
 function setIndexedZone(
   cards: CardInstance[],
-  zone: "deck" | "hand",
+  zone: "deck" | "hand" | "donDeck" | "costArea",
   playerId: PlayerId
 ): void {
   cards.forEach((card, index) => {
@@ -1656,6 +1656,51 @@ function applyMulliganRedraw(player: PlayerState, rng: GameState["rng"]): void {
   player.deck = shuffled.slice(handCount);
   setIndexedZone(player.hand, "hand", player.playerId);
   setIndexedZone(player.deck, "deck", player.playerId);
+}
+
+function moveTopDeckCardToHand(
+  state: GameState,
+  player: PlayerState
+):
+  | {
+      state: "drawn";
+      card: CardInstance;
+    }
+  | {
+      state: "deckOut";
+      winner: PlayerId;
+    } {
+  const drawnCard = player.deck.shift();
+  if (!drawnCard) {
+    return {
+      state: "deckOut",
+      winner: getOpponentId(state, player.playerId)
+    };
+  }
+
+  player.hand.push(drawnCard);
+  setIndexedZone(player.deck, "deck", player.playerId);
+  setIndexedZone(player.hand, "hand", player.playerId);
+
+  return {
+    state: "drawn",
+    card: drawnCard
+  };
+}
+
+function moveTopDonDeckCardToCostArea(
+  player: PlayerState
+): CardInstance | undefined {
+  const donCard = player.donDeck.shift();
+  if (!donCard) {
+    return undefined;
+  }
+
+  player.costArea.push(donCard);
+  setIndexedZone(player.donDeck, "donDeck", player.playerId);
+  setIndexedZone(player.costArea, "costArea", player.playerId);
+
+  return donCard;
 }
 
 function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
@@ -2143,11 +2188,45 @@ export function applyAction(state: GameState, action: Action): EngineResult {
         ]);
       }
       if (state.turn.phase === "draw") {
+        const activePlayer = nextState.players[state.turn.activePlayer];
+        if (!activePlayer) {
+          throw new Error(`Unknown player ${state.turn.activePlayer}`);
+        }
+        const drawResult = moveTopDeckCardToHand(nextState, activePlayer);
+        if (drawResult.state === "deckOut") {
+          nextState.status = "completed";
+          nextState.winner = drawResult.winner;
+          return finalizeResult(state, nextState, [
+            {
+              type: "phaseEnded",
+              payload: { phase: "draw", playerId: state.turn.activePlayer }
+            },
+            {
+              type: "gameOver",
+              payload: {
+                reason: "deckOut",
+                winner: drawResult.winner
+              }
+            }
+          ]);
+        }
         nextState.turn.phase = "don";
         return finalizeResult(state, nextState, [
           {
             type: "phaseEnded",
             payload: { phase: "draw", playerId: state.turn.activePlayer }
+          },
+          {
+            type: "cardDrawn",
+            payload: {
+              playerId: state.turn.activePlayer,
+              instanceId: drawResult.card.instanceId,
+              cardId: drawResult.card.cardId
+            },
+            visibility: {
+              type: "private",
+              playerIds: [state.turn.activePlayer]
+            }
           },
           {
             type: "phaseStarted",
@@ -2156,12 +2235,30 @@ export function applyAction(state: GameState, action: Action): EngineResult {
         ]);
       }
       if (state.turn.phase === "don") {
+        const activePlayer = nextState.players[state.turn.activePlayer];
+        if (!activePlayer) {
+          throw new Error(`Unknown player ${state.turn.activePlayer}`);
+        }
+        const donCard = moveTopDonDeckCardToCostArea(activePlayer);
         nextState.turn.phase = "main";
         return finalizeResult(state, nextState, [
           {
             type: "phaseEnded",
             payload: { phase: "don", playerId: state.turn.activePlayer }
           },
+          ...(donCard
+            ? [
+                {
+                  type: "cardMoved" as const,
+                  payload: {
+                    instanceId: donCard.instanceId,
+                    from: "donDeck",
+                    to: "costArea",
+                    playerId: state.turn.activePlayer
+                  }
+                }
+              ]
+            : []),
           {
             type: "phaseStarted",
             payload: { phase: "main", playerId: state.turn.activePlayer }
@@ -2215,6 +2312,10 @@ export function resumeDecision(
   state: GameState,
   response: DecisionResponse
 ): EngineResult {
+  if (state.status === "completed" || state.status === "errored") {
+    throw new Error("Decisions are not allowed once the match is terminal");
+  }
+
   if (state.status === "frozen") {
     throw new Error("Decisions may not resolve while the match is frozen");
   }
