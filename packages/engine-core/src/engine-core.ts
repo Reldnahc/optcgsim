@@ -365,6 +365,17 @@ function toPublicDecisionVisibility(
   };
 }
 
+function canViewerSeePendingDecisionLive(
+  pendingDecision: PendingDecision,
+  viewerId: PlayerId
+): boolean {
+  return (
+    pendingDecision.visibility.type === "public" ||
+    (pendingDecision.visibility.type === "private" &&
+      pendingDecision.visibility.playerIds.includes(viewerId))
+  );
+}
+
 function requireInstanceId(
   ref: CardRef,
   context: string
@@ -448,10 +459,10 @@ function toPublicDecision(
   viewerId: PlayerId
 ): PublicDecision | undefined {
   const viewerIsChooser = pendingDecision.playerId === viewerId;
-  const viewerCanSeeDecision =
-    pendingDecision.visibility.type === "public" ||
-    (pendingDecision.visibility.type === "private" &&
-      pendingDecision.visibility.playerIds.includes(viewerId));
+  const viewerCanSeeDecision = canViewerSeePendingDecisionLive(
+    pendingDecision,
+    viewerId
+  );
 
   if (!viewerCanSeeDecision) {
     return undefined;
@@ -550,7 +561,9 @@ function toPublicDecision(
         type: "selectCards",
         request: toPublicCardSelectionRequest(pendingDecision.request),
         candidates:
-          viewerIsChooser || pendingDecision.request.visibility === "public"
+          pendingDecision.request.visibility === "public" ||
+          (viewerIsChooser &&
+            pendingDecision.request.visibility === "privateToChooser")
             ? pendingDecision.candidates.map((candidate) => ({
                 card: toPublicDecisionCardRef(candidate)
               }))
@@ -937,6 +950,15 @@ function assertPendingDecisionIsValid(state: GameState): void {
     throw new Error("Pending decision references a missing player");
   }
 
+  if (
+    !canViewerSeePendingDecisionLive(
+      state.pendingDecision,
+      state.pendingDecision.playerId
+    )
+  ) {
+    throw new Error("Pending decision chooser cannot see the live decision");
+  }
+
   if (legalResponsesForDecision(state.pendingDecision).length === 0) {
     throw new Error("Pending decision has no legal responses");
   }
@@ -1152,7 +1174,12 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         decisionId: pendingDecision.id,
         response: {
           type: "targetSelection",
-          selected: selected.map((card) => ({ instanceId: card.instanceId! }))
+          selected: selected.map((card) => ({
+            instanceId: requireInstanceId(
+              card,
+              "Decision response target selection"
+            )
+          }))
         }
       }));
     }
@@ -1173,7 +1200,12 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         decisionId: pendingDecision.id,
         response: {
           type: "cardSelection",
-          selected: selected.map((card) => ({ instanceId: card.instanceId! }))
+          selected: selected.map((card) => ({
+            instanceId: requireInstanceId(
+              card,
+              "Decision response card selection"
+            )
+          }))
         }
       }));
     }
@@ -1233,7 +1265,9 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         decisionId: pendingDecision.id,
         response: {
           type: "orderCards",
-          ordered: ordered.map((card) => ({ instanceId: card.instanceId! }))
+          ordered: ordered.map((card) => ({
+            instanceId: requireInstanceId(card, "Decision response order cards")
+          }))
         }
       }));
     case "chooseCharacterToTrashForOverflow":
@@ -1242,7 +1276,10 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         decisionId: pendingDecision.id,
         response: {
           type: "chooseCharacterToTrash",
-          instanceId: candidate.instanceId!
+          instanceId: requireInstanceId(
+            candidate,
+            "Decision response overflow trash"
+          )
         }
       }));
   }
@@ -1265,7 +1302,10 @@ export function getLegalActions(
   }
 
   if (state.pendingDecision) {
-    if (state.pendingDecision.playerId !== playerId) {
+    if (
+      state.pendingDecision.playerId !== playerId ||
+      !canViewerSeePendingDecisionLive(state.pendingDecision, playerId)
+    ) {
       return [{ type: "concede", playerId }];
     }
 

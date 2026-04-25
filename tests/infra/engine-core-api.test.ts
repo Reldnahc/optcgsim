@@ -521,7 +521,7 @@ describe("engine-core bootstrap surface", () => {
     expect(opponentView.pendingDecision?.type).toBe("chooseTriggerOrder");
   });
 
-  it("hides replayOnly pending decisions from live PlayerView and legalActions", () => {
+  it("rejects replayOnly pending decisions from live states", () => {
     const input = makeBaseInput();
     input.pendingDecision = {
       id: asId("decision-replay-only"),
@@ -531,19 +531,62 @@ describe("engine-core bootstrap surface", () => {
       triggerIds: [asId("trigger-1"), asId("trigger-2")]
     };
 
+    expect(() => createInitialState(input)).toThrowError(/chooser cannot see/i);
+  });
+
+  it("rejects chooser-invisible pending decisions in test mode", () => {
+    const invalidInput = makeBaseInput();
+    invalidInput.pendingDecision = {
+      id: asId("decision-chooser-hidden"),
+      type: "chooseTriggerOrder",
+      playerId: asId("p1"),
+      visibility: { type: "serverOnly" },
+      triggerIds: [asId("trigger-1"), asId("trigger-2")]
+    };
+
+    expect(() =>
+      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () =>
+        createInitialState(invalidInput)
+      )
+    ).toThrowError(/chooser cannot see/i);
+  });
+
+  it("hides replayOnly card-selection candidates from live chooser views", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = {
+      id: asId("decision-selection-replay-only"),
+      type: "selectCards",
+      playerId: asId("p1"),
+      visibility: { type: "private", playerIds: [asId("p1")] },
+      request: {
+        chooser: "self",
+        zone: "hand",
+        player: "self",
+        min: 1,
+        max: 1,
+        allowFewerIfUnavailable: false,
+        visibility: "replayOnly"
+      },
+      candidates: [
+        {
+          instanceId: asId("p1-hand-1"),
+          cardId: asId("char-2"),
+          owner: asId("p1"),
+          controller: asId("p1")
+        }
+      ]
+    };
+
     const chooserView = filterStateForPlayer(
       createInitialState(input),
       asId("p1")
     );
 
-    expect(chooserView.pendingDecision).toBeUndefined();
-    expect(
-      chooserView.legalActions.some(
-        (action) =>
-          action.type === "respondToDecision" &&
-          action.decisionId === asId("decision-replay-only")
-      )
-    ).toBe(false);
+    expect(chooserView.pendingDecision?.type).toBe("selectCards");
+    if (chooserView.pendingDecision?.type !== "selectCards") {
+      throw new Error("expected selectCards pending decision");
+    }
+    expect(chooserView.pendingDecision.candidates).toEqual([]);
   });
 
   it("fails closed when a live public decision card ref has no instanceId", () => {
@@ -563,6 +606,36 @@ describe("engine-core bootstrap surface", () => {
 
     expect(() =>
       filterStateForPlayer(createInitialState(input), asId("p1"))
+    ).toThrowError(/instanceId/i);
+  });
+
+  it("rejects candidate-based decisions without instanceIds in test mode", () => {
+    const invalidInput = makeBaseInput();
+    invalidInput.pendingDecision = {
+      id: asId("decision-missing-candidate-instance"),
+      type: "selectCards",
+      playerId: asId("p1"),
+      visibility: { type: "private", playerIds: [asId("p1")] },
+      request: {
+        chooser: "self",
+        min: 1,
+        max: 1,
+        allowFewerIfUnavailable: false,
+        visibility: "privateToChooser"
+      },
+      candidates: [
+        {
+          cardId: asId("char-2"),
+          owner: asId("p1"),
+          controller: asId("p1")
+        }
+      ]
+    };
+
+    expect(() =>
+      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () =>
+        createInitialState(invalidInput)
+      )
     ).toThrowError(/instanceId/i);
   });
 
