@@ -660,8 +660,11 @@ function toPublicDecision(
         ...base,
         type: "orderCards",
         destination: pendingDecision.destination,
-        cards: pendingDecision.cards.map((card) =>
-          toPublicDecisionCardRef(card, viewerId)
+        cards: pendingDecision.cards.flatMap((card) =>
+          viewerId === pendingDecision.playerId ||
+          shouldExposeDecisionCandidateToViewer(card, viewerId)
+            ? [toPublicDecisionCardRef(card, viewerId)]
+            : []
         )
       }) as PublicDecision;
     case "chooseCharacterToTrashForOverflow":
@@ -1735,6 +1738,7 @@ export function applyAction(state: GameState, action: Action): EngineResult {
       throw new Error("Concede references unknown player");
     }
     const nextState = cloneStateForMutation(state);
+    delete nextState.pendingDecision;
     nextState.status = "completed";
     nextState.winner = getOpponentId(state, concedingPlayerId);
     return finalizeResult(state, nextState, [

@@ -698,6 +698,60 @@ describe("engine-core API skeleton", () => {
     ).toEqual([]);
   });
 
+  it("redacts hidden order-cards entries for non-choosers", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-hidden-order"),
+          type: "orderCards",
+          playerId: asId("p1"),
+          visibility: { type: "public" },
+          destination: "deck",
+          cards: [
+            {
+              instanceId: asId("p1-deck-1"),
+              cardId: asId("char-3"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "deck",
+                playerId: asId("p1"),
+                index: 0
+              }
+            },
+            {
+              instanceId: asId("p1-deck-2"),
+              cardId: asId("char-4"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "deck",
+                playerId: asId("p1"),
+                index: 1
+              }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    const opponentView = filterStateForPlayer(state, asId("p2"));
+
+    expect(chooserView.pendingDecision?.type).toBe("orderCards");
+    expect(
+      chooserView.pendingDecision?.type === "orderCards"
+        ? chooserView.pendingDecision.cards
+        : []
+    ).toHaveLength(2);
+    expect(opponentView.pendingDecision?.type).toBe("orderCards");
+    expect(
+      opponentView.pendingDecision?.type === "orderCards"
+        ? opponentView.pendingDecision.cards
+        : []
+    ).toEqual([]);
+  });
+
   it("runs invariant checks after actions in test mode", () => {
     const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
     process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
@@ -823,6 +877,29 @@ describe("engine-core API skeleton", () => {
     expect(
       getLegalActions(state, asId("p2")).map((action) => action.type)
     ).toContain("concede");
+  });
+
+  it("clears pending decisions when a player concedes", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-concede-clear"),
+          type: "mulligan",
+          playerId: asId("p1"),
+          handCount: 5,
+          visibility: { type: "private", playerIds: [asId("p1")] }
+        } satisfies PendingDecision
+      })
+    );
+
+    const result = applyAction(state, concedeAction("p2"));
+    expect(result.state.status).toBe("completed");
+    expect(result.state.pendingDecision).toBeUndefined();
+
+    const chooserView = filterStateForPlayer(result.state, asId("p1"));
+    const opponentView = filterStateForPlayer(result.state, asId("p2"));
+    expect(chooserView.pendingDecision).toBeUndefined();
+    expect(opponentView.pendingDecision).toBeUndefined();
   });
 
   it("rejects non-decision actions while a decision is pending", () => {
