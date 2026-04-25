@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -445,6 +445,26 @@ describe("engine-core bootstrap surface", () => {
     expect(getLegalActions(state, asId("p2"))).toEqual([concedeAction("p2")]);
   });
 
+  it("applies legal mulligan respondToDecision actions through applyAction", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = makePendingDecision();
+    const state = createInitialState(input);
+    const mulliganAction = getLegalActions(state, asId("p1")).find(
+      (action) =>
+        action.type === "respondToDecision" &&
+        action.response.type === "keepOpeningHand"
+    );
+
+    expect(mulliganAction).toBeDefined();
+    const result = applyAction(state, mulliganAction!);
+
+    expect(result.state.pendingDecision).toBeUndefined();
+    expect(result.state.players[asId<PlayerId>("p1")]?.keptOpeningHand).toBe(
+      true
+    );
+    expect(result.events[0]?.type).toBe("mulliganResolved");
+  });
+
   it("concede completes the match, increments sequencing, and clears pending state", () => {
     const input = makeBaseInput();
     input.pendingDecision = makePendingDecision();
@@ -835,28 +855,15 @@ describe("engine-core bootstrap surface", () => {
 
   it("builds @optcg/engine-core to the published dist entrypoint", () => {
     const enginePackageRoot = resolve(process.cwd(), "packages", "engine-core");
-    const engineDistDir = resolve(enginePackageRoot, "dist");
-    const typesDistDir = resolve(process.cwd(), "packages", "types", "dist");
+    runNpmScript(enginePackageRoot, "build");
 
-    rmSync(engineDistDir, { recursive: true, force: true });
-    rmSync(typesDistDir, { recursive: true, force: true });
+    const packageJson = JSON.parse(
+      readFileSync(resolve(enginePackageRoot, "package.json"), "utf8")
+    ) as { main: string; types: string };
 
-    try {
-      runNpmScript(enginePackageRoot, "build");
-
-      const packageJson = JSON.parse(
-        readFileSync(resolve(enginePackageRoot, "package.json"), "utf8")
-      ) as { main: string; types: string };
-
-      expect(existsSync(resolve(enginePackageRoot, packageJson.main))).toBe(
-        true
-      );
-      expect(existsSync(resolve(enginePackageRoot, packageJson.types))).toBe(
-        true
-      );
-    } finally {
-      rmSync(engineDistDir, { recursive: true, force: true });
-      rmSync(typesDistDir, { recursive: true, force: true });
-    }
+    expect(existsSync(resolve(enginePackageRoot, packageJson.main))).toBe(true);
+    expect(existsSync(resolve(enginePackageRoot, packageJson.types))).toBe(
+      true
+    );
   });
 });

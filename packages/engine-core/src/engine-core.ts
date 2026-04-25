@@ -1223,6 +1223,16 @@ export function applyAction(state: GameState, action: Action): EngineResult {
     throw new Error("Cannot mutate a frozen or terminal match");
   }
 
+  if (action.type === "respondToDecision") {
+    if (!state.pendingDecision) {
+      throw new Error("No pending decision is active");
+    }
+    if (state.pendingDecision.id !== action.decisionId) {
+      throw new Error("Decision response does not match the active decision");
+    }
+    return resumeDecision(state, action.response);
+  }
+
   if (action.type !== "concede") {
     throw new Error(`Unsupported action in ENG-001 bootstrap: ${action.type}`);
   }
