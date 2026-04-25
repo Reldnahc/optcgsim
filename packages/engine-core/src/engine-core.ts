@@ -540,6 +540,12 @@ function toPublicDecision(
         )
       }) as PublicDecision;
     case "chooseOptionalActivation":
+      if (
+        viewerId !== pendingDecision.playerId &&
+        !shouldExposeDecisionCandidateToViewer(pendingDecision.source, viewerId)
+      ) {
+        return undefined;
+      }
       return withOptionalBaseFields({
         ...base,
         type: "chooseOptionalActivation",
@@ -807,6 +813,26 @@ function toPublicLegalAction(action: Action): PublicLegalAction {
         `Unsupported action projection: ${(action as Action).type}`
       );
   }
+}
+
+function buildPublicLegalActions(
+  state: GameState,
+  playerId: PlayerId
+): PublicLegalAction[] {
+  const seen = new Set<string>();
+  const result: PublicLegalAction[] = [];
+
+  for (const action of getLegalActions(state, playerId)) {
+    const projected = toPublicLegalAction(action);
+    const key = stableStringify(projected);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(projected);
+  }
+
+  return result;
 }
 
 function collectAllCards(state: GameState): CardInstance[] {
@@ -1924,7 +1950,7 @@ export function filterStateForPlayer(
     turn: cloneValue(state.turn),
     self: buildVisiblePlayerState(state, self),
     opponent: buildOpponentVisibleState(state, opponent),
-    legalActions: getLegalActions(state, playerId).map(toPublicLegalAction),
+    legalActions: buildPublicLegalActions(state, playerId),
     revealedCards: [] as LivePublicRevealRecord[],
     effectEvents: [] as LivePublicEffectEvent[],
     timers: buildTimerState(state)

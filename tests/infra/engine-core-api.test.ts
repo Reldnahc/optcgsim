@@ -592,6 +592,37 @@ describe("engine-core API skeleton", () => {
     ).toBeUndefined();
   });
 
+  it("hides optional-activation prompts from non-choosers when the source is hidden", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-hidden-optional-activation"),
+          type: "chooseOptionalActivation",
+          playerId: asId("p1"),
+          visibility: { type: "public" },
+          effectId: asId("effect-hidden"),
+          source: {
+            instanceId: asId("p1-hand-1"),
+            cardId: asId("event-1"),
+            owner: asId("p1"),
+            controller: asId("p1"),
+            zone: {
+              zone: "hand",
+              playerId: asId("p1"),
+              index: 0
+            }
+          }
+        } satisfies PendingDecision
+      })
+    );
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    const opponentView = filterStateForPlayer(state, asId("p2"));
+
+    expect(chooserView.pendingDecision?.type).toBe("chooseOptionalActivation");
+    expect(opponentView.pendingDecision).toBeUndefined();
+  });
+
   it("redacts face-down life cards in public trigger decisions", () => {
     const state = createInitialState(
       makeInput({
@@ -900,6 +931,57 @@ describe("engine-core API skeleton", () => {
     const opponentView = filterStateForPlayer(result.state, asId("p2"));
     expect(chooserView.pendingDecision).toBeUndefined();
     expect(opponentView.pendingDecision).toBeUndefined();
+  });
+
+  it("deduplicates public legalActions for pending decisions", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-dedupe-legal-actions"),
+          type: "orderCards",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          destination: "deck",
+          cards: [
+            {
+              instanceId: asId("p1-hand-1"),
+              cardId: asId("event-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "hand",
+                playerId: asId("p1"),
+                index: 0
+              }
+            },
+            {
+              instanceId: asId("p1-char-1"),
+              cardId: asId("char-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "characterArea",
+                playerId: asId("p1"),
+                index: 0
+              }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    expect(chooserView.pendingDecision?.type).toBe("orderCards");
+    expect(chooserView.legalActions).toEqual([
+      {
+        type: "concede",
+        playerId: asId("p1")
+      },
+      {
+        type: "respondToDecision",
+        decisionId: asId("decision-dedupe-legal-actions")
+      }
+    ]);
   });
 
   it("rejects non-decision actions while a decision is pending", () => {
