@@ -385,6 +385,19 @@ function toPublicCardSelectionRequest(
   return publicRequest;
 }
 
+function toLiveCardSelectionRequest(
+  request: CardSelectionRequest
+): PublicCardSelectionRequest {
+  if (request.visibility === "replayOnly") {
+    return toPublicCardSelectionRequest({
+      ...request,
+      visibility: "privateToChooser"
+    });
+  }
+
+  return toPublicCardSelectionRequest(request);
+}
+
 function toPublicDecisionVisibility(
   visibility: EventVisibility,
   viewerId: PlayerId
@@ -616,13 +629,16 @@ function toPublicDecision(
           : []
       }) as PublicDecision;
     case "selectCards":
-      if (pendingDecision.request.visibility === "replayOnly") {
+      if (
+        pendingDecision.request.visibility === "replayOnly" &&
+        viewerId !== pendingDecision.playerId
+      ) {
         return undefined;
       }
       return withOptionalBaseFields({
         ...base,
         type: "selectCards",
-        request: toPublicCardSelectionRequest(pendingDecision.request),
+        request: toLiveCardSelectionRequest(pendingDecision.request),
         candidates: shouldExposeDecisionCandidatesToViewer(
           pendingDecision,
           viewerId
@@ -850,7 +866,6 @@ function buildPublicLegalActions(
 ): PublicLegalAction[] {
   if (
     !(playerId in state.players) ||
-    state.status === "setup" ||
     state.status === "frozen" ||
     state.status === "completed" ||
     state.status === "errored"
@@ -1881,7 +1896,6 @@ export function getLegalActions(
 ): Action[] {
   if (
     !(playerId in state.players) ||
-    state.status === "setup" ||
     state.status === "frozen" ||
     state.status === "completed" ||
     state.status === "errored"
@@ -1898,6 +1912,10 @@ export function getLegalActions(
     return [...legal, ...legalResponsesForDecision(state.pendingDecision)];
   }
 
+  if (state.status === "setup") {
+    return legal;
+  }
+
   if (state.turn.activePlayer !== playerId) {
     return legal;
   }
@@ -1909,9 +1927,6 @@ export function getLegalActions(
 }
 
 export function applyAction(state: GameState, action: Action): EngineResult {
-  if (state.status === "setup") {
-    throw new Error("Actions are not allowed while the match is in setup");
-  }
   if (state.status === "completed" || state.status === "errored") {
     throw new Error("Actions are not allowed once the match is terminal");
   }
@@ -1953,6 +1968,12 @@ export function applyAction(state: GameState, action: Action): EngineResult {
   if (state.pendingDecision) {
     throw new Error(
       "Non-decision actions are not allowed while a pending decision exists"
+    );
+  }
+
+  if (state.status === "setup") {
+    throw new Error(
+      "Gameplay actions are not allowed while the match is in setup"
     );
   }
 
@@ -2002,9 +2023,6 @@ export function resumeDecision(
   state: GameState,
   response: DecisionResponse
 ): EngineResult {
-  if (state.status === "setup") {
-    throw new Error("Decisions may not resolve while the match is in setup");
-  }
   if (state.status === "frozen") {
     throw new Error("Decisions may not resolve while the match is frozen");
   }

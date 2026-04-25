@@ -407,7 +407,7 @@ describe("engine-core API skeleton", () => {
     expect(() => applyAction(state, concedeAction("p1"))).toThrow(/frozen/);
   });
 
-  it("keeps default setup states non-actionable", () => {
+  it("keeps default setup states free of gameplay actions while allowing concede", () => {
     const inputWithoutStatus = structuredClone(
       makeInput()
     ) as Partial<CreateInitialStateInput>;
@@ -417,8 +417,13 @@ describe("engine-core API skeleton", () => {
     );
 
     expect(state.status).toBe("setup");
-    expect(getLegalActions(state, asId("p1"))).toEqual([]);
-    expect(() => applyAction(state, concedeAction("p1"))).toThrow(/setup/);
+    expect(getLegalActions(state, asId("p1"))).toEqual([
+      {
+        type: "concede",
+        playerId: asId("p1")
+      }
+    ]);
+    expect(() => applyAction(state, { type: "endMainPhase" })).toThrow(/setup/);
   });
 
   it("rejects actions once the match is completed", () => {
@@ -1167,7 +1172,7 @@ describe("engine-core API skeleton", () => {
     ]);
   });
 
-  it("does not advertise respondToDecision for hidden live-side pending decisions", () => {
+  it("keeps replay-only selectCards decisions visible to the chooser only", () => {
     const state = createInitialState(
       makeInput({
         pendingDecision: {
@@ -1201,54 +1206,69 @@ describe("engine-core API skeleton", () => {
       })
     );
 
-    expect(filterStateForPlayer(state, asId("p1")).legalActions).toEqual([
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    expect(chooserView.pendingDecision?.type).toBe("selectCards");
+    expect(chooserView.legalActions).toEqual([
       {
         type: "concede",
         playerId: asId("p1")
+      },
+      {
+        type: "respondToDecision",
+        decisionId: asId("decision-hidden-live-side")
       }
     ]);
+    expect(
+      filterStateForPlayer(state, asId("p2")).pendingDecision
+    ).toBeUndefined();
   });
 
-  it("hides replay-only selectCards decisions from live player views", () => {
+  it("allows pending setup decisions to progress", () => {
     const state = createInitialState(
       makeInput({
+        status: "setup",
         pendingDecision: {
-          id: asId("decision-replay-only-select-cards"),
-          type: "selectCards",
+          id: asId("decision-setup-mulligan"),
+          type: "mulligan",
           playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          request: {
-            chooser: "self",
-            zone: "deck",
-            player: "self",
-            min: 1,
-            max: 1,
-            allowFewerIfUnavailable: false,
-            visibility: "replayOnly"
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-deck-1"),
-              cardId: asId("char-3"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "deck",
-                playerId: asId("p1"),
-                index: 0
-              }
-            }
-          ]
+          handCount: 5,
+          visibility: { type: "private", playerIds: [asId("p1")] }
         } satisfies PendingDecision
       })
     );
 
-    expect(
-      filterStateForPlayer(state, asId("p1")).pendingDecision
-    ).toBeUndefined();
-    expect(
-      filterStateForPlayer(state, asId("p2")).pendingDecision
-    ).toBeUndefined();
+    expect(getLegalActions(state, asId("p1"))).toEqual([
+      {
+        type: "concede",
+        playerId: asId("p1")
+      },
+      {
+        type: "respondToDecision",
+        decisionId: asId("decision-setup-mulligan"),
+        response: { type: "keepOpeningHand" }
+      },
+      {
+        type: "respondToDecision",
+        decisionId: asId("decision-setup-mulligan"),
+        response: { type: "mulligan" }
+      }
+    ]);
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    expect(chooserView.pendingDecision?.type).toBe("mulligan");
+    expect(chooserView.legalActions).toEqual([
+      {
+        type: "concede",
+        playerId: asId("p1")
+      },
+      {
+        type: "respondToDecision",
+        decisionId: asId("decision-setup-mulligan")
+      }
+    ]);
+
+    const result = resumeDecision(state, { type: "keepOpeningHand" });
+    expect(result.state.pendingDecision).toBeUndefined();
   });
 
   it("rejects non-decision actions while a decision is pending", () => {
