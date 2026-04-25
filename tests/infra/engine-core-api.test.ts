@@ -401,12 +401,29 @@ describe("engine-core bootstrap surface", () => {
     ).toBeUndefined();
   });
 
-  it("only exposes concede as the bootstrap legal action", () => {
+  it("only exposes concede as the bootstrap legal action when not paused", () => {
     const state = createInitialState(makeBaseInput());
 
     expect(getLegalActions(state, asId("p1"))).toEqual([concedeAction("p1")]);
     expect(getLegalActions(state, asId("p2"))).toEqual([concedeAction("p2")]);
     expect(getLegalActions(state, asId("unknown"))).toEqual([]);
+  });
+
+  it("routes paused states through respondToDecision actions", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = makePendingDecision();
+    const state = createInitialState(input);
+
+    const p1Actions = getLegalActions(state, asId("p1"));
+    expect(
+      p1Actions.some(
+        (action) =>
+          action.type === "respondToDecision" &&
+          action.decisionId === input.pendingDecision!.id
+      )
+    ).toBe(true);
+    expect(p1Actions).toContainEqual(concedeAction("p1"));
+    expect(getLegalActions(state, asId("p2"))).toEqual([concedeAction("p2")]);
   });
 
   it("concede completes the match, increments sequencing, and clears pending state", () => {
@@ -439,12 +456,32 @@ describe("engine-core bootstrap surface", () => {
     const decisionHash = hashGameState(stateWithDecision);
 
     expect(() =>
-      resumeDecision(stateWithDecision, inputWithDecision.pendingDecision!.id, {
+      resumeDecision(stateWithDecision, {
         type: "cardSelection",
         selected: [{ instanceId: asId("p1-hand-1") }]
       })
     ).toThrowError(/out of scope/);
     expect(hashGameState(stateWithDecision)).toBe(decisionHash);
+  });
+
+  it("includes the active pendingDecision in chooser PlayerView", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = makePendingDecision();
+    const state = createInitialState(input);
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    const opponentView = filterStateForPlayer(state, asId("p2"));
+
+    expect(chooserView.pendingDecision?.id).toBe(input.pendingDecision.id);
+    expect(chooserView.pendingDecision?.type).toBe("selectCards");
+    expect(
+      chooserView.legalActions.some(
+        (action) =>
+          action.type === "respondToDecision" &&
+          action.decisionId === input.pendingDecision!.id
+      )
+    ).toBe(true);
+    expect(opponentView.pendingDecision).toBeUndefined();
   });
 
   it("runs constructor invariants in test mode", () => {
