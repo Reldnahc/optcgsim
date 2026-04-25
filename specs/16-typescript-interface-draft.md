@@ -82,6 +82,7 @@ export interface GameState {
   cardManifest: MatchCardManifest;
   rng: RngState;
   players: Record<PlayerId, PlayerState>;
+  timers: TimerState;
   turn: TurnState;
   battle?: BattleState;
   pendingDecision?: PendingDecision;

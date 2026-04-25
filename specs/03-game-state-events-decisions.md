@@ -50,6 +50,7 @@ interface GameState {
   actionSeq: number;
   turn: TurnState;
   players: Record<PlayerId, PlayerState>;
+  timers: TimerState;
   battle?: BattleState;
   pendingDecision?: PendingDecision;
   effectQueue: EffectQueueEntry[];
@@ -62,6 +63,8 @@ interface GameState {
   audit: AuditEntry[];
 }
 ```
+
+Canonical live state also carries the authoritative per-player timer snapshot used for `PlayerView` and reconnect/state-sync payloads. Do not fabricate timer values in filtered views.
 
 The browser does not receive this object.
 

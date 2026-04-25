@@ -594,6 +594,7 @@ export interface GameState {
   matchConfig: MatchConfiguration;
   rng: RngState;
   players: Record<PlayerId, PlayerState>;
+  timers: TimerState;
   turn: TurnState;
   battle?: BattleState;
   pendingDecision?: PendingDecision;
@@ -1355,6 +1356,16 @@ export interface PublicPlayerGameTimer {
   playerId: PlayerId;
   remainingMs: number;
   isRunning: boolean;
+}
+
+export interface TimerState {
+  drainingPlayerId?: PlayerId;
+  players: Record<PlayerId, PublicPlayerGameTimer>;
+  disconnect?: {
+    playerId: PlayerId;
+    startedAt: string;
+    expiresAt: string;
+  };
 }
 
 export interface PublicTimerState {
