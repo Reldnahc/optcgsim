@@ -1,7 +1,5 @@
 node_modules
 dist
-**/dist
-**/dist_test
 coverage
 .pnpm-store
 agent-packets/

@@ -47,7 +47,6 @@ Section Ref: `AGENTS.s003`
 - If implementation reveals a required change to canonical contracts, shared specs, or repo-wide workflow outside the approved story scope, do not silently mix that change into the story branch. Stop and escalate, or get explicit approval to land the cross-story change separately on `main` first and then merge/rebase it into the story branch.
 - Add or update tests required by the story.
 - Keep deterministic engine behavior and hidden-information safety intact.
-- Do not hard-code OS-specific shells, executables, or command names in repository tests, smoke checks, or workflow helpers. Use cross-platform invocations or an explicit `process.platform` split when shelling out.
 - Prefer repo-owned workflow entrypoints under `npm run stories:*` and `npm run stories:verify` over invoking individual tool files directly, unless a story or review task explicitly requires the lower-level tool.
 - Use one branch and one pull request per story by default. Review should happen on the PR diff against the approved story and packet, not only on the issue.
 - Story execution lifecycle is: `approved` -> `in_progress` -> `in_review` -> `done`, with `changes_requested` and `blocked` as valid side states when review or execution finds real blockers.

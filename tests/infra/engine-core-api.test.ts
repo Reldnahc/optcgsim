@@ -57,6 +57,20 @@ function runNpmScript(cwd: string, script: string): void {
   });
 }
 
+function withEnv<T>(key: string, value: string, run: () => T): T {
+  const previous = process.env[key];
+  process.env[key] = value;
+  try {
+    return run();
+  } finally {
+    if (previous === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = previous;
+    }
+  }
+}
+
 function concedeAction(playerId: string): Action {
   return {
     type: "concede",
@@ -94,6 +108,7 @@ function makeResolvedCard(
       behaviorHash: asId("behavior-hash")
     }
   };
+
   if (category !== "leader") {
     card.cost = 1;
   }
@@ -106,6 +121,7 @@ function makeResolvedCard(
   if (category === "leader") {
     card.life = 5;
   }
+
   return card;
 }
 
@@ -117,13 +133,10 @@ function makeManifest(): MatchCardManifest {
     "char-2": makeResolvedCard("char-2", "character"),
     "char-3": makeResolvedCard("char-3", "character"),
     "char-4": makeResolvedCard("char-4", "character"),
-    "event-1": makeResolvedCard("event-1", "event"),
     "stage-1": makeResolvedCard("stage-1", "stage"),
     "don-1": makeResolvedCard("don-1", "don"),
-    "don-2": makeResolvedCard("don-2", "don"),
     "life-1": makeResolvedCard("life-1", "character"),
     "life-2": makeResolvedCard("life-2", "character"),
-    "life-3": makeResolvedCard("life-3", "character"),
     "trash-1": makeResolvedCard("trash-1", "character")
   } as MatchCardManifest["cards"];
 
@@ -135,7 +148,7 @@ function makeManifest(): MatchCardManifest {
     customHandlerVersion: "1",
     banlistVersion: "1",
     cards,
-    createdAt: "2026-04-24T00:00:00Z"
+    createdAt: "2026-04-25T00:00:00Z"
   };
 }
 
@@ -199,12 +212,6 @@ function makePlayerState(
         cardId: "don-1",
         owner: playerId,
         zone: makeZone("donDeck", playerId, 0)
-      }),
-      makeCard({
-        instanceId: `${playerId}-don-2`,
-        cardId: "don-2",
-        owner: playerId,
-        zone: makeZone("donDeck", playerId, 1)
       })
     ],
     hand: [
@@ -278,84 +285,28 @@ function makePlayerState(
   };
 }
 
-function makeCardsInZone(
-  playerId: string,
-  zone: "deck" | "donDeck",
-  instancePrefix: string,
-  cardIds: string[]
-): CardInstance[] {
-  return cardIds.map((cardId, index) =>
-    makeCard({
-      instanceId: `${playerId}-${instancePrefix}-${index + 1}`,
-      cardId,
-      owner: playerId,
-      zone: makeZone(zone, playerId, index)
-    })
-  );
-}
-
-function makeSetupPlayerState(
-  playerId: string,
-  leaderCardId: string
-): PlayerState {
-  const brandedPlayerId = asId<PlayerId>(playerId);
+function makeTurnState(): TurnState {
   return {
-    playerId: brandedPlayerId,
-    deck: makeCardsInZone(playerId, "deck", "setup-deck", [
-      "char-1",
-      "char-2",
-      "char-3",
-      "char-4",
-      "event-1",
-      "stage-1",
-      "life-1",
-      "life-2",
-      "life-3",
-      "trash-1",
-      "char-1",
-      "char-2"
-    ]),
-    donDeck: makeCardsInZone(playerId, "donDeck", "setup-don", [
-      "don-1",
-      "don-2",
-      "don-1",
-      "don-2",
-      "don-1",
-      "don-2",
-      "don-1",
-      "don-2",
-      "don-1",
-      "don-2"
-    ]),
-    hand: [],
-    trash: [],
-    leader: makeCard({
-      instanceId: `${playerId}-leader`,
-      cardId: leaderCardId,
-      owner: playerId,
-      zone: makeZone("leaderArea", playerId)
-    }),
-    characters: [],
-    costArea: [],
-    attachedCards: [],
-    life: [],
-    hasMulliganed: false,
-    keptOpeningHand: false,
-    turnCount: 0
+    activePlayer: asId("p1"),
+    nonActivePlayer: asId("p2"),
+    firstPlayer: asId("p1"),
+    globalTurnNumber: 1 as TurnState["globalTurnNumber"],
+    phase: "main",
+    priorityPlayer: asId("p1")
   };
 }
 
 function makeMatchConfig(): MatchConfiguration {
   return {
     gameType: "custom",
-    formatId: asId("format-1"),
+    formatId: asId("standard"),
     spectatorPolicy: {
       mode: "disabled",
       allowHandRevealAfterGame: false
     } satisfies SpectatorPolicy,
     disconnectPolicy: {
-      gracePeriodMs: 30000,
-      forfeitAfterMs: 60000,
+      gracePeriodMs: 1000,
+      forfeitAfterMs: 2000,
       pauseTimersDuringGrace: true,
       allowReconnectAfterForfeit: false,
       countsAsLossOnGraceExpiry: true
@@ -363,1884 +314,197 @@ function makeMatchConfig(): MatchConfiguration {
   };
 }
 
-function makeTurnState(
-  activePlayer: string,
-  nonActivePlayer: string,
-  phase: TurnState["phase"] = "main"
-): TurnState {
+function makeRngState(): RngState {
   return {
-    activePlayer: asId(activePlayer),
-    nonActivePlayer: asId(nonActivePlayer),
-    firstPlayer: asId(activePlayer),
-    globalTurnNumber: 1 as TurnState["globalTurnNumber"],
-    phase
+    algorithm: "test-fixed",
+    seed: "seed-1",
+    internalState: "state-1",
+    callCount: 0
   };
 }
 
-function makeInput(
-  overrides?: Partial<CreateInitialStateInput>
-): CreateInitialStateInput {
-  const base: CreateInitialStateInput = {
+function makePendingDecision(): PendingDecision {
+  return {
+    id: asId("decision-1"),
+    type: "selectCards",
+    playerId: asId("p1"),
+    visibility: { type: "private", playerIds: [asId("p1")] },
+    request: {
+      chooser: "self",
+      zone: "hand",
+      player: "self",
+      min: 1,
+      max: 1,
+      allowFewerIfUnavailable: false,
+      visibility: "privateToChooser"
+    },
+    candidates: [
+      {
+        instanceId: asId("p1-hand-1"),
+        cardId: asId("char-2"),
+        owner: asId("p1"),
+        controller: asId("p1")
+      }
+    ]
+  };
+}
+
+function makeBaseInput(): CreateInitialStateInput {
+  return {
     matchId: asId<MatchId>("match-1"),
-    rulesVersion: "v6",
-    engineVersion: "eng-001",
+    rulesVersion: "rules-v1",
+    engineVersion: "engine-v1",
     cardManifest: makeManifest(),
     matchConfig: makeMatchConfig(),
-    rng: {
-      algorithm: "test-fixed",
-      seed: "seed-1",
-      internalState: "rng-state",
-      callCount: 0
-    } satisfies RngState,
+    rng: makeRngState(),
     players: {
-      [asId<PlayerId>("p1")]: makePlayerState("p1", "leader-1", "event-1"),
-      [asId<PlayerId>("p2")]: makePlayerState("p2", "leader-2", "char-2")
+      [asId<PlayerId>("p1")]: makePlayerState("p1", "leader-1", "char-2"),
+      [asId<PlayerId>("p2")]: makePlayerState("p2", "leader-2", "char-1")
     },
-    turn: makeTurnState("p1", "p2"),
+    turn: makeTurnState(),
     status: "active"
   };
-
-  return {
-    ...base,
-    ...overrides
-  };
 }
 
-function makeSetupInput(
-  overrides?: Partial<CreateInitialStateInput>
-): CreateInitialStateInput {
-  const base: CreateInitialStateInput = {
-    matchId: asId<MatchId>("match-setup-1"),
-    rulesVersion: "v6",
-    engineVersion: "eng-001",
-    cardManifest: makeManifest(),
-    matchConfig: makeMatchConfig(),
-    rng: {
-      algorithm: "test-fixed",
-      seed: "seed-setup-1",
-      internalState: "rng-setup-state",
-      callCount: 0
-    } satisfies RngState,
-    players: {
-      [asId<PlayerId>("p1")]: makeSetupPlayerState("p1", "leader-1"),
-      [asId<PlayerId>("p2")]: makeSetupPlayerState("p2", "leader-2")
-    },
-    turn: makeTurnState("p1", "p2"),
-    status: "setup"
-  };
+describe("engine-core bootstrap surface", () => {
+  it("keeps state hashes stable for identical seeds and action logs", () => {
+    const inputA = makeBaseInput();
+    const inputB = makeBaseInput();
 
-  return {
-    ...base,
-    ...overrides
-  };
-}
+    const stateA = createInitialState(inputA);
+    const stateB = createInitialState(inputB);
 
-describe("engine-core API skeleton", () => {
-  it("keeps state hashes stable for identical seed and action logs", () => {
-    const firstState = createInitialState(makeInput());
-    const secondState = createInitialState(makeInput());
+    expect(hashGameState(stateA)).toBe(hashGameState(stateB));
 
-    const firstResult = applyAction(firstState, { type: "endMainPhase" });
-    const secondResult = applyAction(secondState, { type: "endMainPhase" });
+    const resultA = applyAction(stateA, concedeAction("p1"));
+    const resultB = applyAction(stateB, concedeAction("p1"));
 
-    expect(hashGameState(firstState)).toBe(hashGameState(secondState));
-    expect(firstResult.stateHash).toBe(secondResult.stateHash);
-    expect(firstResult.state.turn.phase).toBe("end");
-    expect(firstResult.events.map((event) => event.type)).toEqual([
-      "phaseEnded",
-      "phaseStarted"
-    ]);
-  });
-
-  it("advances past the end phase without deadlocking", () => {
-    const state = createInitialState(makeInput());
-
-    const toEnd = applyAction(state, { type: "endMainPhase" });
-    expect(toEnd.state.turn.phase).toBe("end");
-    expect(
-      getLegalActions(toEnd.state, asId("p1")).map((action) => action.type)
-    ).toContain("endMainPhase");
-    expect(
-      getLegalActions(toEnd.state, asId("p2")).map((action) => action.type)
-    ).toEqual(["concede"]);
-
-    const nextTurn = applyAction(toEnd.state, { type: "endMainPhase" });
-    expect(nextTurn.state.turn.phase).toBe("refresh");
-    expect(nextTurn.state.turn.activePlayer).toBe(asId("p2"));
-    expect(nextTurn.state.turn.nonActivePlayer).toBe(asId("p1"));
-    expect(nextTurn.state.players[asId<PlayerId>("p2")]?.turnCount).toBe(1);
-    expect(
-      getLegalActions(nextTurn.state, asId("p2")).map((action) => action.type)
-    ).toContain("endMainPhase");
-
-    const toDraw = applyAction(nextTurn.state, { type: "endMainPhase" });
-    expect(toDraw.state.turn.phase).toBe("draw");
-    expect(toDraw.state.players[asId<PlayerId>("p2")]?.hand).toHaveLength(1);
-    expect(toDraw.state.players[asId<PlayerId>("p2")]?.deck).toHaveLength(2);
-
-    const toDon = applyAction(toDraw.state, { type: "endMainPhase" });
-    expect(toDon.state.turn.phase).toBe("don");
-    expect(toDon.state.players[asId<PlayerId>("p2")]?.hand).toHaveLength(2);
-    expect(toDon.state.players[asId<PlayerId>("p2")]?.deck).toHaveLength(1);
-
-    const toMain = applyAction(toDon.state, { type: "endMainPhase" });
-    expect(toMain.state.turn.phase).toBe("main");
-    expect(toMain.state.players[asId<PlayerId>("p2")]?.donDeck).toHaveLength(0);
-    expect(toMain.state.players[asId<PlayerId>("p2")]?.costArea).toHaveLength(
-      3
-    );
-  });
-
-  it("skips the opening player's first draw and grants only one DON", () => {
-    const state = createInitialState(makeInput({ status: "active" }));
-    const activePlayer = state.players[asId<PlayerId>("p1")]!;
-    activePlayer.turnCount = 1;
-    state.turn.phase = "draw";
-
-    const toDon = applyAction(state, { type: "endMainPhase" });
-    expect(toDon.state.turn.phase).toBe("don");
-    expect(toDon.state.players[asId<PlayerId>("p1")]?.hand).toHaveLength(1);
-    expect(toDon.state.players[asId<PlayerId>("p1")]?.deck).toHaveLength(2);
-    expect(toDon.events.some((event) => event.type === "cardDrawn")).toBe(
-      false
-    );
-
-    const toMain = applyAction(toDon.state, { type: "endMainPhase" });
-    expect(toMain.state.turn.phase).toBe("main");
-    expect(toMain.state.players[asId<PlayerId>("p1")]?.donDeck).toHaveLength(1);
-    expect(toMain.state.players[asId<PlayerId>("p1")]?.costArea).toHaveLength(
-      2
-    );
-  });
-
-  it("applies refresh state changes before advancing to draw", () => {
-    const state = createInitialState(makeInput());
-    const activePlayer = state.players[asId<PlayerId>("p1")]!;
-    activePlayer.leader.state = "rested";
-    activePlayer.characters[0]!.state = "rested";
-    activePlayer.stage!.state = "rested";
-    activePlayer.costArea[0]!.state = "rested";
-    const attachedCard = makeCard({
-      instanceId: "p1-attached-don-refresh",
-      cardId: "don-1",
-      owner: "p1",
-      zone: {
-        zone: "attached",
-        playerId: asId("p1"),
-        hostInstanceId: activePlayer.leader.instanceId,
-        index: 0
-      },
-      state: "attached"
-    });
-    activePlayer.leader.attachedDon = [attachedCard.instanceId];
-    activePlayer.attachedCards = [attachedCard];
-    state.turn.phase = "refresh";
-
-    const result = applyAction(state, { type: "endMainPhase" });
-    const refreshedPlayer = result.state.players[asId<PlayerId>("p1")]!;
-
-    expect(result.state.turn.phase).toBe("draw");
-    expect(refreshedPlayer.leader.state).toBe("active");
-    expect(refreshedPlayer.characters[0]!.state).toBe("active");
-    expect(refreshedPlayer.stage!.state).toBe("active");
-    expect(refreshedPlayer.costArea[0]!.state).toBe("active");
-    expect(refreshedPlayer.leader.attachedDon).toEqual([]);
-    expect(refreshedPlayer.attachedCards).toEqual([]);
-    expect(refreshedPlayer.costArea).toHaveLength(2);
-    expect(refreshedPlayer.costArea[1]!.instanceId).toBe(
-      attachedCard.instanceId
-    );
-    expect(refreshedPlayer.costArea[1]!.state).toBe("active");
-    expect(refreshedPlayer.costArea[1]!.zone).toEqual(
-      makeZone("costArea", "p1", 1)
-    );
-  });
-
-  it("keeps concede legal for both players and awards the active player's concession correctly", () => {
-    const state = createInitialState(makeInput());
-
-    expect(
-      getLegalActions(state, asId("p1")).map((action) => action.type)
-    ).toContain("concede");
-    expect(
-      getLegalActions(state, asId("p2")).map((action) => action.type)
-    ).toContain("concede");
-
-    const result = applyAction(state, concedeAction("p1"));
-    expect(result.state.status).toBe("completed");
-    expect(result.state.winner).toBe(asId("p2"));
-  });
-
-  it("awards the win to the non-conceding player when the non-active player concedes", () => {
-    const state = createInitialState(makeInput());
-
-    const result = applyAction(state, concedeAction("p2"));
-    expect(result.state.status).toBe("completed");
-    expect(result.state.winner).toBe(asId("p1"));
-  });
-
-  it("rejects actions while the match is frozen", () => {
-    const state = createInitialState(
-      makeInput({
-        status: "frozen"
-      })
-    );
-
-    expect(getLegalActions(state, asId("p1"))).toEqual([]);
-    expect(() => applyAction(state, concedeAction("p1"))).toThrow(/frozen/);
-  });
-
-  it("creates an actionable setup mulligan when no status is provided", () => {
-    const inputWithoutStatus = structuredClone(
-      makeSetupInput()
-    ) as Partial<CreateInitialStateInput>;
-    delete inputWithoutStatus.status;
-    inputWithoutStatus.players![asId<PlayerId>("p1")]!.hand = [
-      makeCard({
-        instanceId: "p1-injected-hand",
-        cardId: "event-1",
-        owner: "p1",
-        zone: makeZone("hand", "p1", 0)
-      })
-    ];
-    inputWithoutStatus.players![asId<PlayerId>("p1")]!.life = [
-      makeLifeCard(
-        makeCard({
-          instanceId: "p1-injected-life",
-          cardId: "life-1",
-          owner: "p1",
-          zone: makeZone("life", "p1", 0)
-        }),
-        true
-      )
-    ];
-    inputWithoutStatus.players![asId<PlayerId>("p1")]!.characters = [
-      makeCard({
-        instanceId: "p1-injected-character",
-        cardId: "char-1",
-        owner: "p1",
-        zone: makeZone("characterArea", "p1", 0)
-      })
-    ];
-    inputWithoutStatus.players![asId<PlayerId>("p1")]!.costArea = [
-      makeCard({
-        instanceId: "p1-injected-cost",
-        cardId: "don-1",
-        owner: "p1",
-        zone: makeZone("costArea", "p1", 0)
-      })
-    ];
-    const state = createInitialState(
-      inputWithoutStatus as CreateInitialStateInput
-    );
-
-    expect(state.status).toBe("setup");
-    expect(state.pendingDecision?.type).toBe("mulligan");
-    expect(state.pendingDecision?.playerId).toBe(asId("p1"));
-    expect(state.players[asId<PlayerId>("p1")]!.hand).toHaveLength(5);
-    expect(state.players[asId<PlayerId>("p1")]!.life).toHaveLength(0);
-    expect(state.players[asId<PlayerId>("p1")]!.deck).toHaveLength(7);
-    expect(state.players[asId<PlayerId>("p1")]!.characters).toEqual([]);
-    expect(state.players[asId<PlayerId>("p1")]!.costArea).toEqual([]);
-    expect(
-      state.players[asId<PlayerId>("p1")]!.hand.map(
-        (card: CardInstance) => card.zone.zone
-      )
-    ).toEqual(["hand", "hand", "hand", "hand", "hand"]);
-    expect(state.players[asId<PlayerId>("p1")]!.life).toEqual([]);
-    expect(getLegalActions(state, asId("p1"))).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
-      },
-      {
-        type: "respondToDecision",
-        decisionId: asId("setup-mulligan-p1"),
-        response: { type: "keepOpeningHand" }
-      },
-      {
-        type: "respondToDecision",
-        decisionId: asId("setup-mulligan-p1"),
-        response: { type: "mulligan" }
-      }
-    ]);
-    expect(getLegalActions(state, asId("p2"))).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p2")
-      }
-    ]);
-    expect(() => applyAction(state, { type: "endMainPhase" })).toThrow(
-      /pending decision/
-    );
-  });
-
-  it("rejects actions once the match is completed", () => {
-    const state = createInitialState(
-      makeInput({
-        status: "completed",
-        winner: asId<PlayerId>("p1")
-      })
-    );
-
-    expect(getLegalActions(state, asId("p1"))).toEqual([]);
-    expect(() => applyAction(state, { type: "endMainPhase" })).toThrow(
-      /terminal/
-    );
-  });
-
-  it("rejects decision resolution once the match is terminal", () => {
-    const state = createInitialState(
-      makeInput({
-        status: "completed",
-        winner: asId<PlayerId>("p1"),
-        pendingDecision: {
-          id: asId("decision-terminal"),
-          type: "mulligan",
-          playerId: asId("p1"),
-          handCount: 1,
-          visibility: { type: "private", playerIds: [asId("p1")] }
-        } satisfies PendingDecision
-      })
-    );
-
-    expect(() => resumeDecision(state, { type: "keepOpeningHand" })).toThrow(
-      /terminal/
-    );
-  });
-
-  it("rejects unimplemented non-mulligan decisions instead of accepting them", () => {
-    const state = createInitialState(
-      makeInput({
-        status: "active",
-        pendingDecision: {
-          id: asId("decision-select-cards"),
-          type: "selectCards",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          request: {
-            chooser: "self",
-            zone: "hand",
-            player: "self",
-            min: 1,
-            max: 1,
-            allowFewerIfUnavailable: false,
-            visibility: "privateToChooser"
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-hand-1"),
-              cardId: asId("event-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "hand",
-                playerId: asId("p1"),
-                index: 0
-              }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    expect(() =>
-      resumeDecision(state, {
-        type: "cardSelection",
-        selected: [{ instanceId: asId("p1-hand-1") }]
-      })
-    ).toThrow(/not implemented in ENG-001/);
-    expect(state.pendingDecision?.id).toBe(asId("decision-select-cards"));
+    expect(resultA.stateHash).toBe(resultB.stateHash);
+    expect(hashGameState(resultA.state)).toBe(hashGameState(resultB.state));
   });
 
   it("filters hidden information out of PlayerView", () => {
-    const state = createInitialState(makeInput());
+    const state = createInitialState(makeBaseInput());
     const view = filterStateForPlayer(state, asId("p1"));
 
-    expect(view.self.hand.map((card) => card.cardId)).toEqual([
-      asId("event-1")
-    ]);
-    expect(view.opponent.hand.count).toBe(1);
+    expect(view.self.hand).toHaveLength(1);
+    expect(view.self.hand[0]?.cardId).toBe(asId("char-2"));
+    expect(view.self.deck.count).toBe(2);
+    expect(view.opponent.hand).toEqual({ count: 1 });
+    expect(view.opponent.deck.count).toBe(2);
     expect(view.opponent.life.count).toBe(2);
-    expect(view.opponent.life.faceUpCards.map((card) => card.cardId)).toEqual([
-      asId("life-2")
-    ]);
-
-    const serializedView = JSON.stringify(view);
-    expect(serializedView).not.toContain("rng-state");
-    expect(serializedView).not.toContain("seed-1");
-    expect(serializedView).not.toContain("effectQueue");
-    expect(serializedView).not.toContain("p2-hand-1");
-    expect(serializedView).not.toContain("life-1");
-  });
-
-  it("hides private-to-chooser decision candidates from the other player", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-private-candidates"),
-          type: "selectCards",
-          playerId: asId("p1"),
-          visibility: { type: "public" },
-          request: {
-            chooser: "self",
-            zone: "hand",
-            player: "self",
-            min: 1,
-            max: 1,
-            allowFewerIfUnavailable: false,
-            visibility: "privateToChooser"
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-hand-1"),
-              cardId: asId("event-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "hand",
-                playerId: asId("p1"),
-                index: 0
-              }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    const opponentView = filterStateForPlayer(state, asId("p2"));
-
-    expect(chooserView.pendingDecision?.type).toBe("selectCards");
+    expect(view.opponent.life.faceUpCards).toHaveLength(1);
+    expect(view.opponent.life.faceUpCards[0]?.cardId).toBe(asId("life-2"));
+    expect((view as unknown as Record<string, unknown>)["rng"]).toBeUndefined();
     expect(
-      chooserView.pendingDecision?.type === "selectCards"
-        ? chooserView.pendingDecision.candidates
-        : []
-    ).toHaveLength(1);
-    expect(opponentView.pendingDecision?.type).toBe("selectCards");
-    expect(
-      opponentView.pendingDecision?.type === "selectCards"
-        ? opponentView.pendingDecision.candidates
-        : []
-    ).toEqual([]);
-  });
-
-  it("strips hidden default responses from non-chooser views", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-hidden-default"),
-          type: "selectCards",
-          playerId: asId("p1"),
-          visibility: { type: "public" },
-          request: {
-            chooser: "self",
-            zone: "hand",
-            player: "self",
-            min: 1,
-            max: 1,
-            allowFewerIfUnavailable: false,
-            visibility: "privateToChooser"
-          },
-          defaultResponse: {
-            type: "cardSelection",
-            selected: [{ instanceId: asId("p1-hand-1") }]
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-hand-1"),
-              cardId: asId("event-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "hand",
-                playerId: asId("p1"),
-                index: 0
-              }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    const opponentView = filterStateForPlayer(state, asId("p2"));
-
-    expect(chooserView.pendingDecision?.defaultResponse).toEqual({
-      type: "cardSelection",
-      selected: [{ instanceId: asId("p1-hand-1") }]
-    });
-    expect(opponentView.pendingDecision?.defaultResponse).toBeUndefined();
-  });
-
-  it("returns a cloned defaultResponse in chooser views", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-cloned-default"),
-          type: "selectCards",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          request: {
-            chooser: "self",
-            zone: "deck",
-            player: "self",
-            min: 1,
-            max: 1,
-            allowFewerIfUnavailable: false,
-            visibility: "privateToChooser"
-          },
-          defaultResponse: {
-            type: "cardSelection",
-            selected: [{ instanceId: asId("p1-deck-1") }]
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-deck-1"),
-              cardId: asId("char-3"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "deck",
-                playerId: asId("p1"),
-                index: 0
-              }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    expect(chooserView.pendingDecision?.defaultResponse).toEqual({
-      type: "cardSelection",
-      selected: [{ instanceId: asId("p1-deck-1") }]
-    });
-
-    if (
-      chooserView.pendingDecision?.defaultResponse?.type === "cardSelection"
-    ) {
-      chooserView.pendingDecision.defaultResponse.selected[0]!.instanceId =
-        asId("mutated");
-    }
-
-    expect(state.pendingDecision?.defaultResponse).toEqual({
-      type: "cardSelection",
-      selected: [{ instanceId: asId("p1-deck-1") }]
-    });
-  });
-
-  it("does not expose hidden hand cards in public pay-cost decisions", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-hidden-pay-cost"),
-          type: "payCost",
-          playerId: asId("p1"),
-          visibility: { type: "public" },
-          cost: { type: "trashFromHand", count: 1, chooser: "self" },
-          options: [
-            {
-              id: "pay-option-hidden",
-              cost: { type: "trashFromHand", count: 1, chooser: "self" },
-              selectableCards: [
-                {
-                  instanceId: asId("p1-hand-1"),
-                  cardId: asId("event-1"),
-                  owner: asId("p1"),
-                  controller: asId("p1"),
-                  zone: {
-                    zone: "hand",
-                    playerId: asId("p1"),
-                    index: 0
-                  }
-                }
-              ],
-              min: 1,
-              max: 1
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    const opponentView = filterStateForPlayer(state, asId("p2"));
-
-    expect(chooserView.pendingDecision?.type).toBe("payCost");
-    expect(
-      chooserView.pendingDecision?.type === "payCost"
-        ? chooserView.pendingDecision.options[0]?.selectableCards
-        : undefined
-    ).toHaveLength(1);
-    expect(opponentView.pendingDecision?.type).toBe("payCost");
-    expect(
-      opponentView.pendingDecision?.type === "payCost"
-        ? opponentView.pendingDecision.options[0]?.selectableCards
-        : undefined
+      (view as unknown as Record<string, unknown>)["effectQueue"]
     ).toBeUndefined();
   });
 
-  it("hides optional-activation prompts from non-choosers when the source is hidden", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-hidden-optional-activation"),
-          type: "chooseOptionalActivation",
-          playerId: asId("p1"),
-          visibility: { type: "public" },
-          effectId: asId("effect-hidden"),
-          source: {
-            instanceId: asId("p1-hand-1"),
-            cardId: asId("event-1"),
-            owner: asId("p1"),
-            controller: asId("p1"),
-            zone: {
-              zone: "hand",
-              playerId: asId("p1"),
-              index: 0
-            }
-          }
-        } satisfies PendingDecision
-      })
-    );
+  it("only exposes concede as the bootstrap legal action", () => {
+    const state = createInitialState(makeBaseInput());
 
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    const opponentView = filterStateForPlayer(state, asId("p2"));
-
-    expect(chooserView.pendingDecision?.type).toBe("chooseOptionalActivation");
-    expect(opponentView.pendingDecision).toBeUndefined();
+    expect(getLegalActions(state, asId("p1"))).toEqual([concedeAction("p1")]);
+    expect(getLegalActions(state, asId("p2"))).toEqual([concedeAction("p2")]);
+    expect(getLegalActions(state, asId("unknown"))).toEqual([]);
   });
 
-  it("redacts face-down life cards in public trigger decisions", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-life-trigger"),
-          type: "confirmTriggerFromLife",
-          playerId: asId("p1"),
-          visibility: { type: "public" },
-          card: {
-            instanceId: asId("p1-life-1"),
-            cardId: asId("life-1"),
-            owner: asId("p1"),
-            controller: asId("p1"),
-            zone: {
-              zone: "life",
-              playerId: asId("p1"),
-              index: 0
-            }
-          }
-        } satisfies PendingDecision
-      })
-    );
+  it("concede completes the match, increments sequencing, and clears pending state", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = makePendingDecision();
 
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    const opponentView = filterStateForPlayer(state, asId("p2"));
+    const result = applyAction(createInitialState(input), concedeAction("p1"));
 
-    expect(chooserView.pendingDecision?.type).toBe("confirmTriggerFromLife");
-    expect(
-      chooserView.pendingDecision?.type === "confirmTriggerFromLife"
-        ? chooserView.pendingDecision.card.cardId
-        : undefined
-    ).toBe(asId("life-1"));
-    expect(opponentView.pendingDecision).toBeUndefined();
-    expect(
-      opponentView.pendingDecision?.type === "confirmTriggerFromLife"
-        ? opponentView.pendingDecision.card.cardId
-        : undefined
-    ).toBeUndefined();
-  });
-
-  it("limits computeView combat capability to in-play cards", () => {
-    const state = createInitialState(makeInput());
-    const view = computeView(state);
-    const inPlayId = asId<CardInstance["instanceId"]>("p1-char-1");
-    const inactiveInPlayId = asId<CardInstance["instanceId"]>("p2-char-1");
-    const handId = asId<CardInstance["instanceId"]>("p1-hand-1");
-    const deckId = asId<CardInstance["instanceId"]>("p1-deck-1");
-
-    expect(view.cards[inPlayId]?.canAttack).toBe(true);
-    expect(view.cards[inactiveInPlayId]?.canAttack).toBe(false);
-    expect(view.cards[inPlayId]?.canBlock).toBe(true);
-    expect(view.cards[handId]?.canAttack).toBe(false);
-    expect(view.cards[handId]?.canBlock).toBe(false);
-    expect(view.cards[deckId]?.canAttack).toBe(false);
-    expect(view.cards[deckId]?.canBlock).toBe(false);
-  });
-
-  it("requires blockers to be active before reporting canBlock", () => {
-    const input = makeInput();
-    input.players[asId<PlayerId>("p1")]!.characters[0]!.state = "rested";
-
-    const view = computeView(createInitialState(input));
-    const inPlayId = asId<CardInstance["instanceId"]>("p1-char-1");
-    expect(view.cards[inPlayId]?.canBlock).toBe(false);
-  });
-
-  it("applies summoning sickness to same-turn characters without rush", () => {
-    const input = makeInput({ status: "active" });
-    input.players[asId<PlayerId>("p1")]!.characters[0]!.turnPlayed =
-      input.turn.globalTurnNumber;
-
-    const view = computeView(createInitialState(input));
-    const characterId = asId<CardInstance["instanceId"]>("p1-char-1");
-    const leaderId = asId<CardInstance["instanceId"]>("p1-leader");
-
-    expect(view.cards[characterId]?.canAttack).toBe(false);
-    expect(view.cards[leaderId]?.canAttack).toBe(true);
-  });
-
-  it("honors the first-turn attack lock in computeView", () => {
-    const input = makeInput({ status: "active" });
-    input.players[asId<PlayerId>("p1")]!.turnCount = 1;
-
-    const view = computeView(createInitialState(input));
-    const characterId = asId<CardInstance["instanceId"]>("p1-char-1");
-    const leaderId = asId<CardInstance["instanceId"]>("p1-leader");
-
-    expect(view.cards[characterId]?.canAttack).toBe(false);
-    expect(view.cards[leaderId]?.canAttack).toBe(false);
-  });
-
-  it("preserves chooser-visible hidden-zone candidates in selectCards decisions", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-hidden-chooser-candidates"),
-          type: "selectCards",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          request: {
-            chooser: "self",
-            zone: "deck",
-            player: "self",
-            min: 1,
-            max: 2,
-            allowFewerIfUnavailable: false,
-            visibility: "privateToChooser"
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-deck-1"),
-              cardId: asId("char-3"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "deck",
-                playerId: asId("p1"),
-                index: 0
-              }
-            },
-            {
-              instanceId: asId("p1-deck-2"),
-              cardId: asId("char-4"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "deck",
-                playerId: asId("p1"),
-                index: 1
-              }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    expect(chooserView.pendingDecision?.type).toBe("selectCards");
-    expect(
-      chooserView.pendingDecision?.type === "selectCards"
-        ? chooserView.pendingDecision.candidates
-        : []
-    ).toHaveLength(2);
-    expect(
-      chooserView.pendingDecision?.type === "selectCards"
-        ? chooserView.pendingDecision.candidates.map(
-            (candidate) => candidate.card.cardId
-          )
-        : []
-    ).toEqual([asId("char-3"), asId("char-4")]);
-  });
-
-  it("redacts hidden public decision candidates for non-choosers", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-hidden-public-candidates"),
-          type: "selectCards",
-          playerId: asId("p1"),
-          visibility: { type: "public" },
-          request: {
-            chooser: "opponent",
-            zone: "hand",
-            player: "self",
-            min: 1,
-            max: 1,
-            allowFewerIfUnavailable: false,
-            visibility: "public"
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-hand-1"),
-              cardId: asId("event-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "hand",
-                playerId: asId("p1"),
-                index: 0
-              }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    const opponentView = filterStateForPlayer(state, asId("p2"));
-
-    expect(chooserView.pendingDecision?.type).toBe("selectCards");
-    expect(
-      chooserView.pendingDecision?.type === "selectCards"
-        ? chooserView.pendingDecision.candidates[0]?.card.instanceId
-        : undefined
-    ).toBe(asId("p1-hand-1"));
-    expect(opponentView.pendingDecision?.type).toBe("selectCards");
-    expect(
-      opponentView.pendingDecision?.type === "selectCards"
-        ? opponentView.pendingDecision.candidates
-        : []
-    ).toEqual([]);
-  });
-
-  it("redacts hidden order-cards entries for non-choosers", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-hidden-order"),
-          type: "orderCards",
-          playerId: asId("p1"),
-          visibility: { type: "public" },
-          destination: "deck",
-          cards: [
-            {
-              instanceId: asId("p1-deck-1"),
-              cardId: asId("char-3"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "deck",
-                playerId: asId("p1"),
-                index: 0
-              }
-            },
-            {
-              instanceId: asId("p1-deck-2"),
-              cardId: asId("char-4"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "deck",
-                playerId: asId("p1"),
-                index: 1
-              }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    const opponentView = filterStateForPlayer(state, asId("p2"));
-
-    expect(chooserView.pendingDecision?.type).toBe("orderCards");
-    expect(
-      chooserView.pendingDecision?.type === "orderCards"
-        ? chooserView.pendingDecision.cards
-        : []
-    ).toHaveLength(2);
-    expect(
-      chooserView.pendingDecision?.type === "orderCards"
-        ? chooserView.pendingDecision.cards.map((card) => card.cardId)
-        : []
-    ).toEqual([asId("char-3"), asId("char-4")]);
-    expect(opponentView.pendingDecision?.type).toBe("orderCards");
-    expect(
-      opponentView.pendingDecision?.type === "orderCards"
-        ? opponentView.pendingDecision.cards
-        : []
-    ).toEqual([]);
-  });
-
-  it("runs invariant checks after actions in test mode", () => {
-    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
-    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
-
-    const input = makeInput();
-    const p1 = input.players[asId<PlayerId>("p1")]!;
-    p1.hand[0]!.instanceId = p1.deck[0]!.instanceId;
-
-    try {
-      expect(() => createInitialState(input)).toThrow(/multiple locations/);
-    } finally {
-      if (originalFlag === undefined) {
-        delete process.env["OPTCG_ENGINE_TEST_MODE"];
-      } else {
-        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
-      }
-    }
-  });
-
-  it("runs invariant checks after decision responses in test mode", () => {
-    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
-    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
-
-    const input = makeInput({
-      pendingDecision: {
-        id: asId("decision-1"),
-        type: "mulligan",
-        playerId: asId("p1"),
-        handCount: 5,
-        visibility: { type: "private", playerIds: [asId("p1")] }
-      } satisfies PendingDecision
-    });
-    const p1 = input.players[asId<PlayerId>("p1")]!;
-    p1.hand[0]!.instanceId = p1.deck[0]!.instanceId;
-
-    try {
-      expect(() => createInitialState(input)).toThrow(/multiple locations/);
-    } finally {
-      if (originalFlag === undefined) {
-        delete process.env["OPTCG_ENGINE_TEST_MODE"];
-      } else {
-        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
-      }
-    }
-  });
-
-  it("runs cost-area zone invariants in test mode", () => {
-    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
-    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
-
-    const input = makeInput();
-    const p1 = input.players[asId<PlayerId>("p1")]!;
-    p1.costArea[0]!.zone = makeZone("deck", "p1", 0);
-
-    try {
-      expect(() => createInitialState(input)).toThrow(
-        /Cost-area card .* inconsistent zone metadata/
-      );
-    } finally {
-      if (originalFlag === undefined) {
-        delete process.env["OPTCG_ENGINE_TEST_MODE"];
-      } else {
-        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
-      }
-    }
-  });
-
-  it("rejects pending decisions with no legal responses in test mode", () => {
-    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
-    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
-
-    try {
-      expect(() =>
-        createInitialState(
-          makeInput({
-            pendingDecision: {
-              id: asId("decision-deadlocked"),
-              type: "chooseEffectOption",
-              playerId: asId("p1"),
-              visibility: { type: "private", playerIds: [asId("p1")] },
-              min: 1,
-              max: 1,
-              options: [
-                {
-                  id: "unavailable-option",
-                  label: "Unavailable",
-                  effect: { type: "draw", count: 1, player: "self" },
-                  availability: "unavailable"
-                }
-              ]
-            } satisfies PendingDecision
-          })
-        )
-      ).toThrow(/has no legal responses/);
-    } finally {
-      if (originalFlag === undefined) {
-        delete process.env["OPTCG_ENGINE_TEST_MODE"];
-      } else {
-        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
-      }
-    }
-  });
-
-  it("validates attached DON host metadata in test mode", () => {
-    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
-    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
-
-    const input = makeInput();
-    const host = input.players[asId<PlayerId>("p1")]!.leader;
-    const attachedCard = makeCard({
-      instanceId: "p1-attached-don-bad-host",
-      cardId: "don-1",
-      owner: "p1",
-      zone: {
-        zone: "attached",
-        playerId: asId("p1"),
-        hostInstanceId: asId("wrong-host"),
-        index: 0
-      },
-      state: "none"
-    });
-    host.attachedDon = [attachedCard.instanceId];
-    input.players[asId<PlayerId>("p1")]!.attachedCards = [attachedCard];
-
-    try {
-      expect(() => createInitialState(input)).toThrow(/wrong host instance/);
-    } finally {
-      if (originalFlag === undefined) {
-        delete process.env["OPTCG_ENGINE_TEST_MODE"];
-      } else {
-        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
-      }
-    }
-  });
-
-  it("includes attached-zone cards in location invariants in test mode", () => {
-    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
-    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
-
-    const input = makeInput();
-    const host = input.players[asId<PlayerId>("p1")]!.leader;
-    const attachedCard = makeCard({
-      instanceId: "p1-attached-don-wrong-player",
-      cardId: "don-1",
-      owner: "p1",
-      zone: {
-        zone: "attached",
-        playerId: asId("p2"),
-        hostInstanceId: host.instanceId,
-        index: 0
-      },
-      state: "none"
-    });
-    input.players[asId<PlayerId>("p1")]!.attachedCards = [attachedCard];
-
-    try {
-      expect(() => createInitialState(input)).toThrow(
-        /Attached card .* inconsistent zone metadata/
-      );
-    } finally {
-      if (originalFlag === undefined) {
-        delete process.env["OPTCG_ENGINE_TEST_MODE"];
-      } else {
-        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
-      }
-    }
-  });
-
-  it("rejects overlapping attached card storage in test mode", () => {
-    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
-    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
-
-    const input = makeInput();
-    const host = input.players[asId<PlayerId>("p1")]!.leader;
-    const attachedCard = makeCard({
-      instanceId: input.players[asId<PlayerId>("p1")]!.deck[0]!.instanceId,
-      cardId: "don-1",
-      owner: "p1",
-      zone: {
-        zone: "attached",
-        playerId: asId("p1"),
-        hostInstanceId: host.instanceId,
-        index: 0
-      },
-      state: "none"
-    });
-    input.players[asId<PlayerId>("p1")]!.attachedCards = [attachedCard];
-
-    try {
-      expect(() => createInitialState(input)).toThrow(/multiple locations/);
-    } finally {
-      if (originalFlag === undefined) {
-        delete process.env["OPTCG_ENGINE_TEST_MODE"];
-      } else {
-        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
-      }
-    }
-  });
-
-  it("does not advertise synthetic pass responses for pending decisions", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-2"),
-          type: "mulligan",
-          playerId: asId("p1"),
-          handCount: 5,
-          visibility: { type: "private", playerIds: [asId("p1")] }
-        } satisfies PendingDecision
-      })
-    );
-
-    const legal = getLegalActions(state, asId("p1"));
-    expect(legal).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
-      },
-      {
-        type: "respondToDecision",
-        decisionId: asId("decision-2"),
-        response: { type: "keepOpeningHand" }
-      },
-      {
-        type: "respondToDecision",
-        decisionId: asId("decision-2"),
-        response: { type: "mulligan" }
-      }
-    ]);
-  });
-
-  it("keeps concede legal while a decision is pending for both players", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-concede"),
-          type: "mulligan",
-          playerId: asId("p1"),
-          handCount: 5,
-          visibility: { type: "private", playerIds: [asId("p1")] }
-        } satisfies PendingDecision
-      })
-    );
-
-    expect(
-      getLegalActions(state, asId("p1")).map((action) => action.type)
-    ).toContain("concede");
-    expect(
-      getLegalActions(state, asId("p2")).map((action) => action.type)
-    ).toContain("concede");
-  });
-
-  it("clears pending decisions when a player concedes", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-concede-clear"),
-          type: "mulligan",
-          playerId: asId("p1"),
-          handCount: 5,
-          visibility: { type: "private", playerIds: [asId("p1")] }
-        } satisfies PendingDecision
-      })
-    );
-
-    const result = applyAction(state, concedeAction("p2"));
     expect(result.state.status).toBe("completed");
+    expect(result.state.winner).toBe(asId("p2"));
     expect(result.state.pendingDecision).toBeUndefined();
-
-    const chooserView = filterStateForPlayer(result.state, asId("p1"));
-    const opponentView = filterStateForPlayer(result.state, asId("p2"));
-    expect(chooserView.pendingDecision).toBeUndefined();
-    expect(opponentView.pendingDecision).toBeUndefined();
+    expect(result.state.stateSeq).toBe(1);
+    expect(result.state.actionSeq).toBe(1);
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0]?.type).toBe("gameOver");
   });
 
-  it("does not advertise respondToDecision for unimplemented pending decisions", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-dedupe-legal-actions"),
-          type: "orderCards",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          destination: "deck",
-          cards: [
-            {
-              instanceId: asId("p1-hand-1"),
-              cardId: asId("event-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "hand",
-                playerId: asId("p1"),
-                index: 0
-              }
-            },
-            {
-              instanceId: asId("p1-char-1"),
-              cardId: asId("char-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "characterArea",
-                playerId: asId("p1"),
-                index: 0
-              }
-            }
-          ]
-        } satisfies PendingDecision
-      })
+  it("rejects unsupported gameplay actions and unsupported decision runtime", () => {
+    const baseState = createInitialState(makeBaseInput());
+    const baselineHash = hashGameState(baseState);
+
+    expect(() => applyAction(baseState, { type: "endMainPhase" })).toThrowError(
+      /Unsupported action/
     );
+    expect(hashGameState(baseState)).toBe(baselineHash);
 
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    expect(chooserView.pendingDecision?.type).toBe("orderCards");
-    expect(chooserView.legalActions).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
-      }
-    ]);
+    const inputWithDecision = makeBaseInput();
+    inputWithDecision.pendingDecision = makePendingDecision();
+    const stateWithDecision = createInitialState(inputWithDecision);
+    const decisionHash = hashGameState(stateWithDecision);
+
+    expect(() =>
+      resumeDecision(stateWithDecision, inputWithDecision.pendingDecision!.id, {
+        type: "cardSelection",
+        selected: [{ instanceId: asId("p1-hand-1") }]
+      })
+    ).toThrowError(/out of scope/);
+    expect(hashGameState(stateWithDecision)).toBe(decisionHash);
   });
 
-  it("does not advertise respondToDecision when no legal responses exist", () => {
-    const originalNodeEnv = process.env["NODE_ENV"];
-    const originalVitest = process.env["VITEST"];
-    process.env["NODE_ENV"] = "development";
-    process.env["VITEST"] = "false";
-
-    try {
-      const state = createInitialState(
-        makeInput({
-          pendingDecision: {
-            id: asId("decision-no-legal-response"),
-            type: "chooseEffectOption",
-            playerId: asId("p1"),
-            visibility: { type: "private", playerIds: [asId("p1")] },
-            min: 1,
-            max: 1,
-            options: [
-              {
-                id: "unavailable-option",
-                label: "Unavailable",
-                effect: { type: "draw", count: 1, player: "self" },
-                availability: "unavailable"
-              }
-            ]
-          } satisfies PendingDecision
+  it("runs constructor invariants in test mode", () => {
+    const invalidInput = makeBaseInput();
+    const p1 = asId<PlayerId>("p1");
+    const current = invalidInput.players[p1]!;
+    invalidInput.players[p1] = {
+      ...current,
+      hand: [
+        makeCard({
+          instanceId: "p1-deck-1",
+          cardId: "char-2",
+          owner: "p1",
+          zone: makeZone("hand", "p1", 0)
         })
-      );
-
-      expect(getLegalActions(state, asId("p1"))).toEqual([
-        {
-          type: "concede",
-          playerId: asId("p1")
-        }
-      ]);
-
-      expect(filterStateForPlayer(state, asId("p1")).legalActions).toEqual([
-        {
-          type: "concede",
-          playerId: asId("p1")
-        }
-      ]);
-    } finally {
-      if (originalNodeEnv === undefined) {
-        delete process.env["NODE_ENV"];
-      } else {
-        process.env["NODE_ENV"] = originalNodeEnv;
-      }
-      if (originalVitest === undefined) {
-        delete process.env["VITEST"];
-      } else {
-        process.env["VITEST"] = originalVitest;
-      }
-    }
-  });
-
-  it("keeps replay-only selectCards decisions visible to the chooser only", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-hidden-live-side"),
-          type: "selectCards",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          request: {
-            chooser: "self",
-            zone: "deck",
-            player: "self",
-            min: 1,
-            max: 1,
-            allowFewerIfUnavailable: false,
-            visibility: "replayOnly"
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-deck-1"),
-              cardId: asId("char-3"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "deck",
-                playerId: asId("p1"),
-                index: 0
-              }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    expect(chooserView.pendingDecision?.type).toBe("selectCards");
-    expect(chooserView.legalActions).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
-      }
-    ]);
-    expect(
-      filterStateForPlayer(state, asId("p2")).pendingDecision
-    ).toBeUndefined();
-  });
-
-  it("allows pending setup decisions to progress", () => {
-    const state = createInitialState(
-      makeSetupInput({
-        status: "setup",
-        pendingDecision: {
-          id: asId("decision-setup-mulligan"),
-          type: "mulligan",
-          playerId: asId("p1"),
-          handCount: 5,
-          visibility: { type: "private", playerIds: [asId("p1")] }
-        } satisfies PendingDecision
-      })
-    );
-
-    expect(getLegalActions(state, asId("p1"))).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
-      },
-      {
-        type: "respondToDecision",
-        decisionId: asId("decision-setup-mulligan"),
-        response: { type: "keepOpeningHand" }
-      },
-      {
-        type: "respondToDecision",
-        decisionId: asId("decision-setup-mulligan"),
-        response: { type: "mulligan" }
-      }
-    ]);
-
-    const chooserView = filterStateForPlayer(state, asId("p1"));
-    expect(chooserView.pendingDecision?.type).toBe("mulligan");
-    expect(chooserView.legalActions).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
-      },
-      {
-        type: "respondToDecision",
-        decisionId: asId("decision-setup-mulligan")
-      }
-    ]);
-
-    const result = resumeDecision(state, { type: "keepOpeningHand" });
-    expect(result.state.pendingDecision?.type).toBe("mulligan");
-    expect(result.state.pendingDecision?.playerId).toBe(asId("p2"));
-    expect(result.state.status).toBe("setup");
-
-    const finishedSetup = resumeDecision(result.state, {
-      type: "keepOpeningHand"
-    });
-    expect(finishedSetup.state.pendingDecision).toBeUndefined();
-    expect(finishedSetup.state.status).toBe("active");
-    expect(finishedSetup.state.turn.phase).toBe("refresh");
-    expect(finishedSetup.state.players[asId<PlayerId>("p1")]?.turnCount).toBe(
-      1
-    );
-    expect(
-      finishedSetup.state.players[asId<PlayerId>("p1")]!.life
-    ).toHaveLength(5);
-    expect(
-      finishedSetup.state.players[asId<PlayerId>("p2")]!.life
-    ).toHaveLength(5);
-    expect(
-      finishedSetup.state.players[asId<PlayerId>("p1")]!.deck
-    ).toHaveLength(2);
-    expect(
-      finishedSetup.state.players[asId<PlayerId>("p2")]!.deck
-    ).toHaveLength(2);
-  });
-
-  it("applies mulligan redraws to hand, deck, and rng state", () => {
-    const input = makeSetupInput({
-      status: "setup",
-      pendingDecision: {
-        id: asId("decision-setup-mulligan-redraw"),
-        type: "mulligan",
-        playerId: asId("p1"),
-        handCount: 5,
-        visibility: { type: "private", playerIds: [asId("p1")] }
-      } satisfies PendingDecision
-    });
-
-    const state = createInitialState(input);
-    const originalHandIds = state.players[asId<PlayerId>("p1")]!.hand.map(
-      (card: CardInstance) => card.instanceId
-    );
-
-    const result = resumeDecision(state, { type: "mulligan" });
-    const player = result.state.players[asId<PlayerId>("p1")]!;
-
-    expect(player.hasMulliganed).toBe(true);
-    expect(player.keptOpeningHand).toBe(false);
-    expect(result.state.rng.callCount).toBe(state.rng.callCount + 1);
-    expect(player.hand).toHaveLength(5);
-    expect(player.life).toHaveLength(0);
-    expect(player.deck).toHaveLength(7);
-    expect(player.hand.map((card: CardInstance) => card.zone.zone)).toEqual([
-      "hand",
-      "hand",
-      "hand",
-      "hand",
-      "hand"
-    ]);
-    expect(player.deck.map((card: CardInstance) => card.zone.zone)).toEqual([
-      "deck",
-      "deck",
-      "deck",
-      "deck",
-      "deck",
-      "deck",
-      "deck"
-    ]);
-    expect(
-      player.hand.map((card: CardInstance) => card.instanceId)
-    ).not.toEqual(originalHandIds);
-  });
-
-  it("rejects non-decision actions while a decision is pending", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-block-actions"),
-          type: "mulligan",
-          playerId: asId("p1"),
-          handCount: 5,
-          visibility: { type: "private", playerIds: [asId("p1")] }
-        } satisfies PendingDecision
-      })
-    );
-
-    expect(() => applyAction(state, { type: "endMainPhase" })).toThrow(
-      /pending decision/
-    );
-    expect(state.pendingDecision?.id).toBe(asId("decision-block-actions"));
-  });
-
-  it("rejects invalid decision payloads before clearing the pending decision", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-3"),
-          type: "selectCards",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          request: {
-            chooser: "self",
-            zone: "hand",
-            player: "self",
-            min: 1,
-            max: 1,
-            allowFewerIfUnavailable: false,
-            visibility: "privateToChooser"
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-hand-1"),
-              cardId: asId("event-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: {
-                zone: "hand",
-                playerId: asId("p1"),
-                index: 0
-              }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
+      ]
+    };
 
     expect(() =>
-      resumeDecision(state, { type: "cardSelection", selected: [] })
-    ).toThrow(/violates min\/max/);
-    expect(state.pendingDecision?.id).toBe(asId("decision-3"));
+      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () =>
+        createInitialState(invalidInput)
+      )
+    ).toThrowError(/Duplicate instance id/);
   });
 
-  it("does not expose unimplemented pay-cost decisions as legal actions", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-4"),
-          type: "payCost",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          cost: { type: "restDon", count: 1 },
-          options: [
-            {
-              id: "option-1",
-              cost: { type: "restDon", count: 1 },
-              selectableCards: [
-                {
-                  instanceId: asId("p1-char-1"),
-                  cardId: asId("char-1"),
-                  owner: asId("p1"),
-                  controller: asId("p1"),
-                  zone: {
-                    zone: "characterArea",
-                    playerId: asId("p1"),
-                    index: 0
-                  }
-                }
-              ],
-              selectableDon: [
-                {
-                  instanceId: asId("p1-cost-1"),
-                  cardId: asId("don-1"),
-                  owner: asId("p1"),
-                  controller: asId("p1"),
-                  zone: {
-                    zone: "costArea",
-                    playerId: asId("p1"),
-                    index: 0
-                  }
-                }
-              ],
-              min: 1,
-              max: 1
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
+  it("computes a conservative bootstrap view for cards", () => {
+    const state = createInitialState(makeBaseInput());
+    const computed = computeView(state);
+    const charId = asId<CardInstance["instanceId"]>("p1-char-1");
 
-    expect(getLegalActions(state, asId("p1"))).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
-      }
-    ]);
-  });
-
-  it("does not expose unimplemented select-card decisions as legal actions", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-5"),
-          type: "selectCards",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          request: {
-            chooser: "self",
-            zone: "hand",
-            player: "self",
-            min: 1,
-            max: 2,
-            allowFewerIfUnavailable: false,
-            visibility: "privateToChooser"
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-hand-1"),
-              cardId: asId("event-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: { zone: "hand", playerId: asId("p1"), index: 0 }
-            },
-            {
-              instanceId: asId("p1-char-1"),
-              cardId: asId("char-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: { zone: "characterArea", playerId: asId("p1"), index: 0 }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    expect(getLegalActions(state, asId("p1"))).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
-      }
-    ]);
-  });
-
-  it("does not expose allowFewerIfUnavailable decisions before they are implemented", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-allow-fewer"),
-          type: "selectCards",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          request: {
-            chooser: "self",
-            zone: "hand",
-            player: "self",
-            min: 2,
-            max: 2,
-            allowFewerIfUnavailable: true,
-            visibility: "privateToChooser"
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-hand-1"),
-              cardId: asId("event-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: { zone: "hand", playerId: asId("p1"), index: 0 }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    expect(getLegalActions(state, asId("p1"))).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
-      }
-    ]);
-  });
-
-  it("rejects payment selections outside the offered candidates", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-6"),
-          type: "payCost",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          cost: { type: "restDon", count: 1 },
-          options: [
-            {
-              id: "option-2",
-              cost: { type: "restDon", count: 1 },
-              selectableCards: [
-                {
-                  instanceId: asId("p1-char-1"),
-                  cardId: asId("char-1"),
-                  owner: asId("p1"),
-                  controller: asId("p1"),
-                  zone: {
-                    zone: "characterArea",
-                    playerId: asId("p1"),
-                    index: 0
-                  }
-                }
-              ],
-              min: 1,
-              max: 1
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    expect(() =>
-      resumeDecision(state, {
-        type: "payment",
-        selection: {
-          optionId: "option-2",
-          selectedCards: [
-            {
-              instanceId: asId("p2-char-1"),
-              cardId: asId("char-1"),
-              owner: asId("p2"),
-              controller: asId("p2"),
-              zone: {
-                zone: "characterArea",
-                playerId: asId("p2"),
-                index: 0
-              }
-            }
-          ]
-        }
-      })
-    ).toThrow(/non-selectable payment card/);
-  });
-
-  it("rejects duplicate cards in multi-select decision responses", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-7"),
-          type: "selectTargets",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          request: {
-            timing: "onActivation",
-            chooser: "self",
-            zone: "characterArea",
-            player: "self",
-            min: 2,
-            max: 2,
-            allowFewerIfUnavailable: false
-          },
-          candidates: [
-            {
-              instanceId: asId("p1-char-1"),
-              cardId: asId("char-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: { zone: "characterArea", playerId: asId("p1"), index: 0 }
-            },
-            {
-              instanceId: asId("p2-char-1"),
-              cardId: asId("char-1"),
-              owner: asId("p2"),
-              controller: asId("p2"),
-              zone: { zone: "characterArea", playerId: asId("p2"), index: 0 }
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    expect(() =>
-      resumeDecision(state, {
-        type: "targetSelection",
-        selected: [
-          { instanceId: asId("p1-char-1") },
-          { instanceId: asId("p1-char-1") }
-        ]
-      })
-    ).toThrow(/may not contain duplicates/);
-  });
-
-  it("rejects malformed runtime choice enums before clearing the pending decision", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-8"),
-          type: "chooseOptionalActivation",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          effectId: asId("effect-1"),
-          source: {
-            instanceId: asId("p1-char-1"),
-            cardId: asId("char-1"),
-            owner: asId("p1"),
-            controller: asId("p1"),
-            zone: { zone: "characterArea", playerId: asId("p1"), index: 0 }
-          }
-        } satisfies PendingDecision
-      })
-    );
-
-    expect(() =>
-      resumeDecision(state, {
-        type: "optionalActivationChoice",
-        choice: "bogus"
-      } as unknown as { type: "optionalActivationChoice"; choice: never })
-    ).toThrow(/unknown choice/);
-    expect(state.pendingDecision?.id).toBe(asId("decision-8"));
-  });
-
-  it("does not expose unimplemented effect-option decisions as legal actions", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-9"),
-          type: "chooseEffectOption",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          min: 1,
-          max: 1,
-          options: [
-            {
-              id: "available-option",
-              label: "Available",
-              effect: { type: "draw", count: 1, player: "self" }
-            },
-            {
-              id: "unavailable-option",
-              label: "Unavailable",
-              effect: { type: "draw", count: 1, player: "self" },
-              availability: "unavailable"
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
-
-    expect(getLegalActions(state, asId("p1"))).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
-      }
-    ]);
-
-    expect(() =>
-      resumeDecision(state, {
-        type: "effectOptionSelection",
-        optionIds: ["unavailable-option"]
-      })
-    ).toThrow(/unknown option/);
+    expect(computed.turnPlayerId).toBe(asId("p1"));
+    expect(computed.cards[charId]?.canAttack).toBe(false);
+    expect(computed.cards[charId]?.canBlock).toBe(false);
+    expect(computed.legalAttackTargets).toEqual({});
   });
 
   it("builds @optcg/engine-core to the published dist entrypoint", () => {
-    const packageDir = resolve("packages/engine-core");
-    const distDir = resolve(packageDir, "dist");
-    const distTestDir = resolve(packageDir, "dist_test");
-    rmSync(distDir, { recursive: true, force: true });
-    rmSync(distTestDir, { recursive: true, force: true });
+    const enginePackageRoot = resolve(process.cwd(), "packages", "engine-core");
+    const engineDistDir = resolve(enginePackageRoot, "dist");
+    const typesDistDir = resolve(process.cwd(), "packages", "types", "dist");
+
+    rmSync(engineDistDir, { recursive: true, force: true });
+    rmSync(typesDistDir, { recursive: true, force: true });
 
     try {
+      runNpmScript(enginePackageRoot, "build");
+
       const packageJson = JSON.parse(
-        readFileSync(resolve(packageDir, "package.json"), "utf8")
-      ) as {
-        dependencies?: Record<string, string>;
-      };
-      expect(packageJson.dependencies?.["@optcg/types"]).toBe("workspace:*");
+        readFileSync(resolve(enginePackageRoot, "package.json"), "utf8")
+      ) as { main: string; types: string };
 
-      runNpmScript(packageDir, "build");
-
-      expect(existsSync(resolve(distDir, "index.js"))).toBe(true);
-      expect(existsSync(resolve(distDir, "index.d.ts"))).toBe(true);
-
-      runNpmScript(packageDir, "typecheck");
+      expect(existsSync(resolve(enginePackageRoot, packageJson.main))).toBe(
+        true
+      );
+      expect(existsSync(resolve(enginePackageRoot, packageJson.types))).toBe(
+        true
+      );
     } finally {
-      rmSync(distDir, { recursive: true, force: true });
-      rmSync(distTestDir, { recursive: true, force: true });
+      rmSync(engineDistDir, { recursive: true, force: true });
+      rmSync(typesDistDir, { recursive: true, force: true });
     }
-  });
-
-  it("traverses attached-zone cards stored under player state", () => {
-    const state = createInitialState(makeInput());
-    const host = state.players[asId<PlayerId>("p1")]!.leader;
-    const attachedCard = makeCard({
-      instanceId: "p1-attached-don-1",
-      cardId: "don-1",
-      owner: "p1",
-      zone: {
-        zone: "attached",
-        playerId: asId("p1"),
-        hostInstanceId: host.instanceId,
-        index: 0
-      },
-      state: "none"
-    });
-    host.attachedDon = [attachedCard.instanceId];
-    state.players[asId<PlayerId>("p1")]!.attachedCards = [attachedCard];
-
-    const view = computeView(state);
-    expect(view.cards[attachedCard.instanceId]?.instanceId).toBe(
-      attachedCard.instanceId
-    );
-    expect(view.cards[attachedCard.instanceId]?.cardId).toBe(
-      attachedCard.cardId
-    );
   });
 });

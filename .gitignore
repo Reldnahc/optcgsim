@@ -1,6 +1,5 @@
 node_modules/
 dist/
-dist_test/
 coverage/
 .pnpm-store/
 .turbo/

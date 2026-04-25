@@ -2,45 +2,24 @@ import { createHash } from "node:crypto";
 import type {
   Action,
   CardInstance,
-  CardRef,
-  CardSnapshot,
   DecisionResponse,
   EngineEvent,
   EngineResult,
-  EventVisibility,
   GameState,
   HiddenZoneView,
   InstanceId,
   JsonValue,
   LifeCard,
-  LivePublicEffectEvent,
-  LivePublicRevealRecord,
   PendingDecision,
   PlayerId,
   PlayerState,
   PlayerView,
-  TargetRequest,
-  CardSelectionRequest,
-  PublicCardRef,
-  PublicCardSelectionRequest,
   PublicCardView,
-  PublicDecision,
-  PublicDecisionCardRef,
-  PublicDecisionVisibility,
-  PublicEffectOption,
   PublicLegalAction,
   PublicLifeAreaView,
-  PublicPaymentCardRef,
-  PublicPaymentOption,
-  PublicPlayerGameTimer,
-  PublicReplacementOption,
-  PublicTargetRequest,
   PublicTimerState,
-  PublicTriggerOrderOption,
-  Keyword,
   Sha256,
-  TurnState,
-  ZoneRef
+  StateSeq
 } from "@optcg/types";
 import type {
   ComputedCardView,
@@ -51,8 +30,6 @@ import type {
 function cloneValue<T>(value: T): T {
   return structuredClone(value);
 }
-
-const OPENING_HAND_SIZE = 5;
 
 function toJsonValue<T>(value: T): JsonValue {
   return JSON.parse(JSON.stringify(value)) as JsonValue;
@@ -72,6 +49,7 @@ function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value);
   }
+
   if (Array.isArray(value)) {
     return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
   }
@@ -104,153 +82,52 @@ function getOpponentId(state: GameState, playerId: PlayerId): PlayerId {
   );
 }
 
-function arraysEqualUnordered(left: string[], right: string[]): boolean {
-  if (left.length !== right.length) {
-    return false;
-  }
-  const leftSorted = [...left].sort();
-  const rightSorted = [...right].sort();
-  return leftSorted.every((value, index) => value === rightSorted[index]);
+function toStateSeq(value: number): StateSeq {
+  return value as StateSeq;
 }
 
-function hasDuplicateValues(values: string[]): boolean {
-  return new Set(values).size !== values.length;
+function toActionSeq(value: number): GameState["actionSeq"] {
+  return value as GameState["actionSeq"];
 }
 
-function chooseCombinations<T>(items: T[], count: number): T[][] {
-  if (count === 0) {
-    return [[]];
-  }
-  if (count > items.length) {
-    return [];
-  }
-
-  const results: T[][] = [];
-  const walk = (startIndex: number, current: T[]): void => {
-    if (current.length === count) {
-      results.push([...current]);
-      return;
-    }
-    for (let index = startIndex; index < items.length; index += 1) {
-      const item = items[index];
-      if (item === undefined) {
-        continue;
-      }
-      current.push(item);
-      walk(index + 1, current);
-      current.pop();
-    }
-  };
-  walk(0, []);
-  return results;
+function toSha256(value: string): Sha256 {
+  return value as Sha256;
 }
 
-function chooseCombinationsInRange<T>(
-  items: T[],
-  minCount: number,
-  maxCount: number
-): T[][] {
-  const normalizedMin = Math.max(0, minCount);
-  const normalizedMax = Math.min(items.length, maxCount);
-  const results: T[][] = [];
-
-  for (let count = normalizedMin; count <= normalizedMax; count += 1) {
-    results.push(...chooseCombinations(items, count));
-  }
-
-  return results;
-}
-
-function choosePermutations<T>(items: T[]): T[][] {
-  if (items.length <= 1) {
-    return [items];
-  }
-  const results: T[][] = [];
-  items.forEach((item, index) => {
-    const rest = [...items.slice(0, index), ...items.slice(index + 1)];
-    for (const permutation of choosePermutations(rest)) {
-      results.push([item, ...permutation]);
-    }
-  });
-  return results;
-}
-
-function resolveCardMetadata(
-  state: GameState,
-  card: CardInstance | CardSnapshot
-): {
-  name?: string;
-  power?: number;
-  cost?: number;
-  keywords: Keyword[];
-} {
+function resolveCardMetadata(state: GameState, card: CardInstance) {
   const manifestCard = state.cardManifest.cards[card.cardId];
-  const metadata: {
-    name?: string;
-    power?: number;
-    cost?: number;
-    keywords: Keyword[];
-  } = {
+  return {
     keywords: manifestCard?.printedKeywords
       ? [...manifestCard.printedKeywords]
-      : []
+      : [],
+    power: manifestCard?.power,
+    cost: manifestCard?.cost
   };
-
-  const explicitName = "name" in card ? card.name : manifestCard?.name;
-  if (explicitName !== undefined) {
-    metadata.name = explicitName;
-  }
-
-  const explicitPower =
-    "power" in card && card.power !== undefined
-      ? card.power
-      : manifestCard?.power;
-  if (explicitPower !== undefined) {
-    metadata.power = explicitPower;
-  }
-
-  const explicitCost =
-    "cost" in card && card.cost !== undefined ? card.cost : manifestCard?.cost;
-  if (explicitCost !== undefined) {
-    metadata.cost = explicitCost;
-  }
-
-  return metadata;
-}
-
-function getCardLikeInstanceId(card: CardInstance | CardSnapshot): InstanceId {
-  const instanceId = card.instanceId;
-  if (!instanceId) {
-    throw new Error(
-      "Expected card snapshot with instanceId for public projection"
-    );
-  }
-  return instanceId;
 }
 
 function toPublicCardView(
   state: GameState,
-  card: CardInstance | CardSnapshot
+  card: CardInstance
 ): PublicCardView {
   const metadata = resolveCardMetadata(state, card);
   const publicCard: PublicCardView = {
-    instanceId: getCardLikeInstanceId(card),
+    instanceId: card.instanceId,
     cardId: card.cardId,
     controller: card.controller,
     owner: card.owner,
     state: card.state,
-    attachedDonCount:
-      "attachedDonCount" in card
-        ? card.attachedDonCount
-        : card.attachedDon.length,
+    attachedDonCount: card.attachedDon.length,
     keywords: [...metadata.keywords]
   };
+
   if (metadata.power !== undefined) {
     publicCard.computedPower = metadata.power;
   }
+
   if (metadata.cost !== undefined) {
     publicCard.computedCost = metadata.cost;
   }
+
   return publicCard;
 }
 
@@ -258,520 +135,26 @@ function toHiddenZoneView(cards: CardInstance[]): HiddenZoneView {
   return { count: cards.length };
 }
 
-function isZoneIdentityVisible(
-  zone: ZoneRef | undefined,
-  viewerId: PlayerId
-): boolean {
-  if (!zone) {
-    return false;
-  }
-
-  switch (zone.zone) {
-    case "hand":
-      return zone.playerId === viewerId;
-    case "deck":
-    case "donDeck":
-    case "life":
-      return false;
-    case "trash":
-    case "leaderArea":
-    case "characterArea":
-    case "stageArea":
-    case "costArea":
-    case "attached":
-    case "noZone":
-      return true;
-    default:
-      return false;
-  }
-}
-
-function isSnapshotVisible(
-  snapshot: CardSnapshot | undefined,
-  viewerId: PlayerId
-): boolean {
-  return isZoneIdentityVisible(snapshot?.zone, viewerId);
-}
-
-function requireInstanceId(ref: CardRef): InstanceId {
-  const instanceId = ref.instanceId ?? ref.snapshot?.instanceId;
-  if (!instanceId) {
-    throw new Error("Expected CardRef with instanceId for public projection");
-  }
-  return instanceId;
-}
-
-function toPublicCardRef(ref: CardRef): PublicCardRef {
-  return {
-    instanceId: requireInstanceId(ref),
-    cardId: ref.cardId,
-    owner: ref.owner,
-    controller: ref.controller
-  };
-}
-
-function toPublicDecisionCardRef(
-  ref: CardRef,
-  viewerId: PlayerId,
-  exposeCardIdentity = false
-): PublicDecisionCardRef {
-  const base: PublicDecisionCardRef = {
-    instanceId: requireInstanceId(ref),
-    owner: ref.owner,
-    controller: ref.controller
-  };
-
-  if (
-    exposeCardIdentity ||
-    isZoneIdentityVisible(ref.zone, viewerId) ||
-    isSnapshotVisible(ref.snapshot, viewerId)
-  ) {
-    base.cardId = ref.cardId;
-  }
-
-  return base;
-}
-
-function shouldExposeDecisionCandidateToViewer(
-  ref: CardRef,
-  viewerId: PlayerId
-): boolean {
-  return (
-    isZoneIdentityVisible(ref.zone, viewerId) ||
-    isSnapshotVisible(ref.snapshot, viewerId)
-  );
-}
-
-function toPublicPaymentCardRef(ref: CardRef): PublicPaymentCardRef {
-  const zone = ref.zone ?? ref.snapshot?.zone;
-  if (!zone) {
-    throw new Error(
-      "Expected CardRef with zone information for payment selection"
-    );
-  }
-
-  const publicRef: PublicPaymentCardRef = {
-    ...toPublicCardRef(ref),
-    zone
-  };
-
-  return publicRef;
-}
-
-function toPublicTargetRequest(request: TargetRequest): PublicTargetRequest {
-  const publicRequest: PublicTargetRequest = {
-    timing: request.timing,
-    chooser: request.chooser,
-    zone: request.zone,
-    player: request.player,
-    min: request.min,
-    max: request.max,
-    allowFewerIfUnavailable: request.allowFewerIfUnavailable
-  };
-
-  if (request.visibility !== undefined) {
-    publicRequest.visibility = request.visibility;
-  }
-
-  return publicRequest;
-}
-
-function toPublicCardSelectionRequest(
-  request: CardSelectionRequest
-): PublicCardSelectionRequest {
-  if (request.visibility === "replayOnly") {
-    throw new Error(
-      "replayOnly card selection requests must be filtered before public projection"
-    );
-  }
-
-  const publicRequest: PublicCardSelectionRequest = {
-    chooser: request.chooser,
-    min: request.min,
-    max: request.max,
-    allowFewerIfUnavailable: request.allowFewerIfUnavailable,
-    visibility: request.visibility
-  };
-
-  if (request.zone !== undefined) {
-    publicRequest.zone = request.zone;
-  }
-  if (request.player !== undefined) {
-    publicRequest.player = request.player;
-  }
-
-  return publicRequest;
-}
-
-function toLiveCardSelectionRequest(
-  request: CardSelectionRequest
-): PublicCardSelectionRequest {
-  if (request.visibility === "replayOnly") {
-    return toPublicCardSelectionRequest({
-      ...request,
-      visibility: "privateToChooser"
-    });
-  }
-
-  return toPublicCardSelectionRequest(request);
-}
-
-function toPublicDecisionVisibility(
-  visibility: EventVisibility,
-  viewerId: PlayerId
-): PublicDecisionVisibility | undefined {
-  switch (visibility.type) {
-    case "public":
-      return visibility;
-    case "private":
-      return visibility.playerIds.includes(viewerId) ? visibility : undefined;
-    case "replayOnly":
-    case "serverOnly":
-      return undefined;
-    default:
-      return undefined;
-  }
-}
-
-function shouldExposeDecisionCandidatesToViewer(
-  pendingDecision: Extract<
-    PendingDecision,
-    { type: "selectTargets" | "selectCards" }
-  >,
-  viewerId: PlayerId
-): boolean {
-  if (viewerId === pendingDecision.playerId) {
-    return true;
-  }
-
-  return pendingDecision.request.visibility !== "privateToChooser";
-}
-
-function toPublicDefaultResponse(
-  pendingDecision: PendingDecision,
-  viewerId: PlayerId
-): DecisionResponse | undefined {
-  const response = pendingDecision.defaultResponse;
-  if (!response) {
-    return undefined;
-  }
-
-  if (viewerId === pendingDecision.playerId) {
-    return cloneValue(response);
-  }
-
-  switch (response.type) {
-    case "keepOpeningHand":
-    case "mulligan":
-    case "orderedIds":
-    case "optionalActivationChoice":
-    case "lifeTriggerChoice":
-    case "effectOptionSelection":
-    case "replacementChoice":
-    case "pass":
-      return cloneValue(response);
-    case "payment":
-    case "targetSelection":
-    case "cardSelection":
-    case "orderCards":
-    case "chooseCharacterToTrash":
-    case "yesNo":
-      return undefined;
-    default:
-      return undefined;
-  }
-}
-
-function shouldExposePaymentCardRefToViewer(
-  ref: CardRef,
-  viewerId: PlayerId
-): boolean {
-  return (
-    isZoneIdentityVisible(ref.zone, viewerId) ||
-    isSnapshotVisible(ref.snapshot, viewerId)
-  );
-}
-
-function minSelectionsRequired(
-  min: number,
-  candidateCount: number,
-  allowFewerIfUnavailable: boolean
-): number {
-  return allowFewerIfUnavailable ? Math.min(min, candidateCount) : min;
-}
-
-function toPublicDecision(
-  pendingDecision: PendingDecision | undefined,
-  viewerId: PlayerId
-): PublicDecision | undefined {
-  if (!pendingDecision) {
-    return undefined;
-  }
-
-  if (
-    pendingDecision.type === "confirmTriggerFromLife" &&
-    viewerId !== pendingDecision.playerId
-  ) {
-    return undefined;
-  }
-
-  const visibility = toPublicDecisionVisibility(
-    pendingDecision.visibility,
-    viewerId
-  );
-  if (!visibility) {
-    return undefined;
-  }
-
-  const base = {
-    id: pendingDecision.id,
-    type: pendingDecision.type,
-    playerId: pendingDecision.playerId,
-    visibility
-  } as const;
-
-  const withOptionalBaseFields = <T extends Record<string, unknown>>(
-    value: T
-  ): T => {
-    const next = { ...value } as T & {
-      prompt?: string;
-      timeoutMs?: number;
-      defaultResponse?: DecisionResponse;
-    };
-    if (pendingDecision.prompt !== undefined) {
-      next.prompt = pendingDecision.prompt;
-    }
-    if (pendingDecision.timeoutMs !== undefined) {
-      next.timeoutMs = pendingDecision.timeoutMs;
-    }
-    const publicDefaultResponse = toPublicDefaultResponse(
-      pendingDecision,
-      viewerId
-    );
-    if (publicDefaultResponse !== undefined) {
-      next.defaultResponse = publicDefaultResponse;
-    }
-    return next as T;
-  };
-
-  switch (pendingDecision.type) {
-    case "mulligan":
-      return withOptionalBaseFields({
-        ...base,
-        type: "mulligan",
-        handCount: pendingDecision.handCount
-      }) as PublicDecision;
-    case "chooseTriggerOrder":
-      return withOptionalBaseFields({
-        ...base,
-        type: "chooseTriggerOrder",
-        triggers: pendingDecision.triggerIds.map<PublicTriggerOrderOption>(
-          (triggerId) => ({
-            triggerId,
-            label: `Trigger ${triggerId}`
-          })
-        )
-      }) as PublicDecision;
-    case "chooseOptionalActivation":
-      if (
-        viewerId !== pendingDecision.playerId &&
-        !shouldExposeDecisionCandidateToViewer(pendingDecision.source, viewerId)
-      ) {
-        return undefined;
-      }
-      return withOptionalBaseFields({
-        ...base,
-        type: "chooseOptionalActivation",
-        effectId: pendingDecision.effectId,
-        source: toPublicCardRef(pendingDecision.source),
-        options: ["activate", "decline"]
-      }) as PublicDecision;
-    case "payCost":
-      return withOptionalBaseFields({
-        ...base,
-        type: "payCost",
-        cost: cloneValue(pendingDecision.cost),
-        options: pendingDecision.options.map<PublicPaymentOption>((option) => {
-          const publicOption: PublicPaymentOption = {
-            id: option.id,
-            cost: cloneValue(option.cost),
-            min: option.min,
-            max: option.max
-          };
-          if (option.selectableCards !== undefined) {
-            const visibleSelectableCards = option.selectableCards
-              .filter((card) =>
-                shouldExposePaymentCardRefToViewer(card, viewerId)
-              )
-              .map(toPublicPaymentCardRef);
-            if (visibleSelectableCards.length > 0) {
-              publicOption.selectableCards = visibleSelectableCards;
-            }
-          }
-          if (option.selectableDon !== undefined) {
-            const visibleSelectableDon = option.selectableDon
-              .filter((card) =>
-                shouldExposePaymentCardRefToViewer(card, viewerId)
-              )
-              .map(toPublicPaymentCardRef);
-            if (visibleSelectableDon.length > 0) {
-              publicOption.selectableDon = visibleSelectableDon;
-            }
-          }
-          return publicOption;
-        })
-      }) as PublicDecision;
-    case "selectTargets":
-      return withOptionalBaseFields({
-        ...base,
-        type: "selectTargets",
-        request: toPublicTargetRequest(pendingDecision.request),
-        candidates: shouldExposeDecisionCandidatesToViewer(
-          pendingDecision,
-          viewerId
-        )
-          ? pendingDecision.candidates.flatMap((candidate) =>
-              viewerId === pendingDecision.playerId ||
-              shouldExposeDecisionCandidateToViewer(candidate, viewerId)
-                ? [
-                    {
-                      card: toPublicDecisionCardRef(
-                        candidate,
-                        viewerId,
-                        viewerId === pendingDecision.playerId
-                      )
-                    }
-                  ]
-                : []
-            )
-          : []
-      }) as PublicDecision;
-    case "selectCards":
-      if (
-        pendingDecision.request.visibility === "replayOnly" &&
-        viewerId !== pendingDecision.playerId
-      ) {
-        return undefined;
-      }
-      return withOptionalBaseFields({
-        ...base,
-        type: "selectCards",
-        request: toLiveCardSelectionRequest(pendingDecision.request),
-        candidates: shouldExposeDecisionCandidatesToViewer(
-          pendingDecision,
-          viewerId
-        )
-          ? pendingDecision.candidates.flatMap((candidate) =>
-              viewerId === pendingDecision.playerId ||
-              shouldExposeDecisionCandidateToViewer(candidate, viewerId)
-                ? [
-                    {
-                      card: toPublicDecisionCardRef(
-                        candidate,
-                        viewerId,
-                        viewerId === pendingDecision.playerId
-                      )
-                    }
-                  ]
-                : []
-            )
-          : []
-      }) as PublicDecision;
-    case "chooseEffectOption":
-      return withOptionalBaseFields({
-        ...base,
-        type: "chooseEffectOption",
-        min: pendingDecision.min,
-        max: pendingDecision.max,
-        options: pendingDecision.options.map<PublicEffectOption>((option) => {
-          const publicOption: PublicEffectOption = {
-            id: option.id,
-            label: option.label
-          };
-          if (option.availability !== undefined) {
-            publicOption.availability = option.availability;
-          }
-          return publicOption;
-        })
-      }) as PublicDecision;
-    case "confirmTriggerFromLife":
-      return withOptionalBaseFields({
-        ...base,
-        type: "confirmTriggerFromLife",
-        card:
-          viewerId === pendingDecision.playerId
-            ? toPublicCardRef(pendingDecision.card)
-            : toPublicDecisionCardRef(pendingDecision.card, viewerId),
-        options: ["activateTrigger", "addToHand"]
-      }) as PublicDecision;
-    case "chooseReplacement":
-      return withOptionalBaseFields({
-        ...base,
-        type: "chooseReplacement",
-        processId: pendingDecision.processId,
-        optional: pendingDecision.optional,
-        replacements:
-          pendingDecision.replacementIds.map<PublicReplacementOption>(
-            (replacementId) => ({
-              replacementId,
-              label: replacementId
-            })
-          )
-      }) as PublicDecision;
-    case "orderCards":
-      return withOptionalBaseFields({
-        ...base,
-        type: "orderCards",
-        destination: pendingDecision.destination,
-        cards: pendingDecision.cards.flatMap((card) =>
-          viewerId === pendingDecision.playerId ||
-          shouldExposeDecisionCandidateToViewer(card, viewerId)
-            ? [
-                toPublicDecisionCardRef(
-                  card,
-                  viewerId,
-                  viewerId === pendingDecision.playerId
-                )
-              ]
-            : []
-        )
-      }) as PublicDecision;
-    case "chooseCharacterToTrashForOverflow":
-      return withOptionalBaseFields({
-        ...base,
-        type: "chooseCharacterToTrashForOverflow",
-        candidates: pendingDecision.candidates.map(toPublicCardRef)
-      }) as PublicDecision;
-    default:
-      return undefined;
-  }
-}
-
 function buildLifeView(
   state: GameState,
-  player: PlayerState
+  life: LifeCard[],
+  viewerOwnsLife: boolean
 ): PublicLifeAreaView {
+  const faceUpCards =
+    viewerOwnsLife || life.some((entry) => entry.faceUp)
+      ? life
+          .filter((entry) => entry.faceUp)
+          .map((entry) => toPublicCardView(state, entry.card))
+      : [];
+
   return {
-    count: player.life.length,
-    faceUpCards: player.life
-      .filter((lifeCard) => lifeCard.faceUp)
-      .map((lifeCard) => toPublicCardView(state, lifeCard.card))
+    count: life.length,
+    faceUpCards
   };
 }
 
 function buildVisiblePlayerState(state: GameState, player: PlayerState) {
-  const visibleState: {
-    playerId: PlayerId;
-    deck: HiddenZoneView;
-    donDeck: HiddenZoneView;
-    hand: PublicCardView[];
-    trash: PublicCardView[];
-    leader: PublicCardView;
-    characters: PublicCardView[];
-    stage?: PublicCardView;
-    costArea: PublicCardView[];
-    life: PublicLifeAreaView;
-  } = {
+  const visible = {
     playerId: player.playerId,
     deck: toHiddenZoneView(player.deck),
     donDeck: toHiddenZoneView(player.donDeck),
@@ -780,41 +163,40 @@ function buildVisiblePlayerState(state: GameState, player: PlayerState) {
     leader: toPublicCardView(state, player.leader),
     characters: player.characters.map((card) => toPublicCardView(state, card)),
     costArea: player.costArea.map((card) => toPublicCardView(state, card)),
-    life: buildLifeView(state, player)
+    life: buildLifeView(state, player.life, true)
   };
+
   if (player.stage) {
-    visibleState.stage = toPublicCardView(state, player.stage);
+    return {
+      ...visible,
+      stage: toPublicCardView(state, player.stage)
+    };
   }
-  return visibleState;
+
+  return visible;
 }
 
 function buildOpponentVisibleState(state: GameState, player: PlayerState) {
-  const visibleState: {
-    playerId: PlayerId;
-    deck: HiddenZoneView;
-    donDeck: HiddenZoneView;
-    hand: HiddenZoneView;
-    trash: PublicCardView[];
-    leader: PublicCardView;
-    characters: PublicCardView[];
-    stage?: PublicCardView;
-    costArea: PublicCardView[];
-    life: PublicLifeAreaView;
-  } = {
+  const visible = {
     playerId: player.playerId,
     deck: toHiddenZoneView(player.deck),
     donDeck: toHiddenZoneView(player.donDeck),
-    hand: { count: player.hand.length },
+    hand: toHiddenZoneView(player.hand),
     trash: player.trash.map((card) => toPublicCardView(state, card)),
     leader: toPublicCardView(state, player.leader),
     characters: player.characters.map((card) => toPublicCardView(state, card)),
     costArea: player.costArea.map((card) => toPublicCardView(state, card)),
-    life: buildLifeView(state, player)
+    life: buildLifeView(state, player.life, false)
   };
+
   if (player.stage) {
-    visibleState.stage = toPublicCardView(state, player.stage);
+    return {
+      ...visible,
+      stage: toPublicCardView(state, player.stage)
+    };
   }
-  return visibleState;
+
+  return visible;
 }
 
 function buildTimerState(state: GameState): PublicTimerState {
@@ -825,376 +207,322 @@ function buildTimerState(state: GameState): PublicTimerState {
         playerId,
         remainingMs: 0,
         isRunning: false
-      } satisfies PublicPlayerGameTimer
+      }
     ])
   ) as PublicTimerState["players"];
 
   return { players };
 }
 
-function toPublicLegalAction(action: Action): PublicLegalAction {
-  switch (action.type) {
-    case "playCard":
-      return { type: "playCard", handInstanceId: action.handInstanceId };
-    case "attachDon":
-      return {
-        type: "attachDon",
-        donInstanceId: action.donInstanceId,
-        targetInstanceId: action.targetInstanceId
-      };
-    case "declareAttack":
-      return {
-        type: "declareAttack",
-        attackerInstanceId: action.attackerInstanceId,
-        target: cloneValue(action.target)
-      };
-    case "activateBlocker":
-      return {
-        type: "activateBlocker",
-        blockerInstanceId: action.blockerInstanceId
-      };
-    case "activateEffect":
-      return {
-        type: "activateEffect",
-        sourceInstanceId: action.sourceInstanceId,
-        effectId: action.effectId
-      };
-    case "useCounter":
-      return {
-        type: "useCounter",
-        handInstanceId: action.handInstanceId,
-        targetInstanceId: action.targetInstanceId
-      };
-    case "respondToDecision":
-      return { type: "respondToDecision", decisionId: action.decisionId };
-    case "endMainPhase":
-      return { type: "endMainPhase" };
-    case "concede":
-      return { type: "concede", playerId: action.playerId };
-    default:
-      throw new Error(
-        `Unsupported action projection: ${(action as Action).type}`
-      );
-  }
-}
-
-function buildPublicLegalActions(
-  state: GameState,
-  playerId: PlayerId
-): PublicLegalAction[] {
-  if (
-    !(playerId in state.players) ||
-    state.status === "frozen" ||
-    state.status === "completed" ||
-    state.status === "errored"
-  ) {
-    return [];
-  }
-
-  if (state.pendingDecision) {
-    const legal: PublicLegalAction[] = [{ type: "concede", playerId }];
-    const projectedDecision = toPublicDecision(state.pendingDecision, playerId);
-    if (
-      state.pendingDecision.playerId === playerId &&
-      projectedDecision !== undefined &&
-      canResolveDecisionInBootstrap(state.pendingDecision) &&
-      hasLegalResponsesForDecision(state.pendingDecision)
-    ) {
-      legal.push({
-        type: "respondToDecision",
-        decisionId: state.pendingDecision.id
-      });
-    }
-    return legal;
-  }
-
-  const seen = new Set<string>();
-  const result: PublicLegalAction[] = [];
-
-  for (const action of getLegalActions(state, playerId)) {
-    const projected = toPublicLegalAction(action);
-    const key = stableStringify(projected);
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    result.push(projected);
-  }
-
-  return result;
-}
-
-type PlayerCardEntry = {
+interface PlayerCardEntry {
   card: CardInstance;
-  path: string;
-};
+  storage:
+    | "deck"
+    | "donDeck"
+    | "hand"
+    | "trash"
+    | "leader"
+    | "characters"
+    | "stage"
+    | "costArea"
+    | "life"
+    | "attachedCards";
+  playerId: PlayerId;
+  index?: number;
+}
 
-function collectCardsFromPlayerState(player: PlayerState): PlayerCardEntry[] {
-  return [
-    ...player.deck.map((card, index) => ({
+function collectRawCardsFromPlayerState(
+  player: PlayerState
+): PlayerCardEntry[] {
+  const entries: PlayerCardEntry[] = [];
+
+  player.deck.forEach((card, index) => {
+    entries.push({ card, storage: "deck", playerId: player.playerId, index });
+  });
+  player.donDeck.forEach((card, index) => {
+    entries.push({
       card,
-      path: `player.deck[${index}]`
-    })),
-    ...player.donDeck.map((card, index) => ({
+      storage: "donDeck",
+      playerId: player.playerId,
+      index
+    });
+  });
+  player.hand.forEach((card, index) => {
+    entries.push({ card, storage: "hand", playerId: player.playerId, index });
+  });
+  player.trash.forEach((card, index) => {
+    entries.push({ card, storage: "trash", playerId: player.playerId, index });
+  });
+
+  entries.push({
+    card: player.leader,
+    storage: "leader",
+    playerId: player.playerId
+  });
+
+  player.characters.forEach((card, index) => {
+    entries.push({
       card,
-      path: `player.donDeck[${index}]`
-    })),
-    ...player.hand.map((card, index) => ({
+      storage: "characters",
+      playerId: player.playerId,
+      index
+    });
+  });
+
+  if (player.stage) {
+    entries.push({
+      card: player.stage,
+      storage: "stage",
+      playerId: player.playerId
+    });
+  }
+
+  player.costArea.forEach((card, index) => {
+    entries.push({
       card,
-      path: `player.hand[${index}]`
-    })),
-    ...player.trash.map((card, index) => ({
-      card,
-      path: `player.trash[${index}]`
-    })),
-    { card: player.leader, path: "player.leader" },
-    ...player.characters.map((card, index) => ({
-      card,
-      path: `player.characters[${index}]`
-    })),
-    ...(player.stage ? [{ card: player.stage, path: "player.stage" }] : []),
-    ...player.costArea.map((card, index) => ({
-      card,
-      path: `player.costArea[${index}]`
-    })),
-    ...player.attachedCards.map((card, index) => ({
-      card,
-      path: `player.attachedCards[${index}]`
-    })),
-    ...player.life.map((lifeCard, index) => ({
+      storage: "costArea",
+      playerId: player.playerId,
+      index
+    });
+  });
+
+  player.life.forEach((lifeCard, index) => {
+    entries.push({
       card: lifeCard.card,
-      path: `player.life[${index}].card`
-    }))
-  ];
+      storage: "life",
+      playerId: player.playerId,
+      index
+    });
+  });
+
+  player.attachedCards.forEach((card, index) => {
+    entries.push({
+      card,
+      storage: "attachedCards",
+      playerId: player.playerId,
+      index
+    });
+  });
+
+  return entries;
+}
+
+function collectRawCards(state: GameState): PlayerCardEntry[] {
+  return getPlayerIds(state).flatMap((playerId) => {
+    const player = state.players[playerId];
+    if (!player) {
+      return [];
+    }
+    return collectRawCardsFromPlayerState(player);
+  });
 }
 
 function collectAllCards(state: GameState): CardInstance[] {
+  const seen = new Set<string>();
   const cards: CardInstance[] = [];
-  const seenInstanceIds = new Set<InstanceId>();
 
-  for (const player of Object.values(state.players)) {
-    for (const { card } of collectCardsFromPlayerState(player)) {
-      if (seenInstanceIds.has(card.instanceId)) {
-        continue;
-      }
-      seenInstanceIds.add(card.instanceId);
-      cards.push(card);
+  for (const entry of collectRawCards(state)) {
+    if (seen.has(entry.card.instanceId)) {
+      continue;
     }
+    seen.add(entry.card.instanceId);
+    cards.push(entry.card);
   }
 
   return cards;
 }
 
+function expectedZoneName(
+  entry: PlayerCardEntry
+): CardInstance["zone"]["zone"] {
+  switch (entry.storage) {
+    case "deck":
+      return "deck";
+    case "donDeck":
+      return "donDeck";
+    case "hand":
+      return "hand";
+    case "trash":
+      return "trash";
+    case "leader":
+      return "leaderArea";
+    case "characters":
+      return "characterArea";
+    case "stage":
+      return "stageArea";
+    case "costArea":
+      return "costArea";
+    case "life":
+      return "life";
+    case "attachedCards":
+      return "attached";
+  }
+}
+
 function assertAllCardsInExactlyOneLocation(state: GameState): void {
-  const locations = new Map<InstanceId, string>();
-  const visit = (card: CardInstance, expectedLabel: string): void => {
-    const current = locations.get(card.instanceId);
-    if (current) {
+  for (const entry of collectRawCards(state)) {
+    const expectedZone = expectedZoneName(entry);
+    if (entry.card.zone.zone !== expectedZone) {
       throw new Error(
-        `Card ${card.instanceId} exists in multiple locations: ${current}, ${expectedLabel}`
+        `Card ${entry.card.instanceId} stored in ${entry.storage} but zone says ${entry.card.zone.zone}`
       );
     }
-    locations.set(card.instanceId, expectedLabel);
-  };
 
-  for (const player of Object.values(state.players)) {
-    player.deck.forEach((card, index) => {
-      if (
-        card.zone.zone !== "deck" ||
-        card.zone.playerId !== player.playerId ||
-        card.zone.index !== index
-      ) {
-        throw new Error(
-          `Deck card ${card.instanceId} has inconsistent zone metadata`
-        );
-      }
-      visit(card, `${player.playerId}:deck:${index}`);
-    });
-    player.donDeck.forEach((card, index) => {
-      if (
-        card.zone.zone !== "donDeck" ||
-        card.zone.playerId !== player.playerId ||
-        card.zone.index !== index
-      ) {
-        throw new Error(
-          `DON deck card ${card.instanceId} has inconsistent zone metadata`
-        );
-      }
-      visit(card, `${player.playerId}:donDeck:${index}`);
-    });
-    player.hand.forEach((card, index) => {
-      if (
-        card.zone.zone !== "hand" ||
-        card.zone.playerId !== player.playerId ||
-        card.zone.index !== index
-      ) {
-        throw new Error(
-          `Hand card ${card.instanceId} has inconsistent zone metadata`
-        );
-      }
-      visit(card, `${player.playerId}:hand:${index}`);
-    });
-    player.trash.forEach((card, index) => {
-      if (
-        card.zone.zone !== "trash" ||
-        card.zone.playerId !== player.playerId ||
-        card.zone.index !== index
-      ) {
-        throw new Error(
-          `Trash card ${card.instanceId} has inconsistent zone metadata`
-        );
-      }
-      visit(card, `${player.playerId}:trash:${index}`);
-    });
     if (
-      player.leader.zone.zone !== "leaderArea" ||
-      player.leader.zone.playerId !== player.playerId
+      entry.card.zone.zone !== "noZone" &&
+      "playerId" in entry.card.zone &&
+      entry.card.zone.playerId !== entry.playerId
     ) {
       throw new Error(
-        `Leader ${player.leader.instanceId} has inconsistent zone metadata`
+        `Card ${entry.card.instanceId} has mismatched playerId in zone metadata`
       );
     }
-    visit(player.leader, `${player.playerId}:leader`);
-    player.characters.forEach((card, index) => {
-      if (
-        card.zone.zone !== "characterArea" ||
-        card.zone.playerId !== player.playerId ||
-        card.zone.index !== index
-      ) {
-        throw new Error(
-          `Character ${card.instanceId} has inconsistent zone metadata`
-        );
-      }
-      visit(card, `${player.playerId}:character:${index}`);
-    });
-    if (player.stage) {
-      if (
-        player.stage.zone.zone !== "stageArea" ||
-        player.stage.zone.playerId !== player.playerId
-      ) {
-        throw new Error(
-          `Stage ${player.stage.instanceId} has inconsistent zone metadata`
-        );
-      }
-      visit(player.stage, `${player.playerId}:stage`);
-    }
-    player.costArea.forEach((card, index) => {
-      if (
-        card.zone.zone !== "costArea" ||
-        card.zone.playerId !== player.playerId ||
-        card.zone.index !== index
-      ) {
-        throw new Error(
-          `Cost-area card ${card.instanceId} has inconsistent zone metadata`
-        );
-      }
-      visit(card, `${player.playerId}:cost:${index}`);
-    });
-    player.life.forEach((lifeCard, index) => {
-      if (
-        lifeCard.card.zone.zone !== "life" ||
-        lifeCard.card.zone.playerId !== player.playerId ||
-        lifeCard.card.zone.index !== index
-      ) {
-        throw new Error(
-          `Life card ${lifeCard.card.instanceId} has inconsistent zone metadata`
-        );
-      }
-      visit(lifeCard.card, `${player.playerId}:life:${index}`);
-    });
 
-    for (const { card, path } of collectCardsFromPlayerState(player)) {
-      if (card.zone.zone !== "attached") {
-        continue;
-      }
-      if (card.zone.playerId !== player.playerId) {
-        throw new Error(
-          `Attached card ${card.instanceId} has inconsistent zone metadata`
-        );
-      }
-      visit(card, `${player.playerId}:${path}`);
+    if (
+      entry.index !== undefined &&
+      entry.card.zone.zone !== "leaderArea" &&
+      entry.card.zone.zone !== "stageArea" &&
+      entry.card.zone.zone !== "noZone" &&
+      entry.card.zone.index !== undefined &&
+      entry.card.zone.index !== entry.index
+    ) {
+      throw new Error(
+        `Card ${entry.card.instanceId} has stale index metadata for ${entry.storage}`
+      );
     }
   }
 }
 
 function assertNoDuplicateInstanceIds(state: GameState): void {
-  const seen = new Set<InstanceId>();
-  for (const player of Object.values(state.players)) {
-    for (const { card } of collectCardsFromPlayerState(player)) {
-      if (seen.has(card.instanceId)) {
-        throw new Error(`Duplicate instanceId detected: ${card.instanceId}`);
-      }
-      seen.add(card.instanceId);
-    }
+  const counts = new Map<string, number>();
+
+  for (const entry of collectRawCards(state)) {
+    counts.set(
+      entry.card.instanceId,
+      (counts.get(entry.card.instanceId) ?? 0) + 1
+    );
+  }
+
+  const duplicate = [...counts.entries()].find(([, count]) => count > 1)?.[0];
+  if (duplicate) {
+    throw new Error(`Duplicate instance id detected: ${duplicate}`);
   }
 }
 
 function assertCharacterAreaSizeAtMostFive(state: GameState): void {
-  for (const player of Object.values(state.players)) {
+  for (const playerId of getPlayerIds(state)) {
+    const player = state.players[playerId];
+    if (!player) {
+      continue;
+    }
     if (player.characters.length > 5) {
-      throw new Error(
-        `Player ${player.playerId} has more than five characters`
-      );
+      throw new Error(`Player ${playerId} exceeds character area limit`);
     }
   }
 }
 
 function assertStageAreaSizeAtMostOne(state: GameState): void {
-  for (const player of Object.values(state.players)) {
-    const stageCount = player.stage ? 1 : 0;
-    if (stageCount > 1) {
-      throw new Error(`Player ${player.playerId} has more than one stage`);
+  for (const playerId of getPlayerIds(state)) {
+    const player = state.players[playerId];
+    if (!player) {
+      continue;
+    }
+    if (
+      Array.isArray((player as { stage?: CardInstance | CardInstance[] }).stage)
+    ) {
+      throw new Error(`Player ${playerId} has multiple stage cards`);
     }
   }
 }
 
 function assertLeaderAreaExactlyOne(state: GameState): void {
-  for (const player of Object.values(state.players)) {
+  for (const playerId of getPlayerIds(state)) {
+    const player = state.players[playerId];
+    if (!player) {
+      continue;
+    }
     if (!player.leader) {
-      throw new Error(`Player ${player.playerId} is missing a leader`);
+      throw new Error(`Player ${playerId} is missing a leader`);
+    }
+    if (player.leader.zone.zone !== "leaderArea") {
+      throw new Error(`Player ${playerId} leader has invalid zone metadata`);
     }
   }
 }
 
 function assertAttachedDonConsistency(state: GameState): void {
-  const cardIndex = new Map<InstanceId, CardInstance>();
-  for (const card of collectAllCards(state)) {
-    cardIndex.set(card.instanceId, card);
-  }
+  for (const playerId of getPlayerIds(state)) {
+    const player = state.players[playerId];
+    if (!player) {
+      continue;
+    }
+    const attachedById = new Map(
+      player.attachedCards.map((card) => [card.instanceId, card])
+    );
 
-  for (const card of collectAllCards(state)) {
-    const seen = new Set<InstanceId>();
-    for (const attachedDonId of card.attachedDon) {
-      if (seen.has(attachedDonId)) {
+    const hosts = [player.leader, ...player.characters];
+    const referenced = new Set<string>();
+
+    for (const host of hosts) {
+      for (const attachedId of host.attachedDon) {
+        referenced.add(attachedId);
+        const attached = attachedById.get(attachedId);
+        if (!attached) {
+          throw new Error(
+            `Host ${host.instanceId} references missing attached card ${attachedId}`
+          );
+        }
+        if (attached.zone.zone !== "attached") {
+          throw new Error(
+            `Attached card ${attachedId} is not in attached zone`
+          );
+        }
+        if (attached.zone.playerId !== player.playerId) {
+          throw new Error(
+            `Attached card ${attachedId} has wrong controller metadata`
+          );
+        }
+        if (
+          attached.zone.zone !== "attached" ||
+          attached.zone.hostInstanceId !== host.instanceId
+        ) {
+          throw new Error(
+            `Attached card ${attachedId} points at the wrong host`
+          );
+        }
+        if (attached.state !== "attached") {
+          throw new Error(
+            `Attached card ${attachedId} must use attached state`
+          );
+        }
+      }
+    }
+
+    for (const attached of player.attachedCards) {
+      if (attached.zone.zone !== "attached") {
         throw new Error(
-          `Card ${card.instanceId} references duplicate attached DON ${attachedDonId}`
+          `Attached storage card ${attached.instanceId} must be in attached zone`
         );
       }
-      seen.add(attachedDonId);
-      const attachedDon = cardIndex.get(attachedDonId);
-      if (!attachedDon) {
+      if (attached.zone.playerId !== player.playerId) {
         throw new Error(
-          `Card ${card.instanceId} references missing attached DON ${attachedDonId}`
+          `Attached storage card ${attached.instanceId} has wrong playerId`
         );
       }
-      if (attachedDon.zone.zone !== "attached") {
+      const host = hosts.find((candidate) => {
+        return (
+          attached.zone.zone === "attached" &&
+          candidate.instanceId === attached.zone.hostInstanceId
+        );
+      });
+      if (!host) {
         throw new Error(
-          `Attached DON ${attachedDonId} is not in attached zone`
+          `Attached storage card ${attached.instanceId} points at missing host`
         );
       }
-      if (attachedDon.zone.playerId !== card.controller) {
+      if (!referenced.has(attached.instanceId)) {
         throw new Error(
-          `Attached DON ${attachedDonId} has inconsistent attached-zone player`
-        );
-      }
-      if (attachedDon.zone.hostInstanceId !== card.instanceId) {
-        throw new Error(
-          `Attached DON ${attachedDonId} references the wrong host instance`
-        );
-      }
-      if (attachedDon.zone.index !== card.attachedDon.indexOf(attachedDonId)) {
-        throw new Error(
-          `Attached DON ${attachedDonId} has inconsistent attached-zone index`
+          `Attached storage card ${attached.instanceId} is not referenced by its host`
         );
       }
     }
@@ -1205,15 +533,9 @@ function assertPendingDecisionIsValid(state: GameState): void {
   if (!state.pendingDecision) {
     return;
   }
+
   if (!(state.pendingDecision.playerId in state.players)) {
-    throw new Error(
-      `Pending decision references unknown player ${state.pendingDecision.playerId}`
-    );
-  }
-  if (!hasLegalResponsesForDecision(state.pendingDecision)) {
-    throw new Error(
-      `Pending decision ${state.pendingDecision.id} has no legal responses`
-    );
+    throw new Error("Pending decision references a missing player");
   }
 }
 
@@ -1222,9 +544,12 @@ function assertEffectQueueEntriesAreResolvableOrCancelled(
 ): void {
   for (const entry of state.effectQueue) {
     if (
-      !["pending", "resolving", "resolved", "cancelled"].includes(entry.state)
+      entry.state !== "pending" &&
+      entry.state !== "resolving" &&
+      entry.state !== "resolved" &&
+      entry.state !== "cancelled"
     ) {
-      throw new Error(`Unknown effect queue state for ${entry.id}`);
+      throw new Error(`Unexpected effect queue state for ${entry.id}`);
     }
   }
 }
@@ -1232,31 +557,35 @@ function assertEffectQueueEntriesAreResolvableOrCancelled(
 function assertNoIllegalHiddenInfoInViews(state: GameState): void {
   for (const playerId of getPlayerIds(state)) {
     const view = filterStateForPlayer(state, playerId);
-    const serialized = JSON.stringify(view);
-    if (serialized.includes('"rng"') || serialized.includes("internalState")) {
-      throw new Error("PlayerView leaked RNG state");
+    const opponentId = getOpponentId(state, playerId);
+    const actualOpponent = state.players[opponentId];
+    if (!actualOpponent) {
+      continue;
     }
-    if (serialized.includes("effectQueue")) {
-      throw new Error("PlayerView leaked effect queue internals");
+
+    const opponentHand = view.opponent.hand as HiddenZoneView & {
+      cards?: unknown;
+    };
+    if ("cards" in opponentHand) {
+      throw new Error("Opponent hand contents leaked into PlayerView");
     }
-    if (Array.isArray((view.opponent as { hand: unknown }).hand)) {
-      throw new Error("Opponent hand must not expose card identities");
+    if (opponentHand.count !== actualOpponent.hand.length) {
+      throw new Error("Opponent hand count mismatch in PlayerView");
     }
-    const player = state.players[playerId];
-    if (!player) {
-      throw new Error(`Unknown player ${playerId} during invariant projection`);
+    if ("rng" in (view as unknown as Record<string, unknown>)) {
+      throw new Error("RNG state leaked into PlayerView");
     }
-    if (view.self.deck.count !== player.deck.length) {
-      throw new Error("Self deck count projection is inconsistent");
+    if ("effectQueue" in (view as unknown as Record<string, unknown>)) {
+      throw new Error("Effect queue leaked into PlayerView");
     }
   }
 }
 
 function assertStateHashStable(state: GameState): void {
-  const left = hashGameState(state);
-  const right = hashGameState(cloneValue(state));
-  if (left !== right) {
-    throw new Error("State hash is not stable");
+  const first = hashGameState(state);
+  const second = hashGameState(state);
+  if (first !== second) {
+    throw new Error("State hash is not stable across repeated runs");
   }
 }
 
@@ -1267,195 +596,77 @@ function runInvariantChecks(state: GameState): void {
   assertStageAreaSizeAtMostOne(state);
   assertLeaderAreaExactlyOne(state);
   assertAttachedDonConsistency(state);
-  assertNoIllegalHiddenInfoInViews(state);
   assertPendingDecisionIsValid(state);
   assertEffectQueueEntriesAreResolvableOrCancelled(state);
+  assertNoIllegalHiddenInfoInViews(state);
   assertStateHashStable(state);
 }
 
-function appendEvents(
-  previousState: GameState,
-  nextState: GameState,
-  events: Array<{
-    type: EngineEvent["type"];
-    payload: EngineEvent["payload"];
-    visibility?: EventVisibility;
-  }>
-): EngineEvent[] {
-  const baseEventSeq = previousState.eventJournal.length;
-  return [
-    ...previousState.eventJournal,
-    ...events.map<EngineEvent>((event, index) => ({
-      id: `evt-${nextState.stateSeq}-${baseEventSeq + index + 1}` as EngineEvent["id"],
-      eventSeq: baseEventSeq + index + 1,
-      stateSeq: nextState.stateSeq,
-      type: event.type,
-      payload: cloneValue(event.payload),
-      visibility: event.visibility ?? { type: "public" }
-    }))
-  ];
+function appendEvent(
+  state: GameState,
+  event: Omit<EngineEvent, "id" | "eventSeq" | "stateSeq">
+): EngineEvent {
+  const engineEvent: EngineEvent = {
+    id: `evt-${state.eventJournal.length + 1}` as unknown as EngineEvent["id"],
+    eventSeq: state.eventJournal.length + 1,
+    stateSeq: state.stateSeq,
+    ...event
+  };
+  state.eventJournal.push(engineEvent);
+  return engineEvent;
 }
 
-function finalizeResult(
-  previousState: GameState,
-  nextState: GameState,
-  emittedEvents: Array<{
-    type: EngineEvent["type"];
-    payload: EngineEvent["payload"];
-    visibility?: EventVisibility;
-  }>
-): EngineResult {
-  nextState.eventJournal = appendEvents(
-    previousState,
-    nextState,
-    emittedEvents
-  );
-  const stateHash = hashGameState(nextState);
-
+function finalizeResult(state: GameState, events: EngineEvent[]): EngineResult {
   if (isTestMode()) {
-    runInvariantChecks(nextState);
+    runInvariantChecks(state);
   }
 
+  const stateHash = hashGameState(state);
   const result: EngineResult = {
-    state: nextState,
-    events: nextState.eventJournal.slice(previousState.eventJournal.length),
+    state,
+    events,
     publicEvents: [],
     stateHash
   };
-  if (nextState.pendingDecision) {
-    result.pendingDecision = nextState.pendingDecision;
+
+  if (state.pendingDecision) {
+    result.pendingDecision = state.pendingDecision;
   }
+
   return result;
 }
 
 function cloneStateForMutation(state: GameState): GameState {
-  const nextState = cloneValue(state);
-  nextState.stateSeq = (state.stateSeq + 1) as GameState["stateSeq"];
-  nextState.actionSeq = (state.actionSeq + 1) as GameState["actionSeq"];
-  return nextState;
-}
-
-function assertPendingDecisionResponseMatches(
-  pendingDecision: PendingDecision,
-  response: DecisionResponse
-): void {
-  switch (pendingDecision.type) {
-    case "mulligan":
-      if (response.type !== "keepOpeningHand" && response.type !== "mulligan") {
-        throw new Error(
-          "Mulligan decisions only accept keepOpeningHand or mulligan responses"
-        );
-      }
-      return;
-    case "chooseTriggerOrder":
-      if (response.type !== "orderedIds") {
-        throw new Error(
-          "chooseTriggerOrder decisions require orderedIds response"
-        );
-      }
-      return;
-    case "chooseOptionalActivation":
-      if (response.type !== "optionalActivationChoice") {
-        throw new Error(
-          "chooseOptionalActivation decisions require optionalActivationChoice response"
-        );
-      }
-      return;
-    case "payCost":
-      if (response.type !== "payment") {
-        throw new Error("payCost decisions require payment response");
-      }
-      return;
-    case "selectTargets":
-      if (response.type !== "targetSelection") {
-        throw new Error(
-          "selectTargets decisions require targetSelection response"
-        );
-      }
-      return;
-    case "selectCards":
-      if (response.type !== "cardSelection") {
-        throw new Error("selectCards decisions require cardSelection response");
-      }
-      return;
-    case "chooseEffectOption":
-      if (response.type !== "effectOptionSelection") {
-        throw new Error(
-          "chooseEffectOption decisions require effectOptionSelection response"
-        );
-      }
-      return;
-    case "confirmTriggerFromLife":
-      if (response.type !== "lifeTriggerChoice") {
-        throw new Error(
-          "confirmTriggerFromLife decisions require lifeTriggerChoice response"
-        );
-      }
-      return;
-    case "chooseReplacement":
-      if (response.type !== "replacementChoice") {
-        throw new Error(
-          "chooseReplacement decisions require replacementChoice response"
-        );
-      }
-      return;
-    case "orderCards":
-      if (response.type !== "orderCards") {
-        throw new Error("orderCards decisions require orderCards response");
-      }
-      return;
-    case "chooseCharacterToTrashForOverflow":
-      if (response.type !== "chooseCharacterToTrash") {
-        throw new Error(
-          "chooseCharacterToTrashForOverflow decisions require chooseCharacterToTrash response"
-        );
-      }
-      return;
-    default:
-      return;
-  }
+  return cloneValue(state);
 }
 
 export function createInitialState(input: CreateInitialStateInput): GameState {
-  const status = input.status ?? "setup";
-  const rng = cloneValue(input.rng);
-  const players =
-    status === "setup"
-      ? initializeSetupPlayers(
-          input.players,
-          input.cardManifest,
-          rng,
-          input.turn
-        )
-      : cloneValue(input.players);
   const state: GameState = {
     matchId: input.matchId,
-    stateSeq: 0 as GameState["stateSeq"],
-    actionSeq: 0 as GameState["actionSeq"],
+    stateSeq: toStateSeq(0),
+    actionSeq: toActionSeq(0),
     rulesVersion: input.rulesVersion,
     engineVersion: input.engineVersion,
     cardManifest: cloneValue(input.cardManifest),
     matchConfig: cloneValue(input.matchConfig),
-    rng,
-    players,
+    rng: cloneValue(input.rng),
+    players: cloneValue(input.players),
     turn: cloneValue(input.turn),
     effectQueue: [],
     continuousEffects: [],
     oncePerTurn: [],
     replacementState: [],
     eventJournal: [],
-    status
+    status: input.status ?? "active"
   };
 
-  if (input.pendingDecision) {
-    state.pendingDecision = cloneValue(input.pendingDecision);
-  } else if (state.status === "setup") {
-    state.pendingDecision = createSetupMulliganDecision(state);
-  }
   if (input.battle) {
     state.battle = cloneValue(input.battle);
   }
-  if (input.winner) {
+  if (input.pendingDecision) {
+    state.pendingDecision = cloneValue(input.pendingDecision);
+  }
+  if (input.winner !== undefined) {
     state.winner = cloneValue(input.winner);
   }
 
@@ -1467,842 +678,20 @@ export function createInitialState(input: CreateInitialStateInput): GameState {
 }
 
 export function hashGameState(state: GameState): Sha256 {
-  return createHash("sha256")
-    .update(stableStringify(state))
-    .digest("hex") as Sha256;
-}
-
-function legalPaymentSelections(
-  option: Extract<PendingDecision, { type: "payCost" }>["options"][number]
-): Array<{
-  selectedCards?: PublicPaymentCardRef[];
-  selectedDon?: PublicPaymentCardRef[];
-}> {
-  const selectableCards = option.selectableCards ?? [];
-  const selectableDon = option.selectableDon ?? [];
-  const cardSelections = chooseCombinationsInRange(
-    selectableCards,
-    0,
-    selectableCards.length
+  return toSha256(
+    createHash("sha256").update(stableStringify(state), "utf8").digest("hex")
   );
-  const donSelections = chooseCombinationsInRange(
-    selectableDon,
-    0,
-    selectableDon.length
-  );
-  const results: Array<{
-    selectedCards?: PublicPaymentCardRef[];
-    selectedDon?: PublicPaymentCardRef[];
-  }> = [];
-
-  for (const selectedCards of cardSelections) {
-    for (const selectedDon of donSelections) {
-      const totalSelected = selectedCards.length + selectedDon.length;
-      if (totalSelected < option.min || totalSelected > option.max) {
-        continue;
-      }
-
-      const selection: {
-        selectedCards?: PublicPaymentCardRef[];
-        selectedDon?: PublicPaymentCardRef[];
-      } = {};
-
-      if (selectedCards.length > 0) {
-        selection.selectedCards = selectedCards.map(toPublicPaymentCardRef);
-      }
-      if (selectedDon.length > 0) {
-        selection.selectedDon = selectedDon.map(toPublicPaymentCardRef);
-      }
-
-      results.push(selection);
-    }
-  }
-
-  return results;
-}
-
-function hasLegalResponsesForDecision(
-  pendingDecision: PendingDecision
-): boolean {
-  switch (pendingDecision.type) {
-    case "mulligan":
-    case "chooseOptionalActivation":
-    case "confirmTriggerFromLife":
-      return true;
-    case "chooseTriggerOrder":
-      return pendingDecision.triggerIds.length > 0;
-    case "payCost":
-      return pendingDecision.options.some(
-        (option) => legalPaymentSelections(option).length > 0
-      );
-    case "selectTargets":
-      return (
-        chooseCombinationsInRange(
-          pendingDecision.candidates.map((candidate) =>
-            requireInstanceId(candidate)
-          ),
-          minSelectionsRequired(
-            pendingDecision.request.min,
-            pendingDecision.candidates.length,
-            pendingDecision.request.allowFewerIfUnavailable
-          ),
-          pendingDecision.request.max
-        ).length > 0
-      );
-    case "selectCards":
-      return (
-        chooseCombinationsInRange(
-          pendingDecision.candidates.map((candidate) =>
-            requireInstanceId(candidate)
-          ),
-          minSelectionsRequired(
-            pendingDecision.request.min,
-            pendingDecision.candidates.length,
-            pendingDecision.request.allowFewerIfUnavailable
-          ),
-          pendingDecision.request.max
-        ).length > 0
-      );
-    case "chooseEffectOption":
-      return (
-        chooseCombinationsInRange(
-          pendingDecision.options
-            .filter((option) => option.availability !== "unavailable")
-            .map((option) => option.id),
-          pendingDecision.min,
-          pendingDecision.max
-        ).length > 0
-      );
-    case "chooseReplacement":
-      return (
-        pendingDecision.replacementIds.length > 0 || pendingDecision.optional
-      );
-    case "orderCards":
-      return pendingDecision.cards.length > 0;
-    case "chooseCharacterToTrashForOverflow":
-      return pendingDecision.candidates.length > 0;
-    default:
-      return false;
-  }
-}
-
-function createSetupMulliganDecision(
-  state: Pick<GameState, "players" | "turn">
-): PendingDecision {
-  const playerId = state.turn.activePlayer;
-  const player = state.players[playerId];
-  if (!player) {
-    throw new Error(`Unknown setup player ${playerId}`);
-  }
-
-  return {
-    id: `setup-mulligan-${playerId}` as PendingDecision["id"],
-    type: "mulligan",
-    playerId,
-    handCount: player.hand.length,
-    visibility: { type: "private", playerIds: [playerId] }
-  };
-}
-
-function getSetupPlayerOrder(
-  players: Record<PlayerId, PlayerState>,
-  turn: Pick<TurnState, "firstPlayer">
-): PlayerId[] {
-  const playerIds = Object.keys(players) as PlayerId[];
-  const otherPlayers = playerIds
-    .filter((playerId) => playerId !== turn.firstPlayer)
-    .sort(compareStrings);
-
-  if (players[turn.firstPlayer] !== undefined) {
-    return [turn.firstPlayer, ...otherPlayers];
-  }
-
-  return [...playerIds].sort(compareStrings);
-}
-
-function leaderLifeTotal(
-  cardManifest: GameState["cardManifest"],
-  leader: PlayerState["leader"]
-): number {
-  const life = cardManifest.cards[leader.cardId]?.life;
-  if (life === undefined) {
-    throw new Error(`Leader ${leader.cardId} is missing a life total`);
-  }
-  return life;
-}
-
-function setLifeZone(life: LifeCard[], playerId: PlayerId): void {
-  life.forEach((lifeCard, index) => {
-    lifeCard.card.zone = {
-      zone: "life",
-      playerId,
-      index
-    } as ZoneRef;
-  });
-}
-
-function normalizeIndexedZoneCards(
-  cards: CardInstance[],
-  zone: "deck" | "donDeck",
-  playerId: PlayerId
-): CardInstance[] {
-  const normalized = cloneValue(cards);
-  setIndexedZone(normalized, zone, playerId);
-  normalized.forEach((card) => {
-    card.controller = card.owner;
-    card.state = "active";
-    card.attachedDon = [];
-  });
-  return normalized;
-}
-
-function initializeSetupPlayer(
-  player: PlayerState,
-  cardManifest: GameState["cardManifest"],
-  rng: GameState["rng"]
-): PlayerState {
-  const leader = cloneValue(player.leader);
-  leader.zone = {
-    zone: "leaderArea",
-    playerId: player.playerId
-  } as ZoneRef;
-  leader.controller = leader.owner;
-  leader.state = "active";
-  leader.attachedDon = [];
-
-  const deck = deterministicShuffleCards(
-    normalizeIndexedZoneCards(player.deck, "deck", player.playerId),
-    rng
-  );
-  const donDeck = normalizeIndexedZoneCards(
-    player.donDeck,
-    "donDeck",
-    player.playerId
-  );
-  const lifeCount = leaderLifeTotal(cardManifest, leader);
-  const requiredDeckSize = OPENING_HAND_SIZE + lifeCount;
-  if (deck.length < requiredDeckSize) {
-    throw new Error(
-      `Player ${player.playerId} setup deck is too small for opening hand and life`
-    );
-  }
-
-  const hand = deck.slice(0, OPENING_HAND_SIZE);
-  const startingDeck = deck.slice(OPENING_HAND_SIZE);
-
-  setIndexedZone(hand, "hand", player.playerId);
-  setIndexedZone(startingDeck, "deck", player.playerId);
-
-  return {
-    playerId: player.playerId,
-    deck: startingDeck,
-    donDeck,
-    hand,
-    trash: [],
-    leader,
-    characters: [],
-    costArea: [],
-    attachedCards: [],
-    life: [],
-    hasMulliganed: false,
-    keptOpeningHand: false,
-    turnCount: 0
-  };
-}
-
-function initializeSetupPlayers(
-  players: Record<PlayerId, PlayerState>,
-  cardManifest: GameState["cardManifest"],
-  rng: GameState["rng"],
-  turn: Pick<TurnState, "firstPlayer">
-): Record<PlayerId, PlayerState> {
-  return Object.fromEntries(
-    getSetupPlayerOrder(players, turn).map((playerId) => [
-      playerId,
-      initializeSetupPlayer(players[playerId]!, cardManifest, rng)
-    ])
-  ) as Record<PlayerId, PlayerState>;
-}
-
-function setIndexedZone(
-  cards: CardInstance[],
-  zone: "deck" | "hand" | "donDeck" | "costArea",
-  playerId: PlayerId
-): void {
-  cards.forEach((card, index) => {
-    card.zone = {
-      zone,
-      playerId,
-      index
-    } as ZoneRef;
-  });
-}
-
-function deterministicShuffleCards(
-  cards: CardInstance[],
-  rng: GameState["rng"]
-): CardInstance[] {
-  const shuffleSeed = createHash("sha256")
-    .update(
-      [
-        rng.algorithm,
-        rng.seed ?? "",
-        rng.seedCommitment ?? "",
-        rng.internalState,
-        String(rng.callCount)
-      ].join("|")
-    )
-    .digest("hex");
-
-  const shuffled = [...cards].sort((left, right) => {
-    const leftRank = createHash("sha256")
-      .update(`${shuffleSeed}|${left.instanceId}`)
-      .digest("hex");
-    const rightRank = createHash("sha256")
-      .update(`${shuffleSeed}|${right.instanceId}`)
-      .digest("hex");
-    return (
-      compareStrings(leftRank, rightRank) ||
-      compareStrings(left.instanceId, right.instanceId)
-    );
-  });
-
-  rng.internalState = shuffleSeed;
-  rng.callCount += 1;
-
-  return shuffled;
-}
-
-function applyMulliganRedraw(player: PlayerState, rng: GameState["rng"]): void {
-  const handCount = player.hand.length;
-  const shuffled = deterministicShuffleCards(
-    [...player.deck, ...player.hand],
-    rng
-  );
-  player.hand = shuffled.slice(0, handCount);
-  player.deck = shuffled.slice(handCount);
-  setIndexedZone(player.hand, "hand", player.playerId);
-  setIndexedZone(player.deck, "deck", player.playerId);
-}
-
-function finalizeSetupLife(
-  player: PlayerState,
-  cardManifest: GameState["cardManifest"]
-): void {
-  const lifeCount = leaderLifeTotal(cardManifest, player.leader);
-  if (player.deck.length < lifeCount) {
-    throw new Error(
-      `Player ${player.playerId} setup deck is too small for life placement`
-    );
-  }
-
-  player.life = player.deck
-    .slice(0, lifeCount)
-    .reverse()
-    .map((card) => ({
-      card,
-      faceUp: false
-    }));
-  player.deck = player.deck.slice(lifeCount);
-
-  setLifeZone(player.life, player.playerId);
-  setIndexedZone(player.deck, "deck", player.playerId);
-}
-
-function canResolveDecisionInBootstrap(
-  pendingDecision: PendingDecision
-): boolean {
-  return pendingDecision.type === "mulligan";
-}
-
-function moveTopDeckCardToHand(
-  state: GameState,
-  player: PlayerState
-):
-  | {
-      state: "drawn";
-      card: CardInstance;
-    }
-  | {
-      state: "deckOut";
-      winner: PlayerId;
-    } {
-  const drawnCard = player.deck.shift();
-  if (!drawnCard) {
-    return {
-      state: "deckOut",
-      winner: getOpponentId(state, player.playerId)
-    };
-  }
-
-  player.hand.push(drawnCard);
-  setIndexedZone(player.deck, "deck", player.playerId);
-  setIndexedZone(player.hand, "hand", player.playerId);
-
-  return {
-    state: "drawn",
-    card: drawnCard
-  };
-}
-
-function moveTopDonDeckCardToCostArea(
-  player: PlayerState
-): CardInstance | undefined {
-  const donCard = player.donDeck.shift();
-  if (!donCard) {
-    return undefined;
-  }
-
-  player.costArea.push(donCard);
-  setIndexedZone(player.donDeck, "donDeck", player.playerId);
-  setIndexedZone(player.costArea, "costArea", player.playerId);
-
-  return donCard;
-}
-
-function isOpeningTurnDraw(state: GameState): boolean {
-  return (
-    state.turn.globalTurnNumber === (1 as TurnState["globalTurnNumber"]) &&
-    state.turn.activePlayer === state.turn.firstPlayer
-  );
-}
-
-function donCardsToAddThisTurn(state: GameState): number {
-  return isOpeningTurnDraw(state) ? 1 : 2;
-}
-
-function readyCard(card: CardInstance | undefined): void {
-  if (!card || card.state !== "rested") {
-    return;
-  }
-  card.state = "active";
-}
-
-function returnAttachedDonToCostArea(player: PlayerState): CardInstance[] {
-  const attachedById = new Map(
-    player.attachedCards.map((card) => [card.instanceId, card] as const)
-  );
-  const returnedIds = new Set<InstanceId>();
-  const returnedCards: CardInstance[] = [];
-  const hosts = [
-    player.leader,
-    ...player.characters,
-    ...(player.stage ? [player.stage] : [])
-  ];
-
-  for (const host of hosts) {
-    for (const attachedDonId of host.attachedDon) {
-      const attachedCard = attachedById.get(attachedDonId);
-      if (!attachedCard) {
-        continue;
-      }
-      returnedIds.add(attachedDonId);
-      returnedCards.push(attachedCard);
-    }
-    host.attachedDon = [];
-  }
-
-  if (returnedCards.length === 0) {
-    return [];
-  }
-
-  returnedCards.forEach((card) => {
-    card.state = "active";
-  });
-  player.attachedCards = player.attachedCards.filter(
-    (card) => !returnedIds.has(card.instanceId)
-  );
-  player.costArea.push(...returnedCards);
-  setIndexedZone(player.costArea, "costArea", player.playerId);
-
-  return returnedCards;
-}
-
-function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
-  const respond = (response: DecisionResponse): Action => ({
-    type: "respondToDecision",
-    decisionId: pendingDecision.id,
-    response
-  });
-
-  switch (pendingDecision.type) {
-    case "mulligan":
-      return [
-        respond({ type: "keepOpeningHand" }),
-        respond({ type: "mulligan" })
-      ];
-    case "chooseTriggerOrder":
-      return choosePermutations(pendingDecision.triggerIds).map((ids) =>
-        respond({ type: "orderedIds", ids })
-      );
-    case "chooseOptionalActivation":
-      return [
-        respond({ type: "optionalActivationChoice", choice: "activate" }),
-        respond({ type: "optionalActivationChoice", choice: "decline" })
-      ];
-    case "payCost":
-      return pendingDecision.options.flatMap((option) =>
-        legalPaymentSelections(option).map((selection) =>
-          respond({
-            type: "payment",
-            selection: { optionId: option.id, ...selection }
-          })
-        )
-      );
-    case "selectTargets":
-      return chooseCombinationsInRange(
-        pendingDecision.candidates.map((candidate) =>
-          requireInstanceId(candidate)
-        ),
-        minSelectionsRequired(
-          pendingDecision.request.min,
-          pendingDecision.candidates.length,
-          pendingDecision.request.allowFewerIfUnavailable
-        ),
-        pendingDecision.request.max
-      ).map((selected) =>
-        respond({
-          type: "targetSelection",
-          selected: selected.map((instanceId) => ({ instanceId }))
-        })
-      );
-    case "selectCards":
-      return chooseCombinationsInRange(
-        pendingDecision.candidates.map((candidate) =>
-          requireInstanceId(candidate)
-        ),
-        minSelectionsRequired(
-          pendingDecision.request.min,
-          pendingDecision.candidates.length,
-          pendingDecision.request.allowFewerIfUnavailable
-        ),
-        pendingDecision.request.max
-      ).map((selected) =>
-        respond({
-          type: "cardSelection",
-          selected: selected.map((instanceId) => ({ instanceId }))
-        })
-      );
-    case "chooseEffectOption":
-      return chooseCombinationsInRange(
-        pendingDecision.options
-          .filter((option) => option.availability !== "unavailable")
-          .map((option) => option.id),
-        pendingDecision.min,
-        pendingDecision.max
-      ).map((optionIds) =>
-        respond({ type: "effectOptionSelection", optionIds })
-      );
-    case "confirmTriggerFromLife":
-      return [
-        respond({ type: "lifeTriggerChoice", choice: "activateTrigger" }),
-        respond({ type: "lifeTriggerChoice", choice: "addToHand" })
-      ];
-    case "chooseReplacement": {
-      const actions = pendingDecision.replacementIds.map((replacementId) =>
-        respond({ type: "replacementChoice", replacementId })
-      );
-      if (pendingDecision.optional) {
-        actions.push(
-          respond({ type: "replacementChoice", replacementId: null })
-        );
-      }
-      return actions;
-    }
-    case "orderCards":
-      return choosePermutations(
-        pendingDecision.cards.map((card) => requireInstanceId(card))
-      ).map((ordered) =>
-        respond({
-          type: "orderCards",
-          ordered: ordered.map((instanceId) => ({ instanceId }))
-        })
-      );
-    case "chooseCharacterToTrashForOverflow":
-      return pendingDecision.candidates.map((candidate) =>
-        respond({
-          type: "chooseCharacterToTrash",
-          instanceId: requireInstanceId(candidate)
-        })
-      );
-    default:
-      return [];
-  }
-}
-
-function assertValidDecisionResponse(
-  pendingDecision: PendingDecision,
-  response: DecisionResponse
-): void {
-  switch (pendingDecision.type) {
-    case "mulligan":
-      return;
-    case "chooseOptionalActivation": {
-      const optionalActivationResponse = response as Extract<
-        DecisionResponse,
-        { type: "optionalActivationChoice" }
-      >;
-      if (
-        optionalActivationResponse.choice !== "activate" &&
-        optionalActivationResponse.choice !== "decline"
-      ) {
-        throw new Error(
-          "optionalActivationChoice response references an unknown choice"
-        );
-      }
-      return;
-    }
-    case "confirmTriggerFromLife": {
-      const lifeTriggerResponse = response as Extract<
-        DecisionResponse,
-        { type: "lifeTriggerChoice" }
-      >;
-      if (
-        lifeTriggerResponse.choice !== "activateTrigger" &&
-        lifeTriggerResponse.choice !== "addToHand"
-      ) {
-        throw new Error(
-          "lifeTriggerChoice response references an unknown choice"
-        );
-      }
-      return;
-    }
-    case "chooseTriggerOrder": {
-      const orderedIdsResponse = response as Extract<
-        DecisionResponse,
-        { type: "orderedIds" }
-      >;
-      if (orderedIdsResponse.ids.length !== pendingDecision.triggerIds.length) {
-        throw new Error(
-          "chooseTriggerOrder response must include every trigger exactly once"
-        );
-      }
-      if (
-        !arraysEqualUnordered(
-          orderedIdsResponse.ids,
-          pendingDecision.triggerIds
-        )
-      ) {
-        throw new Error(
-          "chooseTriggerOrder response must reference the pending trigger ids"
-        );
-      }
-      return;
-    }
-    case "payCost": {
-      const paymentResponse = response as Extract<
-        DecisionResponse,
-        { type: "payment" }
-      >;
-      const option = pendingDecision.options.find(
-        (candidate) => candidate.id === paymentResponse.selection.optionId
-      );
-      if (!option) {
-        throw new Error(
-          "payment response references an unknown payment option"
-        );
-      }
-      const selectedCards = paymentResponse.selection.selectedCards ?? [];
-      const selectedDon = paymentResponse.selection.selectedDon ?? [];
-      const selectedCardIds = selectedCards.map((card) => card.instanceId);
-      const selectedDonIds = selectedDon.map((card) => card.instanceId);
-      const totalSelected = selectedCards.length + selectedDon.length;
-      if (totalSelected < option.min || totalSelected > option.max) {
-        throw new Error("payment response does not satisfy the option min/max");
-      }
-      if (hasDuplicateValues([...selectedCardIds, ...selectedDonIds])) {
-        throw new Error("payment response may not include duplicate cards");
-      }
-      const selectableCardIds = (option.selectableCards ?? []).map((card) =>
-        requireInstanceId(card)
-      );
-      const selectableDonIds = (option.selectableDon ?? []).map((card) =>
-        requireInstanceId(card)
-      );
-      if (
-        !selectedCardIds.every((instanceId) =>
-          selectableCardIds.includes(instanceId)
-        )
-      ) {
-        throw new Error(
-          "payment response references a non-selectable payment card"
-        );
-      }
-      if (
-        !selectedDonIds.every((instanceId) =>
-          selectableDonIds.includes(instanceId)
-        )
-      ) {
-        throw new Error(
-          "payment response references a non-selectable DON card"
-        );
-      }
-      return;
-    }
-    case "selectTargets": {
-      const targetSelectionResponse = response as Extract<
-        DecisionResponse,
-        { type: "targetSelection" }
-      >;
-      const ids = pendingDecision.candidates.map((candidate) =>
-        requireInstanceId(candidate)
-      );
-      const selectedIds = targetSelectionResponse.selected.map(
-        (card) => card.instanceId
-      );
-      const minSelections = minSelectionsRequired(
-        pendingDecision.request.min,
-        pendingDecision.candidates.length,
-        pendingDecision.request.allowFewerIfUnavailable
-      );
-      if (
-        selectedIds.length < minSelections ||
-        selectedIds.length > pendingDecision.request.max
-      ) {
-        throw new Error("targetSelection response violates min/max");
-      }
-      if (hasDuplicateValues(selectedIds)) {
-        throw new Error("targetSelection response may not contain duplicates");
-      }
-      if (!selectedIds.every((instanceId) => ids.includes(instanceId))) {
-        throw new Error(
-          "targetSelection response references a non-candidate card"
-        );
-      }
-      return;
-    }
-    case "selectCards": {
-      const cardSelectionResponse = response as Extract<
-        DecisionResponse,
-        { type: "cardSelection" }
-      >;
-      const ids = pendingDecision.candidates.map((candidate) =>
-        requireInstanceId(candidate)
-      );
-      const selectedIds = cardSelectionResponse.selected.map(
-        (card) => card.instanceId
-      );
-      const minSelections = minSelectionsRequired(
-        pendingDecision.request.min,
-        pendingDecision.candidates.length,
-        pendingDecision.request.allowFewerIfUnavailable
-      );
-      if (
-        selectedIds.length < minSelections ||
-        selectedIds.length > pendingDecision.request.max
-      ) {
-        throw new Error("cardSelection response violates min/max");
-      }
-      if (hasDuplicateValues(selectedIds)) {
-        throw new Error("cardSelection response may not contain duplicates");
-      }
-      if (!selectedIds.every((instanceId) => ids.includes(instanceId))) {
-        throw new Error(
-          "cardSelection response references a non-candidate card"
-        );
-      }
-      return;
-    }
-    case "chooseEffectOption": {
-      const effectOptionResponse = response as Extract<
-        DecisionResponse,
-        { type: "effectOptionSelection" }
-      >;
-      if (
-        effectOptionResponse.optionIds.length < pendingDecision.min ||
-        effectOptionResponse.optionIds.length > pendingDecision.max
-      ) {
-        throw new Error("effectOptionSelection response violates min/max");
-      }
-      if (hasDuplicateValues(effectOptionResponse.optionIds)) {
-        throw new Error(
-          "effectOptionSelection response may not contain duplicates"
-        );
-      }
-      const optionIds = pendingDecision.options
-        .filter((option) => option.availability !== "unavailable")
-        .map((option) => option.id);
-      if (
-        !effectOptionResponse.optionIds.every((optionId) =>
-          optionIds.includes(optionId)
-        )
-      ) {
-        throw new Error("effectOptionSelection references an unknown option");
-      }
-      return;
-    }
-    case "chooseReplacement": {
-      const replacementResponse = response as Extract<
-        DecisionResponse,
-        { type: "replacementChoice" }
-      >;
-      if (
-        replacementResponse.replacementId === null &&
-        !pendingDecision.optional
-      ) {
-        throw new Error(
-          "replacementChoice may only decline optional replacements"
-        );
-      }
-      if (
-        replacementResponse.replacementId !== null &&
-        !pendingDecision.replacementIds.includes(
-          replacementResponse.replacementId
-        )
-      ) {
-        throw new Error(
-          "replacementChoice references an unknown replacement id"
-        );
-      }
-      return;
-    }
-    case "orderCards": {
-      const orderCardsResponse = response as Extract<
-        DecisionResponse,
-        { type: "orderCards" }
-      >;
-      const ids = pendingDecision.cards.map((card) => requireInstanceId(card));
-      const orderedIds = orderCardsResponse.ordered.map(
-        (card) => card.instanceId
-      );
-      if (orderedIds.length !== ids.length) {
-        throw new Error(
-          "orderCards response must include every candidate card"
-        );
-      }
-      if (!arraysEqualUnordered(orderedIds, ids)) {
-        throw new Error(
-          "orderCards response must contain exactly the offered cards"
-        );
-      }
-      return;
-    }
-    case "chooseCharacterToTrashForOverflow": {
-      const chooseCharacterResponse = response as Extract<
-        DecisionResponse,
-        { type: "chooseCharacterToTrash" }
-      >;
-      const ids = pendingDecision.candidates.map((candidate) =>
-        requireInstanceId(candidate)
-      );
-      if (!ids.includes(chooseCharacterResponse.instanceId)) {
-        throw new Error(
-          "chooseCharacterToTrash response references an unknown candidate"
-        );
-      }
-      return;
-    }
-    default:
-      return;
-  }
 }
 
 export function getLegalActions(
   state: GameState,
   playerId: PlayerId
 ): Action[] {
+  if (!(playerId in state.players)) {
+    return [];
+  }
+
   if (
-    !(playerId in state.players) ||
     state.status === "frozen" ||
     state.status === "completed" ||
     state.status === "errored"
@@ -2310,392 +699,99 @@ export function getLegalActions(
     return [];
   }
 
-  const legal: Action[] = [{ type: "concede", playerId }];
-
-  if (state.pendingDecision) {
-    if (state.pendingDecision.playerId !== playerId) {
-      return legal;
+  return [
+    {
+      type: "concede",
+      playerId
     }
-    if (!canResolveDecisionInBootstrap(state.pendingDecision)) {
-      return legal;
-    }
-    return [...legal, ...legalResponsesForDecision(state.pendingDecision)];
-  }
-
-  if (state.turn.activePlayer !== playerId) {
-    return legal;
-  }
-
-  if (
-    state.turn.phase === "refresh" ||
-    state.turn.phase === "draw" ||
-    state.turn.phase === "don" ||
-    state.turn.phase === "main" ||
-    state.turn.phase === "end"
-  ) {
-    legal.push({ type: "endMainPhase" });
-  }
-  return legal;
+  ];
 }
 
 export function applyAction(state: GameState, action: Action): EngineResult {
-  if (state.status === "completed" || state.status === "errored") {
-    throw new Error("Actions are not allowed once the match is terminal");
+  if (
+    state.status === "frozen" ||
+    state.status === "completed" ||
+    state.status === "errored"
+  ) {
+    throw new Error("Cannot mutate a frozen or terminal match");
   }
 
-  if (state.status === "frozen") {
-    throw new Error("Actions are not allowed while the match is frozen");
+  if (action.type !== "concede") {
+    throw new Error(`Unsupported action in ENG-001 bootstrap: ${action.type}`);
   }
 
-  if (action.type === "concede") {
-    const concedingPlayerId = action.playerId;
-    if (!(concedingPlayerId in state.players)) {
-      throw new Error("Concede references unknown player");
-    }
-    const nextState = cloneStateForMutation(state);
-    delete nextState.pendingDecision;
-    nextState.status = "completed";
-    nextState.winner = getOpponentId(state, concedingPlayerId);
-    return finalizeResult(state, nextState, [
-      {
-        type: "gameOver",
-        payload: {
-          reason: "concede",
-          winner: nextState.winner
-        }
-      }
-    ]);
-  }
-
-  if (action.type === "respondToDecision") {
-    if (
-      !state.pendingDecision ||
-      state.pendingDecision.id !== action.decisionId
-    ) {
-      throw new Error("respondToDecision requires the active pending decision");
-    }
-    return resumeDecision(state, action.response);
-  }
-
-  if (state.pendingDecision) {
-    throw new Error(
-      "Non-decision actions are not allowed while a pending decision exists"
-    );
-  }
-
-  if (state.status === "setup") {
-    throw new Error(
-      "Gameplay actions are not allowed while the match is in setup"
-    );
+  if (!(action.playerId in state.players)) {
+    throw new Error("Concede references an unknown player");
   }
 
   const nextState = cloneStateForMutation(state);
-  switch (action.type) {
-    case "endMainPhase": {
-      if (state.turn.phase === "refresh") {
-        const activePlayer = nextState.players[state.turn.activePlayer];
-        if (!activePlayer) {
-          throw new Error(`Unknown player ${state.turn.activePlayer}`);
-        }
-        readyCard(activePlayer.leader);
-        activePlayer.characters.forEach((card) => readyCard(card));
-        readyCard(activePlayer.stage);
-        activePlayer.costArea.forEach((card) => readyCard(card));
-        returnAttachedDonToCostArea(activePlayer);
-        nextState.turn.phase = "draw";
-        return finalizeResult(state, nextState, [
-          {
-            type: "phaseEnded",
-            payload: { phase: "refresh", playerId: state.turn.activePlayer }
-          },
-          {
-            type: "phaseStarted",
-            payload: { phase: "draw", playerId: state.turn.activePlayer }
-          }
-        ]);
-      }
-      if (state.turn.phase === "draw") {
-        const activePlayer = nextState.players[state.turn.activePlayer];
-        if (!activePlayer) {
-          throw new Error(`Unknown player ${state.turn.activePlayer}`);
-        }
-        if (isOpeningTurnDraw(state)) {
-          nextState.turn.phase = "don";
-          return finalizeResult(state, nextState, [
-            {
-              type: "phaseEnded",
-              payload: { phase: "draw", playerId: state.turn.activePlayer }
-            },
-            {
-              type: "phaseStarted",
-              payload: { phase: "don", playerId: state.turn.activePlayer }
-            }
-          ]);
-        }
-        const drawResult = moveTopDeckCardToHand(nextState, activePlayer);
-        if (drawResult.state === "deckOut") {
-          nextState.status = "completed";
-          nextState.winner = drawResult.winner;
-          return finalizeResult(state, nextState, [
-            {
-              type: "phaseEnded",
-              payload: { phase: "draw", playerId: state.turn.activePlayer }
-            },
-            {
-              type: "gameOver",
-              payload: {
-                reason: "deckOut",
-                winner: drawResult.winner
-              }
-            }
-          ]);
-        }
-        nextState.turn.phase = "don";
-        return finalizeResult(state, nextState, [
-          {
-            type: "phaseEnded",
-            payload: { phase: "draw", playerId: state.turn.activePlayer }
-          },
-          {
-            type: "cardDrawn",
-            payload: {
-              playerId: state.turn.activePlayer,
-              instanceId: drawResult.card.instanceId,
-              cardId: drawResult.card.cardId
-            },
-            visibility: {
-              type: "private",
-              playerIds: [state.turn.activePlayer]
-            }
-          },
-          {
-            type: "phaseStarted",
-            payload: { phase: "don", playerId: state.turn.activePlayer }
-          }
-        ]);
-      }
-      if (state.turn.phase === "don") {
-        const activePlayer = nextState.players[state.turn.activePlayer];
-        if (!activePlayer) {
-          throw new Error(`Unknown player ${state.turn.activePlayer}`);
-        }
-        const donCards: CardInstance[] = [];
-        for (let index = 0; index < donCardsToAddThisTurn(state); index += 1) {
-          const donCard = moveTopDonDeckCardToCostArea(activePlayer);
-          if (!donCard) {
-            break;
-          }
-          donCards.push(donCard);
-        }
-        nextState.turn.phase = "main";
-        return finalizeResult(state, nextState, [
-          {
-            type: "phaseEnded",
-            payload: { phase: "don", playerId: state.turn.activePlayer }
-          },
-          ...donCards.map((donCard) => ({
-            type: "cardMoved" as const,
-            payload: {
-              instanceId: donCard.instanceId,
-              from: "donDeck",
-              to: "costArea",
-              playerId: state.turn.activePlayer
-            }
-          })),
-          {
-            type: "phaseStarted",
-            payload: { phase: "main", playerId: state.turn.activePlayer }
-          }
-        ]);
-      }
-      if (state.turn.phase === "main") {
-        nextState.turn.phase = "end";
-        return finalizeResult(state, nextState, [
-          {
-            type: "phaseEnded",
-            payload: { phase: "main", playerId: state.turn.activePlayer }
-          },
-          {
-            type: "phaseStarted",
-            payload: { phase: "end", playerId: state.turn.activePlayer }
-          }
-        ]);
-      }
-      if (state.turn.phase === "end") {
-        nextState.turn.activePlayer = state.turn.nonActivePlayer;
-        nextState.turn.nonActivePlayer = state.turn.activePlayer;
-        nextState.turn.globalTurnNumber = (state.turn.globalTurnNumber +
-          1) as TurnState["globalTurnNumber"];
-        nextState.turn.phase = "refresh";
-        const nextTurnPlayer = nextState.players[nextState.turn.activePlayer];
-        if (nextTurnPlayer) {
-          nextTurnPlayer.turnCount += 1;
-        }
-        return finalizeResult(state, nextState, [
-          {
-            type: "phaseEnded",
-            payload: { phase: "end", playerId: state.turn.activePlayer }
-          },
-          {
-            type: "phaseStarted",
-            payload: { phase: "refresh", playerId: nextState.turn.activePlayer }
-          }
-        ]);
-      }
-      throw new Error(
-        "endMainPhase is only valid during refresh, draw, don, main, or end phase"
-      );
-    }
-    default:
-      throw new Error(`Action ${action.type} is not implemented in ENG-001`);
-  }
+  nextState.stateSeq = toStateSeq(Number(nextState.stateSeq) + 1);
+  nextState.actionSeq = toActionSeq(Number(nextState.actionSeq) + 1);
+  delete nextState.pendingDecision;
+  delete nextState.battle;
+  nextState.status = "completed";
+  nextState.winner = getOpponentId(nextState, action.playerId);
+
+  const event = appendEvent(nextState, {
+    type: "gameOver",
+    actor: action.playerId,
+    payload: toJsonValue({
+      reason: "concede",
+      loser: action.playerId,
+      winner: nextState.winner
+    }),
+    causedBy: { type: "action", actionSeq: nextState.actionSeq },
+    visibility: { type: "public" }
+  });
+
+  return finalizeResult(nextState, [event]);
 }
 
 export function resumeDecision(
   state: GameState,
+  decisionId: PendingDecision["id"],
   response: DecisionResponse
 ): EngineResult {
-  if (state.status === "completed" || state.status === "errored") {
-    throw new Error("Decisions are not allowed once the match is terminal");
+  if (
+    state.status === "frozen" ||
+    state.status === "completed" ||
+    state.status === "errored"
+  ) {
+    throw new Error("Cannot resolve decisions in a frozen or terminal match");
   }
 
-  if (state.status === "frozen") {
-    throw new Error("Decisions may not resolve while the match is frozen");
+  if (!state.pendingDecision || state.pendingDecision.id !== decisionId) {
+    throw new Error("No matching pending decision is active");
   }
 
-  if (!state.pendingDecision) {
-    throw new Error("resumeDecision requires an active pending decision");
-  }
-
-  assertPendingDecisionResponseMatches(state.pendingDecision, response);
-  assertValidDecisionResponse(state.pendingDecision, response);
-  if (!canResolveDecisionInBootstrap(state.pendingDecision)) {
-    throw new Error(
-      `Decision type ${state.pendingDecision.type} is not implemented in ENG-001`
-    );
-  }
-
-  const nextState = cloneStateForMutation(state);
-  const pendingDecision = cloneValue(state.pendingDecision);
-  delete nextState.pendingDecision;
-
-  if (pendingDecision.type === "mulligan") {
-    const player = nextState.players[pendingDecision.playerId];
-    if (!player) {
-      throw new Error(
-        `Unknown player ${pendingDecision.playerId} for mulligan decision`
-      );
-    }
-    if (response.type === "mulligan") {
-      applyMulliganRedraw(player, nextState.rng);
-    }
-    player.hasMulliganed = response.type === "mulligan";
-    player.keptOpeningHand = response.type === "keepOpeningHand";
-    if (state.status === "setup") {
-      const waitingPlayerId = (
-        [state.turn.activePlayer, state.turn.nonActivePlayer] as PlayerId[]
-      ).find((candidateId) => {
-        const candidate = nextState.players[candidateId];
-        return (
-          candidate !== undefined &&
-          !candidate.hasMulliganed &&
-          !candidate.keptOpeningHand
-        );
-      });
-
-      if (waitingPlayerId && waitingPlayerId !== pendingDecision.playerId) {
-        const waitingPlayer = nextState.players[waitingPlayerId];
-        if (!waitingPlayer) {
-          throw new Error(`Unknown setup player ${waitingPlayerId}`);
-        }
-        nextState.pendingDecision = {
-          id: `setup-mulligan-${waitingPlayerId}` as PendingDecision["id"],
-          type: "mulligan",
-          playerId: waitingPlayerId,
-          handCount: waitingPlayer.hand.length,
-          visibility: { type: "private", playerIds: [waitingPlayerId] }
-        };
-      } else {
-        for (const player of Object.values(nextState.players)) {
-          finalizeSetupLife(player, nextState.cardManifest);
-        }
-        nextState.status = "active";
-        nextState.turn.phase = "refresh";
-        const activePlayer = nextState.players[nextState.turn.activePlayer];
-        if (activePlayer) {
-          activePlayer.turnCount += 1;
-        }
-      }
-    }
-    return finalizeResult(state, nextState, [
-      {
-        type: "mulliganResolved",
-        payload: {
-          playerId: pendingDecision.playerId,
-          choice: response.type
-        },
-        visibility: { type: "private", playerIds: [pendingDecision.playerId] }
-      }
-    ]);
-  }
-
-  return finalizeResult(state, nextState, [
-    {
-      type: "ruleProcessing",
-      payload: {
-        decisionId: pendingDecision.id,
-        decisionType: pendingDecision.type,
-        responseType: response.type,
-        response: toJsonValue(response)
-      },
-      visibility: pendingDecision.visibility
-    }
-  ]);
+  void response;
+  throw new Error("Decision runtime is out of scope for ENG-001 bootstrap");
 }
 
 export function computeView(state: GameState): ComputedGameView {
-  const cards = Object.fromEntries(
-    collectAllCards(state).map((card) => {
-      const metadata = resolveCardMetadata(state, card);
-      const isLeader = card.zone.zone === "leaderArea";
-      const isCharacter = card.zone.zone === "characterArea";
-      const inPlay = isLeader || isCharacter;
-      const firstTurnAttackLocked =
-        inPlay &&
-        card.controller === state.turn.activePlayer &&
-        state.players[state.turn.activePlayer]?.turnCount === 1;
-      const summoningSick =
-        isCharacter &&
-        card.turnPlayed === state.turn.globalTurnNumber &&
-        !metadata.keywords.includes("rush");
-      const computed: ComputedCardView = {
-        instanceId: card.instanceId,
-        cardId: card.cardId,
-        keywords: [...metadata.keywords],
-        canAttack:
-          inPlay &&
-          card.controller === state.turn.activePlayer &&
-          card.state === "active" &&
-          !summoningSick &&
-          !firstTurnAttackLocked,
-        canBlock:
-          isCharacter &&
-          card.state === "active" &&
-          metadata.keywords.includes("blocker"),
-        cannotBeAttacked: false,
-        protectedFrom: []
-      };
-      if (metadata.power !== undefined) {
-        computed.basePower = metadata.power;
-        computed.currentPower = metadata.power;
-      }
-      if (metadata.cost !== undefined) {
-        computed.baseCost = metadata.cost;
-        computed.currentCost = metadata.cost;
-      }
-      return [card.instanceId, computed];
-    })
-  ) as ComputedGameView["cards"];
+  const cards: Record<InstanceId, ComputedCardView> = {};
+
+  for (const card of collectAllCards(state)) {
+    const metadata = resolveCardMetadata(state, card);
+    const computedCard: ComputedCardView = {
+      instanceId: card.instanceId,
+      cardId: card.cardId,
+      keywords: [...metadata.keywords],
+      canAttack: false,
+      canBlock: false,
+      cannotBeAttacked: false,
+      protectedFrom: []
+    };
+    if (metadata.power !== undefined) {
+      computedCard.basePower = metadata.power;
+      computedCard.currentPower = metadata.power;
+    }
+    if (metadata.cost !== undefined) {
+      computedCard.baseCost = metadata.cost;
+      computedCard.currentCost = metadata.cost;
+    }
+    cards[card.instanceId] = computedCard;
+  }
 
   return {
     seq: state.stateSeq,
@@ -2712,14 +808,18 @@ export function filterStateForPlayer(
 ): PlayerView {
   const self = state.players[playerId];
   if (!self) {
-    throw new Error(`Unknown playerId ${playerId}`);
+    throw new Error(`Unknown playerId for PlayerView: ${playerId}`);
   }
 
   const opponentId = getOpponentId(state, playerId);
   const opponent = state.players[opponentId];
   if (!opponent) {
-    throw new Error(`Unknown opponent for ${playerId}`);
+    throw new Error(`Unknown opponent for PlayerView: ${playerId}`);
   }
+
+  const legalActions = getLegalActions(state, playerId).map(
+    (action): PublicLegalAction => ({ ...action })
+  );
 
   const view: PlayerView = {
     matchId: state.matchId,
@@ -2729,17 +829,15 @@ export function filterStateForPlayer(
     turn: cloneValue(state.turn),
     self: buildVisiblePlayerState(state, self),
     opponent: buildOpponentVisibleState(state, opponent),
-    legalActions: buildPublicLegalActions(state, playerId),
-    revealedCards: [] as LivePublicRevealRecord[],
-    effectEvents: [] as LivePublicEffectEvent[],
+    legalActions,
+    revealedCards: [],
+    effectEvents: [],
     timers: buildTimerState(state)
   };
+
   if (state.battle) {
     view.battle = cloneValue(state.battle);
   }
-  const pendingDecision = toPublicDecision(state.pendingDecision, playerId);
-  if (pendingDecision) {
-    view.pendingDecision = pendingDecision;
-  }
+
   return view;
 }
