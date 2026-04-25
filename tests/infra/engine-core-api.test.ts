@@ -278,6 +278,73 @@ function makePlayerState(
   };
 }
 
+function makeCardsInZone(
+  playerId: string,
+  zone: "deck" | "donDeck",
+  instancePrefix: string,
+  cardIds: string[]
+): CardInstance[] {
+  return cardIds.map((cardId, index) =>
+    makeCard({
+      instanceId: `${playerId}-${instancePrefix}-${index + 1}`,
+      cardId,
+      owner: playerId,
+      zone: makeZone(zone, playerId, index)
+    })
+  );
+}
+
+function makeSetupPlayerState(
+  playerId: string,
+  leaderCardId: string
+): PlayerState {
+  const brandedPlayerId = asId<PlayerId>(playerId);
+  return {
+    playerId: brandedPlayerId,
+    deck: makeCardsInZone(playerId, "deck", "setup-deck", [
+      "char-1",
+      "char-2",
+      "char-3",
+      "char-4",
+      "event-1",
+      "stage-1",
+      "life-1",
+      "life-2",
+      "life-3",
+      "trash-1",
+      "char-1",
+      "char-2"
+    ]),
+    donDeck: makeCardsInZone(playerId, "donDeck", "setup-don", [
+      "don-1",
+      "don-2",
+      "don-1",
+      "don-2",
+      "don-1",
+      "don-2",
+      "don-1",
+      "don-2",
+      "don-1",
+      "don-2"
+    ]),
+    hand: [],
+    trash: [],
+    leader: makeCard({
+      instanceId: `${playerId}-leader`,
+      cardId: leaderCardId,
+      owner: playerId,
+      zone: makeZone("leaderArea", playerId)
+    }),
+    characters: [],
+    costArea: [],
+    attachedCards: [],
+    life: [],
+    hasMulliganed: false,
+    keptOpeningHand: false,
+    turnCount: 0
+  };
+}
+
 function makeMatchConfig(): MatchConfiguration {
   return {
     gameType: "custom",
@@ -331,6 +398,35 @@ function makeInput(
     },
     turn: makeTurnState("p1", "p2"),
     status: "active"
+  };
+
+  return {
+    ...base,
+    ...overrides
+  };
+}
+
+function makeSetupInput(
+  overrides?: Partial<CreateInitialStateInput>
+): CreateInitialStateInput {
+  const base: CreateInitialStateInput = {
+    matchId: asId<MatchId>("match-setup-1"),
+    rulesVersion: "v6",
+    engineVersion: "eng-001",
+    cardManifest: makeManifest(),
+    matchConfig: makeMatchConfig(),
+    rng: {
+      algorithm: "test-fixed",
+      seed: "seed-setup-1",
+      internalState: "rng-setup-state",
+      callCount: 0
+    } satisfies RngState,
+    players: {
+      [asId<PlayerId>("p1")]: makeSetupPlayerState("p1", "leader-1"),
+      [asId<PlayerId>("p2")]: makeSetupPlayerState("p2", "leader-2")
+    },
+    turn: makeTurnState("p1", "p2"),
+    status: "setup"
   };
 
   return {
@@ -496,9 +592,44 @@ describe("engine-core API skeleton", () => {
 
   it("creates an actionable setup mulligan when no status is provided", () => {
     const inputWithoutStatus = structuredClone(
-      makeInput()
+      makeSetupInput()
     ) as Partial<CreateInitialStateInput>;
     delete inputWithoutStatus.status;
+    inputWithoutStatus.players![asId<PlayerId>("p1")]!.hand = [
+      makeCard({
+        instanceId: "p1-injected-hand",
+        cardId: "event-1",
+        owner: "p1",
+        zone: makeZone("hand", "p1", 0)
+      })
+    ];
+    inputWithoutStatus.players![asId<PlayerId>("p1")]!.life = [
+      makeLifeCard(
+        makeCard({
+          instanceId: "p1-injected-life",
+          cardId: "life-1",
+          owner: "p1",
+          zone: makeZone("life", "p1", 0)
+        }),
+        true
+      )
+    ];
+    inputWithoutStatus.players![asId<PlayerId>("p1")]!.characters = [
+      makeCard({
+        instanceId: "p1-injected-character",
+        cardId: "char-1",
+        owner: "p1",
+        zone: makeZone("characterArea", "p1", 0)
+      })
+    ];
+    inputWithoutStatus.players![asId<PlayerId>("p1")]!.costArea = [
+      makeCard({
+        instanceId: "p1-injected-cost",
+        cardId: "don-1",
+        owner: "p1",
+        zone: makeZone("costArea", "p1", 0)
+      })
+    ];
     const state = createInitialState(
       inputWithoutStatus as CreateInitialStateInput
     );
@@ -506,6 +637,21 @@ describe("engine-core API skeleton", () => {
     expect(state.status).toBe("setup");
     expect(state.pendingDecision?.type).toBe("mulligan");
     expect(state.pendingDecision?.playerId).toBe(asId("p1"));
+    expect(state.players[asId<PlayerId>("p1")]!.hand).toHaveLength(5);
+    expect(state.players[asId<PlayerId>("p1")]!.life).toHaveLength(5);
+    expect(state.players[asId<PlayerId>("p1")]!.deck).toHaveLength(2);
+    expect(state.players[asId<PlayerId>("p1")]!.characters).toEqual([]);
+    expect(state.players[asId<PlayerId>("p1")]!.costArea).toEqual([]);
+    expect(
+      state.players[asId<PlayerId>("p1")]!.hand.map(
+        (card: CardInstance) => card.zone.zone
+      )
+    ).toEqual(["hand", "hand", "hand", "hand", "hand"]);
+    expect(
+      state.players[asId<PlayerId>("p1")]!.life.map(
+        (lifeCard) => lifeCard.card.zone.zone
+      )
+    ).toEqual(["life", "life", "life", "life", "life"]);
     expect(getLegalActions(state, asId("p1"))).toEqual([
       {
         type: "concede",
@@ -955,6 +1101,18 @@ describe("engine-core API skeleton", () => {
 
     expect(view.cards[characterId]?.canAttack).toBe(false);
     expect(view.cards[leaderId]?.canAttack).toBe(true);
+  });
+
+  it("honors the first-turn attack lock in computeView", () => {
+    const input = makeInput({ status: "active" });
+    input.players[asId<PlayerId>("p1")]!.turnCount = 1;
+
+    const view = computeView(createInitialState(input));
+    const characterId = asId<CardInstance["instanceId"]>("p1-char-1");
+    const leaderId = asId<CardInstance["instanceId"]>("p1-leader");
+
+    expect(view.cards[characterId]?.canAttack).toBe(false);
+    expect(view.cards[leaderId]?.canAttack).toBe(false);
   });
 
   it("preserves chooser-visible hidden-zone candidates in selectCards decisions", () => {
@@ -1562,7 +1720,7 @@ describe("engine-core API skeleton", () => {
 
   it("allows pending setup decisions to progress", () => {
     const state = createInitialState(
-      makeInput({
+      makeSetupInput({
         status: "setup",
         pendingDecision: {
           id: asId("decision-setup-mulligan"),
@@ -1621,33 +1779,16 @@ describe("engine-core API skeleton", () => {
   });
 
   it("applies mulligan redraws to hand, deck, and rng state", () => {
-    const input = makeInput({
+    const input = makeSetupInput({
       status: "setup",
       pendingDecision: {
         id: asId("decision-setup-mulligan-redraw"),
         type: "mulligan",
         playerId: asId("p1"),
-        handCount: 2,
+        handCount: 5,
         visibility: { type: "private", playerIds: [asId("p1")] }
       } satisfies PendingDecision
     });
-    const p1 = input.players[asId<PlayerId>("p1")]!;
-    p1.hand.push(
-      makeCard({
-        instanceId: "p1-hand-2",
-        cardId: "char-3",
-        owner: "p1",
-        zone: makeZone("hand", "p1", 1)
-      })
-    );
-    p1.deck.push(
-      makeCard({
-        instanceId: "p1-deck-3",
-        cardId: "char-4",
-        owner: "p1",
-        zone: makeZone("deck", "p1", 2)
-      })
-    );
 
     const state = createInitialState(input);
     const originalHandIds = state.players[asId<PlayerId>("p1")]!.hand.map(
@@ -1660,14 +1801,16 @@ describe("engine-core API skeleton", () => {
     expect(player.hasMulliganed).toBe(true);
     expect(player.keptOpeningHand).toBe(false);
     expect(result.state.rng.callCount).toBe(state.rng.callCount + 1);
-    expect(player.hand).toHaveLength(2);
-    expect(player.deck).toHaveLength(3);
+    expect(player.hand).toHaveLength(5);
+    expect(player.deck).toHaveLength(2);
     expect(player.hand.map((card: CardInstance) => card.zone.zone)).toEqual([
+      "hand",
+      "hand",
+      "hand",
       "hand",
       "hand"
     ]);
     expect(player.deck.map((card: CardInstance) => card.zone.zone)).toEqual([
-      "deck",
       "deck",
       "deck"
     ]);

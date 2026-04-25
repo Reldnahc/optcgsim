@@ -12,6 +12,7 @@ import type {
   HiddenZoneView,
   InstanceId,
   JsonValue,
+  LifeCard,
   LivePublicEffectEvent,
   LivePublicRevealRecord,
   PendingDecision,
@@ -50,6 +51,8 @@ import type {
 function cloneValue<T>(value: T): T {
   return structuredClone(value);
 }
+
+const OPENING_HAND_SIZE = 5;
 
 function toJsonValue<T>(value: T): JsonValue {
   return JSON.parse(JSON.stringify(value)) as JsonValue;
@@ -1413,6 +1416,17 @@ function assertPendingDecisionResponseMatches(
 }
 
 export function createInitialState(input: CreateInitialStateInput): GameState {
+  const status = input.status ?? "setup";
+  const rng = cloneValue(input.rng);
+  const players =
+    status === "setup"
+      ? initializeSetupPlayers(
+          input.players,
+          input.cardManifest,
+          rng,
+          input.turn
+        )
+      : cloneValue(input.players);
   const state: GameState = {
     matchId: input.matchId,
     stateSeq: 0 as GameState["stateSeq"],
@@ -1421,15 +1435,15 @@ export function createInitialState(input: CreateInitialStateInput): GameState {
     engineVersion: input.engineVersion,
     cardManifest: cloneValue(input.cardManifest),
     matchConfig: cloneValue(input.matchConfig),
-    rng: cloneValue(input.rng),
-    players: cloneValue(input.players),
+    rng,
+    players,
     turn: cloneValue(input.turn),
     effectQueue: [],
     continuousEffects: [],
     oncePerTurn: [],
     replacementState: [],
     eventJournal: [],
-    status: input.status ?? "setup"
+    status
   };
 
   if (input.pendingDecision) {
@@ -1587,6 +1601,135 @@ function createSetupMulliganDecision(
     handCount: player.hand.length,
     visibility: { type: "private", playerIds: [playerId] }
   };
+}
+
+function getSetupPlayerOrder(
+  players: Record<PlayerId, PlayerState>,
+  turn: Pick<TurnState, "firstPlayer">
+): PlayerId[] {
+  const playerIds = Object.keys(players) as PlayerId[];
+  const otherPlayers = playerIds
+    .filter((playerId) => playerId !== turn.firstPlayer)
+    .sort(compareStrings);
+
+  if (players[turn.firstPlayer] !== undefined) {
+    return [turn.firstPlayer, ...otherPlayers];
+  }
+
+  return [...playerIds].sort(compareStrings);
+}
+
+function leaderLifeTotal(
+  cardManifest: GameState["cardManifest"],
+  leader: PlayerState["leader"]
+): number {
+  const life = cardManifest.cards[leader.cardId]?.life;
+  if (life === undefined) {
+    throw new Error(`Leader ${leader.cardId} is missing a life total`);
+  }
+  return life;
+}
+
+function setLifeZone(life: LifeCard[], playerId: PlayerId): void {
+  life.forEach((lifeCard, index) => {
+    lifeCard.card.zone = {
+      zone: "life",
+      playerId,
+      index
+    } as ZoneRef;
+  });
+}
+
+function normalizeIndexedZoneCards(
+  cards: CardInstance[],
+  zone: "deck" | "donDeck",
+  playerId: PlayerId
+): CardInstance[] {
+  const normalized = cloneValue(cards);
+  setIndexedZone(normalized, zone, playerId);
+  normalized.forEach((card) => {
+    card.controller = card.owner;
+    card.state = "active";
+    card.attachedDon = [];
+  });
+  return normalized;
+}
+
+function initializeSetupPlayer(
+  player: PlayerState,
+  cardManifest: GameState["cardManifest"],
+  rng: GameState["rng"]
+): PlayerState {
+  const leader = cloneValue(player.leader);
+  leader.zone = {
+    zone: "leaderArea",
+    playerId: player.playerId
+  } as ZoneRef;
+  leader.controller = leader.owner;
+  leader.state = "active";
+  leader.attachedDon = [];
+
+  const deck = deterministicShuffleCards(
+    normalizeIndexedZoneCards(player.deck, "deck", player.playerId),
+    rng
+  );
+  const donDeck = normalizeIndexedZoneCards(
+    player.donDeck,
+    "donDeck",
+    player.playerId
+  );
+  const lifeCount = leaderLifeTotal(cardManifest, leader);
+  const requiredDeckSize = OPENING_HAND_SIZE + lifeCount;
+  if (deck.length < requiredDeckSize) {
+    throw new Error(
+      `Player ${player.playerId} setup deck is too small for opening hand and life`
+    );
+  }
+
+  const hand = deck.slice(0, OPENING_HAND_SIZE);
+  const remainingDeck = deck.slice(OPENING_HAND_SIZE);
+  const life = remainingDeck
+    .slice(0, lifeCount)
+    .reverse()
+    .map((card) => ({
+      card,
+      faceUp: false
+    }));
+  const startingDeck = remainingDeck.slice(lifeCount);
+
+  setIndexedZone(hand, "hand", player.playerId);
+  setIndexedZone(startingDeck, "deck", player.playerId);
+  setLifeZone(life, player.playerId);
+
+  return {
+    playerId: player.playerId,
+    deck: startingDeck,
+    donDeck,
+    hand,
+    trash: [],
+    leader,
+    characters: [],
+    costArea: [],
+    attachedCards: [],
+    life,
+    hasMulliganed: false,
+    keptOpeningHand: false,
+    turnCount: 0
+  };
+}
+
+function initializeSetupPlayers(
+  players: Record<PlayerId, PlayerState>,
+  cardManifest: GameState["cardManifest"],
+  rng: GameState["rng"],
+  turn: Pick<TurnState, "firstPlayer">
+): Record<PlayerId, PlayerState> {
+  return Object.fromEntries(
+    getSetupPlayerOrder(players, turn).map((playerId) => [
+      playerId,
+      initializeSetupPlayer(players[playerId]!, cardManifest, rng)
+    ])
+  ) as Record<PlayerId, PlayerState>;
 }
 
 function setIndexedZone(
@@ -2484,6 +2627,10 @@ export function computeView(state: GameState): ComputedGameView {
       const isLeader = card.zone.zone === "leaderArea";
       const isCharacter = card.zone.zone === "characterArea";
       const inPlay = isLeader || isCharacter;
+      const firstTurnAttackLocked =
+        inPlay &&
+        card.controller === state.turn.activePlayer &&
+        state.players[state.turn.activePlayer]?.turnCount === 1;
       const summoningSick =
         isCharacter &&
         card.turnPlayed === state.turn.globalTurnNumber &&
@@ -2492,7 +2639,11 @@ export function computeView(state: GameState): ComputedGameView {
         instanceId: card.instanceId,
         cardId: card.cardId,
         keywords: [...metadata.keywords],
-        canAttack: inPlay && card.state === "active" && !summoningSick,
+        canAttack:
+          inPlay &&
+          card.state === "active" &&
+          !summoningSick &&
+          !firstTurnAttackLocked,
         canBlock:
           isCharacter &&
           card.state === "active" &&
