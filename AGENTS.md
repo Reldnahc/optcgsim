@@ -48,6 +48,11 @@ Section Ref: `AGENTS.s003`
 - If implementation reveals a required change to canonical contracts, shared specs, or repo-wide workflow outside the approved story scope, do not silently mix that change into the story branch. Stop and escalate, or get explicit approval to land the cross-story change separately on `main` first and then merge/rebase it into the story branch.
 - Add or update tests required by the story.
 - Keep deterministic engine behavior and hidden-information safety intact.
+- When review or testing finds a bug in a contract-heavy subsystem such as filtering, pending decisions, hashing, invariants, timers, or computed views, do not patch only the cited branch. Sweep every sibling projection or serializer in that subsystem before requesting review again.
+- For any rule that affects multiple output surfaces, centralize it behind one helper or one authoritative source of truth. Do not maintain parallel logic for the same rule in `computeView`, `PlayerView`, legal-action generation, invariants, or replay projection.
+- If the same subsystem is flagged twice in one story, stop doing comment-by-comment patches. Write down the shared rule, identify every call site, tighten the helper ownership, expand the regression matrix, and only then resume implementation.
+- When a bug appears in one member of a serializer family, add the sibling regression matrix before review. Prefer one matrix that covers chooser/opponent, public/private, visible/hidden zone, and setup/active status combinations over one-off regressions.
+- For authoritative exported APIs, projections must consume authoritative computed state when it exists. Do not rebuild printed or placeholder values in `PlayerView` or other DTOs when `computeView` or another canonical derivation already owns that truth.
 - Prefer repo-owned workflow entrypoints under `npm run stories:*` and `npm run stories:verify` over invoking individual tool files directly, unless a story or review task explicitly requires the lower-level tool.
 - Use one branch and one pull request per story by default. Review should happen on the PR diff against the approved story and packet, not only on the issue.
 - Story execution lifecycle is: `approved` -> `in_progress` -> `in_review` -> `done`, with `changes_requested` and `blocked` as valid side states when review or execution finds real blockers.
