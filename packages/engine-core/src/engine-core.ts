@@ -458,6 +458,7 @@ function toPublicDecision(
   viewerId: PlayerId
 ): PublicDecision | undefined {
   const viewerIsChooser = pendingDecision.playerId === viewerId;
+  const decisionIsPublic = pendingDecision.visibility.type === "public";
   const viewerCanSeeDecision = canViewerSeePendingDecisionLive(
     pendingDecision,
     viewerId
@@ -504,8 +505,7 @@ function toPublicDecision(
         type: "chooseTriggerOrder",
         triggers: pendingDecision.triggerIds.map(
           (triggerId): PublicTriggerOrderOption => ({
-            triggerId,
-            label: String(triggerId)
+            triggerId
           })
         )
       };
@@ -529,12 +529,18 @@ function toPublicDecision(
             min: option.min,
             max: option.max
           };
-          if (viewerIsChooser && option.selectableCards !== undefined) {
+          if (
+            (viewerIsChooser || decisionIsPublic) &&
+            option.selectableCards !== undefined
+          ) {
             publicOption.selectableCards = option.selectableCards.map(
               toPublicPaymentCardRef
             );
           }
-          if (viewerIsChooser && option.selectableDon !== undefined) {
+          if (
+            (viewerIsChooser || decisionIsPublic) &&
+            option.selectableDon !== undefined
+          ) {
             publicOption.selectableDon = option.selectableDon.map(
               toPublicPaymentCardRef
             );
@@ -599,8 +605,7 @@ function toPublicDecision(
         processId: pendingDecision.processId,
         replacements: pendingDecision.replacementIds.map(
           (replacementId): PublicReplacementOption => ({
-            replacementId,
-            label: String(replacementId)
+            replacementId
           })
         ),
         optional: pendingDecision.optional
@@ -609,18 +614,20 @@ function toPublicDecision(
       return {
         ...base,
         type: "orderCards",
-        cards: viewerIsChooser
-          ? pendingDecision.cards.map(toPublicDecisionCardRef)
-          : [],
+        cards:
+          viewerIsChooser || decisionIsPublic
+            ? pendingDecision.cards.map(toPublicDecisionCardRef)
+            : [],
         destination: pendingDecision.destination
       };
     case "chooseCharacterToTrashForOverflow":
       return {
         ...base,
         type: "chooseCharacterToTrashForOverflow",
-        candidates: viewerIsChooser
-          ? pendingDecision.candidates.map(toPublicCardRef)
-          : []
+        candidates:
+          viewerIsChooser || decisionIsPublic
+            ? pendingDecision.candidates.map(toPublicCardRef)
+            : []
       };
   }
 }

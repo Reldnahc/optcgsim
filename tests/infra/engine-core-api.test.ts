@@ -606,6 +606,118 @@ describe("engine-core bootstrap surface", () => {
     expect(opponentView.pendingDecision?.type).toBe("mulligan");
   });
 
+  it("shows public payCost choices to non-choosing recipients", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = {
+      id: asId("decision-public-pay-cost"),
+      type: "payCost",
+      playerId: asId("p1"),
+      visibility: { type: "public" },
+      cost: { type: "restDon", count: 1 },
+      options: [
+        {
+          id: "pay-1",
+          cost: { type: "restDon", count: 1 },
+          selectableCards: [
+            {
+              instanceId: asId("p1-cost-1"),
+              cardId: asId("don-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: makeZone("costArea", "p1", 0)
+            }
+          ],
+          selectableDon: [
+            {
+              instanceId: asId("p1-cost-1"),
+              cardId: asId("don-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: makeZone("costArea", "p1", 0)
+            }
+          ],
+          min: 1,
+          max: 1
+        }
+      ]
+    };
+
+    const opponentView = filterStateForPlayer(
+      createInitialState(input),
+      asId("p2")
+    );
+    const pendingDecision = opponentView.pendingDecision;
+
+    expect(pendingDecision?.type).toBe("payCost");
+    if (pendingDecision?.type !== "payCost") {
+      throw new Error("Expected payCost public decision");
+    }
+    expect(pendingDecision.options[0]?.selectableCards).toHaveLength(1);
+    expect(pendingDecision.options[0]?.selectableDon).toHaveLength(1);
+  });
+
+  it("shows public order and overflow candidates to non-choosing recipients", () => {
+    const orderInput = makeBaseInput();
+    orderInput.pendingDecision = {
+      id: asId("decision-public-order"),
+      type: "orderCards",
+      playerId: asId("p1"),
+      visibility: { type: "public" },
+      cards: [
+        {
+          instanceId: asId("p1-hand-1"),
+          cardId: asId("char-2"),
+          owner: asId("p1"),
+          controller: asId("p1"),
+          zone: makeZone("hand", "p1", 0)
+        }
+      ],
+      destination: "deck"
+    };
+
+    const overflowInput = makeBaseInput();
+    overflowInput.pendingDecision = {
+      id: asId("decision-public-overflow"),
+      type: "chooseCharacterToTrashForOverflow",
+      playerId: asId("p1"),
+      visibility: { type: "public" },
+      candidates: [
+        {
+          instanceId: asId("p1-char-1"),
+          cardId: asId("char-1"),
+          owner: asId("p1"),
+          controller: asId("p1"),
+          zone: makeZone("characterArea", "p1", 0)
+        }
+      ]
+    };
+
+    const orderView = filterStateForPlayer(
+      createInitialState(orderInput),
+      asId("p2")
+    );
+    const overflowView = filterStateForPlayer(
+      createInitialState(overflowInput),
+      asId("p2")
+    );
+
+    expect(orderView.pendingDecision?.type).toBe("orderCards");
+    if (orderView.pendingDecision?.type !== "orderCards") {
+      throw new Error("Expected orderCards public decision");
+    }
+    expect(orderView.pendingDecision.cards).toHaveLength(1);
+
+    expect(overflowView.pendingDecision?.type).toBe(
+      "chooseCharacterToTrashForOverflow"
+    );
+    if (
+      overflowView.pendingDecision?.type !== "chooseCharacterToTrashForOverflow"
+    ) {
+      throw new Error("Expected overflow public decision");
+    }
+    expect(overflowView.pendingDecision.candidates).toHaveLength(1);
+  });
+
   it("rejects replayOnly pending decisions from live states", () => {
     const input = makeBaseInput();
     input.status = "setup";
@@ -654,6 +766,59 @@ describe("engine-core bootstrap surface", () => {
     expect(filterStateForPlayer(state, asId("p2")).pendingDecision?.type).toBe(
       "chooseTriggerOrder"
     );
+  });
+
+  it("does not fabricate trigger or replacement labels in public decisions", () => {
+    const triggerInput = makeBaseInput();
+    triggerInput.pendingDecision = {
+      id: asId("decision-trigger-order"),
+      type: "chooseTriggerOrder",
+      playerId: asId("p1"),
+      visibility: { type: "public" },
+      triggerIds: [asId("trigger-1")]
+    };
+
+    const replacementInput = makeBaseInput();
+    replacementInput.pendingDecision = {
+      id: asId("decision-replacement"),
+      type: "chooseReplacement",
+      playerId: asId("p1"),
+      visibility: { type: "public" },
+      processId: "replacement-process-1",
+      replacementIds: [asId("replacement-1")],
+      optional: true
+    };
+
+    const triggerView = filterStateForPlayer(
+      createInitialState(triggerInput),
+      asId("p1")
+    );
+    const replacementView = filterStateForPlayer(
+      createInitialState(replacementInput),
+      asId("p1")
+    );
+
+    expect(triggerView.pendingDecision?.type).toBe("chooseTriggerOrder");
+    if (triggerView.pendingDecision?.type !== "chooseTriggerOrder") {
+      throw new Error("Expected chooseTriggerOrder decision");
+    }
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        triggerView.pendingDecision.triggers[0] ?? {},
+        "label"
+      )
+    ).toBe(false);
+
+    expect(replacementView.pendingDecision?.type).toBe("chooseReplacement");
+    if (replacementView.pendingDecision?.type !== "chooseReplacement") {
+      throw new Error("Expected chooseReplacement decision");
+    }
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        replacementView.pendingDecision.replacements[0] ?? {},
+        "label"
+      )
+    ).toBe(false);
   });
 
   it("rejects payCost pending decisions whose live payment refs omit zone", () => {
