@@ -613,7 +613,7 @@ describe("engine-core bootstrap surface", () => {
     expect(result.events[0]?.type).toBe("mulliganResolved");
   });
 
-  it("hands setup mulligan priority to the second player, then exits setup", () => {
+  it("hands setup mulligan priority to the second player, then remains fail-closed in setup", () => {
     const input = makeBaseInput();
     input.status = "setup";
     input.pendingDecision = makePendingDecision();
@@ -630,7 +630,7 @@ describe("engine-core bootstrap surface", () => {
       type: "keepOpeningHand"
     });
 
-    expect(secondResult.state.status).toBe("active");
+    expect(secondResult.state.status).toBe("setup");
     expect(secondResult.state.pendingDecision).toBeUndefined();
     expect(
       secondResult.state.players[asId<PlayerId>("p2")]?.keptOpeningHand
@@ -681,6 +681,69 @@ describe("engine-core bootstrap surface", () => {
         createInitialState(invalidInput)
       )
     ).toThrowError(/Duplicate instance id/);
+  });
+
+  it("rejects cross-player zone ownership corruption in test mode", () => {
+    const invalidInput = makeBaseInput();
+    const p1 = asId<PlayerId>("p1");
+    const p2 = asId<PlayerId>("p2");
+    const handCard = invalidInput.players[p1]!.hand[0]!;
+    handCard.owner = p2;
+    handCard.controller = p2;
+
+    expect(() =>
+      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () =>
+        createInitialState(invalidInput)
+      )
+    ).toThrowError(/stored under player/i);
+  });
+
+  it("rejects broken effect-queue sources in test mode post-action checks", () => {
+    const state = createInitialState(makeBaseInput());
+    state.effectQueue.push({
+      id: asId("queue-1"),
+      state: "pending",
+      timingWindowId: asId("timing-1"),
+      generation: 1,
+      controllerId: asId("p1"),
+      source: {
+        instanceId: asId("missing-source"),
+        cardId: asId("char-1"),
+        owner: asId("p1"),
+        controller: asId("p1"),
+        zone: makeZone("characterArea", "p1", 0)
+      },
+      sourceSnapshot: {
+        instanceId: asId("missing-source"),
+        cardId: asId("char-1"),
+        owner: asId("p1"),
+        controller: asId("p1"),
+        zone: makeZone("characterArea", "p1", 0),
+        state: "active",
+        attachedDonCount: 0,
+        name: "char-1",
+        category: "character",
+        colors: ["red"],
+        cost: 1,
+        power: 5000,
+        counter: 1000,
+        attributes: ["slash"],
+        types: ["character"]
+      },
+      triggerEventId: asId("missing-event"),
+      effectBlockId: asId("effect-1"),
+      orderingGroup: "turnPlayer",
+      createdAtEventSeq: 1,
+      queuedAtStateSeq: 0 as (typeof state)["stateSeq"],
+      sourcePresencePolicy: "mustRemainInSameZone",
+      causedBy: { type: "rule", rule: "test" }
+    });
+
+    expect(() =>
+      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () =>
+        applyAction(state, concedeAction("p1"))
+      )
+    ).toThrowError(/missing trigger event|missing source/i);
   });
 
   it("computes a conservative bootstrap view for cards", () => {

@@ -758,6 +758,21 @@ function assertAllCardsInExactlyOneLocation(state: GameState): void {
   }
 }
 
+function assertCardsRespectZoneOwnership(state: GameState): void {
+  for (const entry of collectRawCards(state)) {
+    if (entry.card.owner !== entry.playerId) {
+      throw new Error(
+        `Card ${entry.card.instanceId} has owner ${entry.card.owner} but is stored under player ${entry.playerId}`
+      );
+    }
+    if (entry.card.controller !== entry.playerId) {
+      throw new Error(
+        `Card ${entry.card.instanceId} has controller ${entry.card.controller} but is stored under player ${entry.playerId}`
+      );
+    }
+  }
+}
+
 function assertNoDuplicateInstanceIds(state: GameState): void {
   const counts = new Map<string, number>();
 
@@ -924,6 +939,11 @@ function assertPendingDecisionIsValid(state: GameState): void {
 function assertEffectQueueEntriesAreResolvableOrCancelled(
   state: GameState
 ): void {
+  const liveCardsById = new Map(
+    collectAllCards(state).map((card) => [card.instanceId, card])
+  );
+  const eventIds = new Set(state.eventJournal.map((event) => event.id));
+
   for (const entry of state.effectQueue) {
     if (
       entry.state !== "pending" &&
@@ -932,6 +952,54 @@ function assertEffectQueueEntriesAreResolvableOrCancelled(
       entry.state !== "cancelled"
     ) {
       throw new Error(`Unexpected effect queue state for ${entry.id}`);
+    }
+
+    if (
+      entry.sourcePresencePolicy !== "mustRemainInSameZone" &&
+      entry.sourcePresencePolicy !== "resolveFromDestinationZone" &&
+      entry.sourcePresencePolicy !== "resolveFromLastKnownInformation" &&
+      entry.sourcePresencePolicy !== "noSourceRequired"
+    ) {
+      throw new Error(
+        `Unexpected source presence policy for effect queue entry ${entry.id}`
+      );
+    }
+
+    if (
+      entry.triggerEventId !== undefined &&
+      !eventIds.has(entry.triggerEventId)
+    ) {
+      throw new Error(
+        `Effect queue entry ${entry.id} references missing trigger event ${entry.triggerEventId}`
+      );
+    }
+
+    if (entry.sourcePresencePolicy === "noSourceRequired") {
+      continue;
+    }
+
+    const sourceInstanceId =
+      entry.source.instanceId ?? entry.sourceSnapshot.instanceId;
+    if (sourceInstanceId === undefined) {
+      throw new Error(
+        `Effect queue entry ${entry.id} requires a source instance id`
+      );
+    }
+
+    const liveSource = liveCardsById.get(sourceInstanceId);
+    if (!liveSource) {
+      throw new Error(
+        `Effect queue entry ${entry.id} references missing source ${sourceInstanceId}`
+      );
+    }
+
+    if (entry.sourcePresencePolicy === "mustRemainInSameZone") {
+      const expectedZone = entry.source.zone ?? entry.sourceSnapshot.zone;
+      if (stableStringify(liveSource.zone) !== stableStringify(expectedZone)) {
+        throw new Error(
+          `Effect queue entry ${entry.id} source ${sourceInstanceId} moved out of its required zone`
+        );
+      }
     }
   }
 }
@@ -974,6 +1042,7 @@ function assertStateHashStable(state: GameState): void {
 function runInvariantChecks(state: GameState): void {
   assertExactlyTwoPlayers(state);
   assertAllCardsInExactlyOneLocation(state);
+  assertCardsRespectZoneOwnership(state);
   assertNoDuplicateInstanceIds(state);
   assertCharacterAreaSizeAtMostFive(state);
   assertStageAreaSizeAtMostOne(state);
@@ -1256,8 +1325,6 @@ export function resumeDecision(
         handCount: waitingPlayer.hand.length,
         visibility: { type: "private", playerIds: [waitingPlayerId] }
       };
-    } else {
-      nextState.status = "active";
     }
   }
 
