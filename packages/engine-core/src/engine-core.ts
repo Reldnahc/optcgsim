@@ -11,6 +11,7 @@ import type {
   GameState,
   HiddenZoneView,
   InstanceId,
+  JsonValue,
   LivePublicEffectEvent,
   LivePublicRevealRecord,
   PendingDecision,
@@ -48,6 +49,10 @@ import type {
 
 function cloneValue<T>(value: T): T {
   return structuredClone(value);
+}
+
+function toJsonValue<T>(value: T): JsonValue {
+  return JSON.parse(JSON.stringify(value)) as JsonValue;
 }
 
 function compareStrings(left: string, right: string): number {
@@ -2464,7 +2469,8 @@ export function resumeDecision(
       payload: {
         decisionId: pendingDecision.id,
         decisionType: pendingDecision.type,
-        responseType: response.type
+        responseType: response.type,
+        response: toJsonValue(response)
       },
       visibility: pendingDecision.visibility
     }
@@ -2475,15 +2481,20 @@ export function computeView(state: GameState): ComputedGameView {
   const cards = Object.fromEntries(
     collectAllCards(state).map((card) => {
       const metadata = resolveCardMetadata(state, card);
-      const inPlay =
-        card.zone.zone === "leaderArea" || card.zone.zone === "characterArea";
+      const isLeader = card.zone.zone === "leaderArea";
+      const isCharacter = card.zone.zone === "characterArea";
+      const inPlay = isLeader || isCharacter;
+      const summoningSick =
+        isCharacter &&
+        card.turnPlayed === state.turn.globalTurnNumber &&
+        !metadata.keywords.includes("rush");
       const computed: ComputedCardView = {
         instanceId: card.instanceId,
         cardId: card.cardId,
         keywords: [...metadata.keywords],
-        canAttack: inPlay && card.state === "active",
+        canAttack: inPlay && card.state === "active" && !summoningSick,
         canBlock:
-          card.zone.zone === "characterArea" &&
+          isCharacter &&
           card.state === "active" &&
           metadata.keywords.includes("blocker"),
         cannotBeAttacked: false,

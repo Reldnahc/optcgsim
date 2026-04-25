@@ -567,6 +567,60 @@ describe("engine-core API skeleton", () => {
     );
   });
 
+  it("preserves non-mulligan decision payloads in rule-processing events", () => {
+    const state = createInitialState(
+      makeInput({
+        status: "active",
+        pendingDecision: {
+          id: asId("decision-select-cards"),
+          type: "selectCards",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          request: {
+            chooser: "self",
+            zone: "hand",
+            player: "self",
+            min: 1,
+            max: 1,
+            allowFewerIfUnavailable: false,
+            visibility: "privateToChooser"
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-hand-1"),
+              cardId: asId("event-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "hand",
+                playerId: asId("p1"),
+                index: 0
+              }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    const result = resumeDecision(state, {
+      type: "cardSelection",
+      selected: [{ instanceId: asId("p1-hand-1") }]
+    });
+
+    const event = result.events.find(
+      (candidate) => candidate.type === "ruleProcessing"
+    );
+    expect(event?.payload).toEqual({
+      decisionId: asId("decision-select-cards"),
+      decisionType: "selectCards",
+      responseType: "cardSelection",
+      response: {
+        type: "cardSelection",
+        selected: [{ instanceId: asId("p1-hand-1") }]
+      }
+    });
+  });
+
   it("filters hidden information out of PlayerView", () => {
     const state = createInitialState(makeInput());
     const view = filterStateForPlayer(state, asId("p1"));
@@ -888,6 +942,19 @@ describe("engine-core API skeleton", () => {
     const view = computeView(createInitialState(input));
     const inPlayId = asId<CardInstance["instanceId"]>("p1-char-1");
     expect(view.cards[inPlayId]?.canBlock).toBe(false);
+  });
+
+  it("applies summoning sickness to same-turn characters without rush", () => {
+    const input = makeInput({ status: "active" });
+    input.players[asId<PlayerId>("p1")]!.characters[0]!.turnPlayed =
+      input.turn.globalTurnNumber;
+
+    const view = computeView(createInitialState(input));
+    const characterId = asId<CardInstance["instanceId"]>("p1-char-1");
+    const leaderId = asId<CardInstance["instanceId"]>("p1-leader");
+
+    expect(view.cards[characterId]?.canAttack).toBe(false);
+    expect(view.cards[leaderId]?.canAttack).toBe(true);
   });
 
   it("preserves chooser-visible hidden-zone candidates in selectCards decisions", () => {
