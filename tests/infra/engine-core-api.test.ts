@@ -594,6 +594,35 @@ describe("engine-core bootstrap surface", () => {
     );
   });
 
+  it("rejects payCost pending decisions whose live payment refs omit zone", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = {
+      id: asId("decision-pay-cost"),
+      type: "payCost",
+      playerId: asId("p1"),
+      visibility: { type: "private", playerIds: [asId("p1")] },
+      cost: { type: "restDon", count: 1 },
+      options: [
+        {
+          id: "pay-1",
+          cost: { type: "restDon", count: 1 },
+          selectableCards: [
+            {
+              instanceId: asId("p1-cost-1"),
+              cardId: asId("don-1"),
+              owner: asId("p1"),
+              controller: asId("p1")
+            }
+          ],
+          min: 1,
+          max: 1
+        }
+      ]
+    };
+
+    expect(() => createInitialState(input)).toThrowError(/CardRef\.zone/i);
+  });
+
   it("resolves keepOpeningHand mulligans", () => {
     const input = makeBaseInput();
     input.pendingDecision = makePendingDecision();
@@ -744,6 +773,53 @@ describe("engine-core bootstrap surface", () => {
         applyAction(state, concedeAction("p1"))
       )
     ).toThrowError(/missing trigger event|missing source/i);
+  });
+
+  it("allows last-known-information queue entries after the source leaves play", () => {
+    const state = createInitialState(makeBaseInput());
+    state.effectQueue.push({
+      id: asId("queue-lki"),
+      state: "pending",
+      timingWindowId: asId("timing-lki"),
+      generation: 1,
+      controllerId: asId("p1"),
+      source: {
+        instanceId: asId("missing-lki-source"),
+        cardId: asId("char-1"),
+        owner: asId("p1"),
+        controller: asId("p1"),
+        zone: makeZone("trash", "p1", 0)
+      },
+      sourceSnapshot: {
+        instanceId: asId("missing-lki-source"),
+        cardId: asId("char-1"),
+        owner: asId("p1"),
+        controller: asId("p1"),
+        zone: makeZone("characterArea", "p1", 0),
+        state: "active",
+        attachedDonCount: 0,
+        name: "char-1",
+        category: "character",
+        colors: ["red"],
+        cost: 1,
+        power: 5000,
+        counter: 1000,
+        attributes: ["slash"],
+        types: ["character"]
+      },
+      effectBlockId: asId("effect-lki"),
+      orderingGroup: "turnPlayer",
+      createdAtEventSeq: 1,
+      queuedAtStateSeq: 0 as (typeof state)["stateSeq"],
+      sourcePresencePolicy: "resolveFromLastKnownInformation",
+      causedBy: { type: "rule", rule: "test" }
+    });
+
+    expect(() =>
+      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () =>
+        applyAction(state, concedeAction("p1"))
+      )
+    ).not.toThrow();
   });
 
   it("computes a conservative bootstrap view for cards", () => {

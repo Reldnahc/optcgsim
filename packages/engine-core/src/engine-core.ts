@@ -358,15 +358,13 @@ function toPublicDecisionCardRef(ref: CardRef): PublicDecisionCardRef {
 }
 
 function toPublicPaymentCardRef(ref: CardRef): PublicPaymentCardRef {
+  if (ref.zone === undefined) {
+    throw new Error("Live public payment card ref requires CardRef.zone");
+  }
+
   return {
     ...toPublicCardRef(ref),
-    zone:
-      ref.zone ??
-      ({
-        zone: "noZone",
-        owner: ref.owner,
-        label: "unknown"
-      } as PublicPaymentCardRef["zone"])
+    zone: ref.zone
   };
 }
 
@@ -988,6 +986,10 @@ function assertEffectQueueEntriesAreResolvableOrCancelled(
 
     const liveSource = liveCardsById.get(sourceInstanceId);
     if (!liveSource) {
+      if (entry.sourcePresencePolicy === "resolveFromLastKnownInformation") {
+        continue;
+      }
+
       throw new Error(
         `Effect queue entry ${entry.id} references missing source ${sourceInstanceId}`
       );
