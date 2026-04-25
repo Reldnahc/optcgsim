@@ -6,14 +6,14 @@ title: Bootstrap the deterministic engine-core API skeleton
 type: implementation
 area: engine
 priority: critical
-status: changes_requested
+status: approved
 summary: >
   Create the authoritative engine-core package with the canonical entry points, deterministic state hashing, and player-view filtering contracts.
 spec_refs:
   - "15-implementation-kickoff.s006 (Step 2 - `@optcg/engine-core`)"
+  - 15-implementation-kickoff.s008 (First milestone scope)
+  - 15-implementation-kickoff.s011 (Definition of done for kickoff)
   - "01-system-architecture.s005 (`@optcg/engine-core`)"
-  - 03-game-state-events-decisions.s002 (Canonical state model)
-  - 06-visibility-security.s002 (Security principle)
   - 11-testing-quality.s008 (Invariant tests)
 scope:
   - "create packages/engine-core with the canonical createInitialState, getLegalActions, applyAction, resumeDecision, computeView, filterStateForPlayer, and hashGameState exports"
@@ -21,9 +21,6 @@ scope:
   - wire invariant assertions and state hashing into engine test mode
   - preserve the server-only boundary for authoritative state handling
 non_scope:
-  - full playable kickoff gameplay loop
-  - complete phase progression, setup flow, and vanilla match completion
-  - gameplay-complete getLegalActions/applyAction/resumeDecision behavior
   - full non-vanilla effect runtime behavior
   - websocket room management
   - browser-safe presentation helpers

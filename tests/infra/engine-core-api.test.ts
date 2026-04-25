@@ -371,6 +371,18 @@ describe("engine-core API skeleton", () => {
     expect(nextTurn.state.turn.phase).toBe("refresh");
     expect(nextTurn.state.turn.activePlayer).toBe(asId("p2"));
     expect(nextTurn.state.turn.nonActivePlayer).toBe(asId("p1"));
+    expect(
+      getLegalActions(nextTurn.state, asId("p2")).map((action) => action.type)
+    ).toContain("endMainPhase");
+
+    const toDraw = applyAction(nextTurn.state, { type: "endMainPhase" });
+    expect(toDraw.state.turn.phase).toBe("draw");
+
+    const toDon = applyAction(toDraw.state, { type: "endMainPhase" });
+    expect(toDon.state.turn.phase).toBe("don");
+
+    const toMain = applyAction(toDon.state, { type: "endMainPhase" });
+    expect(toMain.state.turn.phase).toBe("main");
   });
 
   it("keeps concede legal for both players and awards the active player's concession correctly", () => {
@@ -407,7 +419,7 @@ describe("engine-core API skeleton", () => {
     expect(() => applyAction(state, concedeAction("p1"))).toThrow(/frozen/);
   });
 
-  it("keeps default setup states free of gameplay actions while allowing concede", () => {
+  it("creates an actionable setup mulligan when no status is provided", () => {
     const inputWithoutStatus = structuredClone(
       makeInput()
     ) as Partial<CreateInitialStateInput>;
@@ -417,13 +429,33 @@ describe("engine-core API skeleton", () => {
     );
 
     expect(state.status).toBe("setup");
+    expect(state.pendingDecision?.type).toBe("mulligan");
+    expect(state.pendingDecision?.playerId).toBe(asId("p1"));
     expect(getLegalActions(state, asId("p1"))).toEqual([
       {
         type: "concede",
         playerId: asId("p1")
+      },
+      {
+        type: "respondToDecision",
+        decisionId: asId("setup-mulligan-p1"),
+        response: { type: "keepOpeningHand" }
+      },
+      {
+        type: "respondToDecision",
+        decisionId: asId("setup-mulligan-p1"),
+        response: { type: "mulligan" }
       }
     ]);
-    expect(() => applyAction(state, { type: "endMainPhase" })).toThrow(/setup/);
+    expect(getLegalActions(state, asId("p2"))).toEqual([
+      {
+        type: "concede",
+        playerId: asId("p2")
+      }
+    ]);
+    expect(() => applyAction(state, { type: "endMainPhase" })).toThrow(
+      /pending decision/
+    );
   });
 
   it("rejects actions once the match is completed", () => {
@@ -1405,7 +1437,16 @@ describe("engine-core API skeleton", () => {
     ]);
 
     const result = resumeDecision(state, { type: "keepOpeningHand" });
-    expect(result.state.pendingDecision).toBeUndefined();
+    expect(result.state.pendingDecision?.type).toBe("mulligan");
+    expect(result.state.pendingDecision?.playerId).toBe(asId("p2"));
+    expect(result.state.status).toBe("setup");
+
+    const finishedSetup = resumeDecision(result.state, {
+      type: "keepOpeningHand"
+    });
+    expect(finishedSetup.state.pendingDecision).toBeUndefined();
+    expect(finishedSetup.state.status).toBe("active");
+    expect(finishedSetup.state.turn.phase).toBe("refresh");
   });
 
   it("rejects non-decision actions while a decision is pending", () => {

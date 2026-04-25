@@ -1440,6 +1440,8 @@ export function createInitialState(input: CreateInitialStateInput): GameState {
 
   if (input.pendingDecision) {
     state.pendingDecision = cloneValue(input.pendingDecision);
+  } else if (state.status === "setup") {
+    state.pendingDecision = createSetupMulliganDecision(state);
   }
   if (input.battle) {
     state.battle = cloneValue(input.battle);
@@ -1573,6 +1575,24 @@ function hasLegalResponsesForDecision(
     default:
       return false;
   }
+}
+
+function createSetupMulliganDecision(
+  state: Pick<GameState, "players" | "turn">
+): PendingDecision {
+  const playerId = state.turn.activePlayer;
+  const player = state.players[playerId];
+  if (!player) {
+    throw new Error(`Unknown setup player ${playerId}`);
+  }
+
+  return {
+    id: `setup-mulligan-${playerId}` as PendingDecision["id"],
+    type: "mulligan",
+    playerId,
+    handCount: player.hand.length,
+    visibility: { type: "private", playerIds: [playerId] }
+  };
 }
 
 function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
@@ -1976,15 +1996,17 @@ export function getLegalActions(
     return [...legal, ...legalResponsesForDecision(state.pendingDecision)];
   }
 
-  if (state.status === "setup") {
-    return legal;
-  }
-
   if (state.turn.activePlayer !== playerId) {
     return legal;
   }
 
-  if (state.turn.phase === "main" || state.turn.phase === "end") {
+  if (
+    state.turn.phase === "refresh" ||
+    state.turn.phase === "draw" ||
+    state.turn.phase === "don" ||
+    state.turn.phase === "main" ||
+    state.turn.phase === "end"
+  ) {
     legal.push({ type: "endMainPhase" });
   }
   return legal;
@@ -2044,6 +2066,45 @@ export function applyAction(state: GameState, action: Action): EngineResult {
   const nextState = cloneStateForMutation(state);
   switch (action.type) {
     case "endMainPhase": {
+      if (state.turn.phase === "refresh") {
+        nextState.turn.phase = "draw";
+        return finalizeResult(state, nextState, [
+          {
+            type: "phaseEnded",
+            payload: { phase: "refresh", playerId: state.turn.activePlayer }
+          },
+          {
+            type: "phaseStarted",
+            payload: { phase: "draw", playerId: state.turn.activePlayer }
+          }
+        ]);
+      }
+      if (state.turn.phase === "draw") {
+        nextState.turn.phase = "don";
+        return finalizeResult(state, nextState, [
+          {
+            type: "phaseEnded",
+            payload: { phase: "draw", playerId: state.turn.activePlayer }
+          },
+          {
+            type: "phaseStarted",
+            payload: { phase: "don", playerId: state.turn.activePlayer }
+          }
+        ]);
+      }
+      if (state.turn.phase === "don") {
+        nextState.turn.phase = "main";
+        return finalizeResult(state, nextState, [
+          {
+            type: "phaseEnded",
+            payload: { phase: "don", playerId: state.turn.activePlayer }
+          },
+          {
+            type: "phaseStarted",
+            payload: { phase: "main", playerId: state.turn.activePlayer }
+          }
+        ]);
+      }
       if (state.turn.phase === "main") {
         nextState.turn.phase = "end";
         return finalizeResult(state, nextState, [
@@ -2075,7 +2136,7 @@ export function applyAction(state: GameState, action: Action): EngineResult {
         ]);
       }
       throw new Error(
-        "endMainPhase is only valid during the main or end phase"
+        "endMainPhase is only valid during refresh, draw, don, main, or end phase"
       );
     }
     default:
@@ -2111,6 +2172,35 @@ export function resumeDecision(
     }
     player.hasMulliganed = response.type === "mulligan";
     player.keptOpeningHand = response.type === "keepOpeningHand";
+    if (state.status === "setup") {
+      const waitingPlayerId = (
+        [state.turn.activePlayer, state.turn.nonActivePlayer] as PlayerId[]
+      ).find((candidateId) => {
+        const candidate = nextState.players[candidateId];
+        return (
+          candidate !== undefined &&
+          !candidate.hasMulliganed &&
+          !candidate.keptOpeningHand
+        );
+      });
+
+      if (waitingPlayerId && waitingPlayerId !== pendingDecision.playerId) {
+        const waitingPlayer = nextState.players[waitingPlayerId];
+        if (!waitingPlayer) {
+          throw new Error(`Unknown setup player ${waitingPlayerId}`);
+        }
+        nextState.pendingDecision = {
+          id: `setup-mulligan-${waitingPlayerId}` as PendingDecision["id"],
+          type: "mulligan",
+          playerId: waitingPlayerId,
+          handCount: waitingPlayer.hand.length,
+          visibility: { type: "private", playerIds: [waitingPlayerId] }
+        };
+      } else {
+        nextState.status = "active";
+        nextState.turn.phase = "refresh";
+      }
+    }
     return finalizeResult(state, nextState, [
       {
         type: "mulliganResolved",
