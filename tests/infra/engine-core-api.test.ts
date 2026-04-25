@@ -345,26 +345,10 @@ function makeTimerState(): TimerState {
 function makePendingDecision(): PendingDecision {
   return {
     id: asId("decision-1"),
-    type: "selectCards",
+    type: "mulligan",
     playerId: asId("p1"),
     visibility: { type: "private", playerIds: [asId("p1")] },
-    request: {
-      chooser: "self",
-      zone: "hand",
-      player: "self",
-      min: 1,
-      max: 1,
-      allowFewerIfUnavailable: false,
-      visibility: "privateToChooser"
-    },
-    candidates: [
-      {
-        instanceId: asId("p1-hand-1"),
-        cardId: asId("char-2"),
-        owner: asId("p1"),
-        controller: asId("p1")
-      }
-    ]
+    handCount: 1
   };
 }
 
@@ -476,7 +460,7 @@ describe("engine-core bootstrap surface", () => {
     expect(result.events[0]?.type).toBe("gameOver");
   });
 
-  it("rejects unsupported gameplay actions and unsupported decision runtime", () => {
+  it("rejects unsupported gameplay actions and invalid mulligan responses", () => {
     const baseState = createInitialState(makeBaseInput());
     const baselineHash = hashGameState(baseState);
 
@@ -492,10 +476,10 @@ describe("engine-core bootstrap surface", () => {
 
     expect(() =>
       resumeDecision(stateWithDecision, {
-        type: "cardSelection",
-        selected: [{ instanceId: asId("p1-hand-1") }]
+        type: "orderedIds",
+        ids: [asId("queue-1")]
       })
-    ).toThrowError(/out of scope/);
+    ).toThrowError(/Mulligan decisions only accept/);
     expect(hashGameState(stateWithDecision)).toBe(decisionHash);
   });
 
@@ -526,7 +510,7 @@ describe("engine-core bootstrap surface", () => {
     const opponentView = filterStateForPlayer(state, asId("p2"));
 
     expect(chooserView.pendingDecision?.id).toBe(input.pendingDecision.id);
-    expect(chooserView.pendingDecision?.type).toBe("selectCards");
+    expect(chooserView.pendingDecision?.type).toBe("mulligan");
     expect(
       chooserView.legalActions.some(
         (action) =>
@@ -547,10 +531,10 @@ describe("engine-core bootstrap surface", () => {
     const input = makeBaseInput();
     input.pendingDecision = {
       id: asId("decision-public"),
-      type: "chooseTriggerOrder",
+      type: "mulligan",
       playerId: asId("p1"),
       visibility: { type: "public" },
-      triggerIds: [asId("trigger-1"), asId("trigger-2")]
+      handCount: 1
     };
 
     const opponentView = filterStateForPlayer(
@@ -559,17 +543,17 @@ describe("engine-core bootstrap surface", () => {
     );
 
     expect(opponentView.pendingDecision?.id).toBe(asId("decision-public"));
-    expect(opponentView.pendingDecision?.type).toBe("chooseTriggerOrder");
+    expect(opponentView.pendingDecision?.type).toBe("mulligan");
   });
 
   it("rejects replayOnly pending decisions from live states", () => {
     const input = makeBaseInput();
     input.pendingDecision = {
       id: asId("decision-replay-only"),
-      type: "chooseTriggerOrder",
+      type: "mulligan",
       playerId: asId("p1"),
       visibility: { type: "replayOnly" },
-      triggerIds: [asId("trigger-1"), asId("trigger-2")]
+      handCount: 1
     };
 
     expect(() => createInitialState(input)).toThrowError(/cannot answer/i);
@@ -579,10 +563,10 @@ describe("engine-core bootstrap surface", () => {
     const invalidInput = makeBaseInput();
     invalidInput.pendingDecision = {
       id: asId("decision-chooser-hidden"),
-      type: "chooseTriggerOrder",
+      type: "mulligan",
       playerId: asId("p1"),
       visibility: { type: "serverOnly" },
-      triggerIds: [asId("trigger-1"), asId("trigger-2")]
+      handCount: 1
     };
 
     expect(() => createInitialState(invalidInput)).toThrowError(
@@ -590,98 +574,83 @@ describe("engine-core bootstrap surface", () => {
     );
   });
 
-  it("rejects replayOnly card-selection requests from live states", () => {
+  it("rejects non-mulligan pending decisions from live states", () => {
     const input = makeBaseInput();
     input.pendingDecision = {
-      id: asId("decision-selection-replay-only"),
-      type: "selectCards",
+      id: asId("decision-non-mulligan"),
+      type: "chooseTriggerOrder",
       playerId: asId("p1"),
       visibility: { type: "private", playerIds: [asId("p1")] },
-      request: {
-        chooser: "self",
-        zone: "hand",
-        player: "self",
-        min: 1,
-        max: 1,
-        allowFewerIfUnavailable: false,
-        visibility: "replayOnly"
-      },
-      candidates: [
-        {
-          instanceId: asId("p1-hand-1"),
-          cardId: asId("char-2"),
-          owner: asId("p1"),
-          controller: asId("p1")
-        }
-      ]
+      triggerIds: [asId("trigger-1"), asId("trigger-2")]
     };
 
     expect(() => createInitialState(input)).toThrowError(/cannot answer/i);
   });
 
-  it("fails closed when a live public decision card ref has no instanceId", () => {
+  it("resolves keepOpeningHand mulligans", () => {
     const input = makeBaseInput();
-    input.pendingDecision = {
-      id: asId("decision-missing-instance"),
-      type: "chooseOptionalActivation",
-      playerId: asId("p1"),
-      visibility: { type: "private", playerIds: [asId("p1")] },
-      effectId: asId("effect-1"),
-      source: {
-        cardId: asId("char-2"),
-        owner: asId("p1"),
-        controller: asId("p1")
-      }
-    };
+    input.pendingDecision = makePendingDecision();
+    const result = resumeDecision(createInitialState(input), {
+      type: "keepOpeningHand"
+    });
 
-    expect(() => createInitialState(input)).toThrowError(/instanceId/i);
+    expect(result.state.pendingDecision).toBeUndefined();
+    expect(result.state.stateSeq).toBe(1);
+    expect(result.state.actionSeq).toBe(1);
+    expect(result.state.players[asId<PlayerId>("p1")]?.keptOpeningHand).toBe(
+      true
+    );
+    expect(result.state.players[asId<PlayerId>("p1")]?.hasMulliganed).toBe(
+      false
+    );
+    expect(result.events[0]?.type).toBe("mulliganResolved");
   });
 
-  it("rejects life-trigger decisions whose live public refs cannot render", () => {
+  it("hands setup mulligan priority to the second player, then exits setup", () => {
     const input = makeBaseInput();
-    input.pendingDecision = {
-      id: asId("decision-life-trigger-missing-instance"),
-      type: "confirmTriggerFromLife",
-      playerId: asId("p1"),
-      visibility: { type: "private", playerIds: [asId("p1")] },
-      card: {
-        cardId: asId("life-1"),
-        owner: asId("p1"),
-        controller: asId("p1")
-      }
-    };
+    input.status = "setup";
+    input.pendingDecision = makePendingDecision();
 
-    expect(() => createInitialState(input)).toThrowError(/instanceId/i);
+    const firstResult = resumeDecision(createInitialState(input), {
+      type: "keepOpeningHand"
+    });
+
+    expect(firstResult.state.status).toBe("setup");
+    expect(firstResult.state.pendingDecision?.type).toBe("mulligan");
+    expect(firstResult.state.pendingDecision?.playerId).toBe(asId("p2"));
+
+    const secondResult = resumeDecision(firstResult.state, {
+      type: "keepOpeningHand"
+    });
+
+    expect(secondResult.state.status).toBe("active");
+    expect(secondResult.state.pendingDecision).toBeUndefined();
+    expect(
+      secondResult.state.players[asId<PlayerId>("p2")]?.keptOpeningHand
+    ).toBe(true);
   });
 
-  it("rejects candidate-based decisions without instanceIds in test mode", () => {
-    const invalidInput = makeBaseInput();
-    invalidInput.pendingDecision = {
-      id: asId("decision-missing-candidate-instance"),
-      type: "selectCards",
-      playerId: asId("p1"),
-      visibility: { type: "private", playerIds: [asId("p1")] },
-      request: {
-        chooser: "self",
-        min: 1,
-        max: 1,
-        allowFewerIfUnavailable: false,
-        visibility: "privateToChooser"
-      },
-      candidates: [
-        {
-          cardId: asId("char-2"),
-          owner: asId("p1"),
-          controller: asId("p1")
-        }
-      ]
-    };
+  it("resolves mulligan redraws deterministically", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = makePendingDecision();
+    const before = createInitialState(input);
+    const originalHandIds = before.players[asId<PlayerId>("p1")]!.hand.map(
+      (card) => card.instanceId
+    );
+    const result = resumeDecision(before, { type: "mulligan" });
+    const nextPlayer = result.state.players[asId<PlayerId>("p1")]!;
 
-    expect(() =>
-      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () =>
-        createInitialState(invalidInput)
-      )
-    ).toThrowError(/instanceId/i);
+    expect(result.state.pendingDecision).toBeUndefined();
+    expect(nextPlayer.hasMulliganed).toBe(true);
+    expect(nextPlayer.keptOpeningHand).toBe(false);
+    expect(result.state.rng.callCount).toBe(1);
+    expect(nextPlayer.hand).toHaveLength(1);
+    expect(nextPlayer.deck).toHaveLength(2);
+    expect(nextPlayer.hand[0]?.zone).toEqual(makeZone("hand", "p1", 0));
+    expect(nextPlayer.deck[0]?.zone).toEqual(makeZone("deck", "p1", 0));
+    expect(originalHandIds).not.toEqual(
+      nextPlayer.hand.map((card) => card.instanceId)
+    );
   });
 
   it("runs constructor invariants in test mode", () => {
@@ -705,182 +674,6 @@ describe("engine-core bootstrap surface", () => {
         createInitialState(invalidInput)
       )
     ).toThrowError(/Duplicate instance id/);
-  });
-
-  it("rejects deadlocked pending decisions in test mode", () => {
-    const invalidInput = makeBaseInput();
-    invalidInput.pendingDecision = {
-      id: asId("decision-deadlocked"),
-      type: "selectCards",
-      playerId: asId("p1"),
-      visibility: { type: "private", playerIds: [asId("p1")] },
-      request: {
-        chooser: "self",
-        min: 1,
-        max: 1,
-        allowFewerIfUnavailable: false,
-        visibility: "privateToChooser"
-      },
-      candidates: []
-    };
-
-    expect(() =>
-      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () =>
-        createInitialState(invalidInput)
-      )
-    ).toThrowError(/no legal responses/i);
-  });
-
-  it("honors allowFewerIfUnavailable when enumerating selection responses", () => {
-    const input = makeBaseInput();
-    input.pendingDecision = {
-      id: asId("decision-allow-fewer"),
-      type: "selectCards",
-      playerId: asId("p1"),
-      visibility: { type: "private", playerIds: [asId("p1")] },
-      request: {
-        chooser: "self",
-        min: 2,
-        max: 2,
-        allowFewerIfUnavailable: true,
-        visibility: "privateToChooser"
-      },
-      candidates: [
-        {
-          instanceId: asId("p1-hand-1"),
-          cardId: asId("char-2"),
-          owner: asId("p1"),
-          controller: asId("p1")
-        }
-      ]
-    };
-
-    const state = createInitialState(input);
-    const actions = getLegalActions(state, asId("p1"));
-
-    expect(actions).toContainEqual({
-      type: "respondToDecision",
-      decisionId: asId("decision-allow-fewer"),
-      response: {
-        type: "cardSelection",
-        selected: [{ instanceId: asId("p1-hand-1") }]
-      }
-    });
-
-    expect(() =>
-      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () => createInitialState(input))
-    ).not.toThrow();
-  });
-
-  it("enumerates all valid selectCards responses in getLegalActions", () => {
-    const input = makeBaseInput();
-    input.pendingDecision = {
-      id: asId("decision-all-select-responses"),
-      type: "selectCards",
-      playerId: asId("p1"),
-      visibility: { type: "private", playerIds: [asId("p1")] },
-      request: {
-        chooser: "self",
-        min: 1,
-        max: 1,
-        allowFewerIfUnavailable: false,
-        visibility: "privateToChooser"
-      },
-      candidates: [
-        {
-          instanceId: asId("candidate-1"),
-          cardId: asId("char-1"),
-          owner: asId("p1"),
-          controller: asId("p1")
-        },
-        {
-          instanceId: asId("candidate-2"),
-          cardId: asId("char-2"),
-          owner: asId("p1"),
-          controller: asId("p1")
-        }
-      ]
-    };
-
-    const actions = getLegalActions(
-      createInitialState(input),
-      asId("p1")
-    ).filter((action) => action.type === "respondToDecision");
-
-    expect(actions).toContainEqual({
-      type: "respondToDecision",
-      decisionId: asId("decision-all-select-responses"),
-      response: {
-        type: "cardSelection",
-        selected: [{ instanceId: asId("candidate-1") }]
-      }
-    });
-    expect(actions).toContainEqual({
-      type: "respondToDecision",
-      decisionId: asId("decision-all-select-responses"),
-      response: {
-        type: "cardSelection",
-        selected: [{ instanceId: asId("candidate-2") }]
-      }
-    });
-  });
-
-  it("does not fabricate impossible payCost responses", () => {
-    const input = makeBaseInput();
-    input.pendingDecision = {
-      id: asId("decision-pay-cost"),
-      type: "payCost",
-      playerId: asId("p1"),
-      visibility: { type: "private", playerIds: [asId("p1")] },
-      cost: { type: "restDon", count: 1 },
-      options: [
-        {
-          id: "pay-1",
-          cost: { type: "restDon", count: 1 },
-          selectableCards: [
-            {
-              instanceId: asId("p1-hand-1"),
-              cardId: asId("char-2"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: makeZone("hand", "p1", 0)
-            }
-          ],
-          selectableDon: [
-            {
-              instanceId: asId("p1-cost-1"),
-              cardId: asId("don-1"),
-              owner: asId("p1"),
-              controller: asId("p1"),
-              zone: makeZone("costArea", "p1", 0)
-            }
-          ],
-          min: 1,
-          max: 1
-        }
-      ]
-    };
-
-    const actions = getLegalActions(
-      createInitialState(input),
-      asId("p1")
-    ).filter((action) => action.type === "respondToDecision");
-
-    expect(actions).toHaveLength(2);
-    for (const action of actions) {
-      if (action.type !== "respondToDecision") {
-        continue;
-      }
-
-      expect(action.response.type).toBe("payment");
-      if (action.response.type !== "payment") {
-        continue;
-      }
-      const selectedCount =
-        (action.response.selection.selectedCards?.length ?? 0) +
-        (action.response.selection.selectedDon?.length ?? 0);
-      expect(selectedCount).toBe(1);
-    }
   });
 
   it("computes a conservative bootstrap view for cards", () => {

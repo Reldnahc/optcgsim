@@ -56,126 +56,6 @@ function compareStrings(left: string, right: string): number {
   return 0;
 }
 
-function chooseCombinations<T>(items: T[], count: number): T[][] {
-  if (count === 0) {
-    return [[]];
-  }
-  if (count > items.length) {
-    return [];
-  }
-
-  const results: T[][] = [];
-  const walk = (startIndex: number, current: T[]): void => {
-    if (current.length === count) {
-      results.push([...current]);
-      return;
-    }
-    for (let index = startIndex; index < items.length; index += 1) {
-      const item = items[index];
-      if (item === undefined) {
-        continue;
-      }
-      current.push(item);
-      walk(index + 1, current);
-      current.pop();
-    }
-  };
-  walk(0, []);
-  return results;
-}
-
-function chooseCombinationsInRange<T>(
-  items: T[],
-  minCount: number,
-  maxCount: number
-): T[][] {
-  const normalizedMin = Math.max(0, minCount);
-  const normalizedMax = Math.min(items.length, maxCount);
-  const results: T[][] = [];
-
-  for (let count = normalizedMin; count <= normalizedMax; count += 1) {
-    results.push(...chooseCombinations(items, count));
-  }
-
-  return results;
-}
-
-function getSelectableCountRange(
-  candidateCount: number,
-  minCount: number,
-  maxCount: number,
-  allowFewerIfUnavailable: boolean
-): { min: number; max: number } {
-  const max = Math.min(candidateCount, maxCount);
-  const min = allowFewerIfUnavailable
-    ? Math.min(minCount, candidateCount)
-    : minCount;
-
-  return { min, max };
-}
-
-function choosePermutations<T>(items: T[]): T[][] {
-  if (items.length <= 1) {
-    return [items];
-  }
-  const results: T[][] = [];
-  items.forEach((item, index) => {
-    const rest = [...items.slice(0, index), ...items.slice(index + 1)];
-    for (const permutation of choosePermutations(rest)) {
-      results.push([item, ...permutation]);
-    }
-  });
-  return results;
-}
-
-function enumeratePaymentSelections(
-  option: Extract<PendingDecision, { type: "payCost" }>["options"][number]
-): Extract<DecisionResponse, { type: "payment" }>["selection"][] {
-  const selectableCards = option.selectableCards ?? [];
-  const selectableDon = option.selectableDon ?? [];
-  const combined = [
-    ...selectableCards.map((card) => ({ kind: "card" as const, card })),
-    ...selectableDon.map((card) => ({ kind: "don" as const, card }))
-  ];
-
-  const counts = getSelectableCountRange(
-    combined.length,
-    option.min,
-    option.max,
-    false
-  );
-  if (counts.min > counts.max) {
-    return [];
-  }
-
-  return chooseCombinationsInRange(combined, counts.min, counts.max).map(
-    (selected) => {
-      const selection: Extract<
-        DecisionResponse,
-        { type: "payment" }
-      >["selection"] = {
-        optionId: option.id
-      };
-
-      const selectedCards = selected
-        .filter((entry) => entry.kind === "card")
-        .map((entry) => toPublicPaymentCardRef(entry.card));
-      const selectedDon = selected
-        .filter((entry) => entry.kind === "don")
-        .map((entry) => toPublicPaymentCardRef(entry.card));
-
-      if (selectedCards.length > 0) {
-        selection.selectedCards = selectedCards;
-      }
-      if (selectedDon.length > 0) {
-        selection.selectedDon = selectedDon;
-      }
-
-      return selection;
-    }
-  );
-}
-
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value);
@@ -233,6 +113,67 @@ function toActionSeq(value: number): GameState["actionSeq"] {
 
 function toSha256(value: string): Sha256 {
   return value as Sha256;
+}
+
+function setIndexedZone(
+  cards: CardInstance[],
+  zone: "deck" | "hand",
+  playerId: PlayerId
+): void {
+  cards.forEach((card, index) => {
+    card.zone = {
+      zone,
+      playerId,
+      index
+    };
+  });
+}
+
+function deterministicShuffleCards(
+  cards: CardInstance[],
+  rng: GameState["rng"]
+): CardInstance[] {
+  const shuffleSeed = createHash("sha256")
+    .update(
+      [
+        rng.algorithm,
+        rng.seed ?? "",
+        rng.seedCommitment ?? "",
+        rng.internalState,
+        String(rng.callCount)
+      ].join("|")
+    )
+    .digest("hex");
+
+  const shuffled = [...cards].sort((left, right) => {
+    const leftRank = createHash("sha256")
+      .update(`${shuffleSeed}|${left.instanceId}`)
+      .digest("hex");
+    const rightRank = createHash("sha256")
+      .update(`${shuffleSeed}|${right.instanceId}`)
+      .digest("hex");
+    return (
+      compareStrings(leftRank, rightRank) ||
+      compareStrings(left.instanceId, right.instanceId)
+    );
+  });
+
+  rng.internalState = shuffleSeed;
+  rng.callCount += 1;
+
+  return shuffled;
+}
+
+function applyMulliganRedraw(player: PlayerState, rng: GameState["rng"]): void {
+  const handCount = player.hand.length;
+  const shuffled = deterministicShuffleCards(
+    [...player.deck, ...player.hand],
+    rng
+  );
+  player.hand = shuffled.slice(0, handCount);
+  player.deck = shuffled.slice(handCount);
+  setIndexedZone(player.hand, "hand", player.playerId);
+  setIndexedZone(player.deck, "deck", player.playerId);
 }
 
 function resolveCardMetadata(state: GameState, card: CardInstance) {
@@ -373,15 +314,12 @@ function canViewerSeePendingDecisionLive(
 function canChooserAnswerPendingDecisionLive(
   pendingDecision: PendingDecision
 ): boolean {
-  if (
-    !canViewerSeePendingDecisionLive(pendingDecision, pendingDecision.playerId)
-  ) {
+  if (pendingDecision.type !== "mulligan") {
     return false;
   }
 
   if (
-    pendingDecision.type === "selectCards" &&
-    pendingDecision.request.visibility === "replayOnly"
+    !canViewerSeePendingDecisionLive(pendingDecision, pendingDecision.playerId)
   ) {
     return false;
   }
@@ -397,15 +335,6 @@ function requireInstanceId(
     throw new Error(`${context} requires CardRef.instanceId`);
   }
   return ref.instanceId;
-}
-
-function requireAllCardRefsHaveInstanceIds(
-  refs: CardRef[],
-  context: string
-): void {
-  for (const ref of refs) {
-    requireInstanceId(ref, context);
-  }
 }
 
 function toPublicCardRef(ref: CardRef): PublicCardRef {
@@ -1160,200 +1089,15 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
           response: { type: "mulligan" }
         }
       ];
-    case "chooseTriggerOrder":
-      return choosePermutations(pendingDecision.triggerIds).map((ids) => ({
-        type: "respondToDecision",
-        decisionId: pendingDecision.id,
-        response: { type: "orderedIds", ids: [...ids] }
-      }));
-    case "chooseOptionalActivation":
-      return ["activate", "decline"].map((choice) => ({
-        type: "respondToDecision" as const,
-        decisionId: pendingDecision.id,
-        response: {
-          type: "optionalActivationChoice" as const,
-          choice: choice as "activate" | "decline"
-        }
-      }));
-    case "payCost":
-      return pendingDecision.options.flatMap((option) =>
-        enumeratePaymentSelections(option).map((selection) => ({
-          type: "respondToDecision" as const,
-          decisionId: pendingDecision.id,
-          response: {
-            type: "payment" as const,
-            selection
-          }
-        }))
-      );
-    case "selectTargets": {
-      requireAllCardRefsHaveInstanceIds(
-        pendingDecision.candidates,
-        "Decision response target candidates"
-      );
-      const counts = getSelectableCountRange(
-        pendingDecision.candidates.length,
-        pendingDecision.request.min,
-        pendingDecision.request.max,
-        pendingDecision.request.allowFewerIfUnavailable
-      );
-      const combos = chooseCombinationsInRange(
-        pendingDecision.candidates,
-        counts.min,
-        counts.max
-      );
-      return combos.map((selected) => ({
-        type: "respondToDecision",
-        decisionId: pendingDecision.id,
-        response: {
-          type: "targetSelection",
-          selected: selected.map((card) => ({
-            instanceId: requireInstanceId(
-              card,
-              "Decision response target selection"
-            )
-          }))
-        }
-      }));
-    }
-    case "selectCards": {
-      requireAllCardRefsHaveInstanceIds(
-        pendingDecision.candidates,
-        "Decision response card candidates"
-      );
-      const counts = getSelectableCountRange(
-        pendingDecision.candidates.length,
-        pendingDecision.request.min,
-        pendingDecision.request.max,
-        pendingDecision.request.allowFewerIfUnavailable
-      );
-      if (counts.min > counts.max) {
-        return [];
-      }
-
-      const combos = chooseCombinationsInRange(
-        pendingDecision.candidates,
-        counts.min,
-        counts.max
-      );
-      return combos.map((selected) => ({
-        type: "respondToDecision",
-        decisionId: pendingDecision.id,
-        response: {
-          type: "cardSelection",
-          selected: selected.map((card) => ({
-            instanceId: requireInstanceId(
-              card,
-              "Decision response card selection"
-            )
-          }))
-        }
-      }));
-    }
-    case "chooseEffectOption": {
-      const available = pendingDecision.options.filter(
-        (option) => option.availability !== "unavailable"
-      );
-      const combos = chooseCombinationsInRange(
-        available,
-        pendingDecision.min,
-        pendingDecision.max
-      );
-      return combos.map((selected) => ({
-        type: "respondToDecision",
-        decisionId: pendingDecision.id,
-        response: {
-          type: "effectOptionSelection",
-          optionIds: selected.map((option) => option.id)
-        }
-      }));
-    }
-    case "confirmTriggerFromLife":
-      return ["activateTrigger", "addToHand"].map((choice) => ({
-        type: "respondToDecision" as const,
-        decisionId: pendingDecision.id,
-        response: {
-          type: "lifeTriggerChoice" as const,
-          choice: choice as "activateTrigger" | "addToHand"
-        }
-      }));
-    case "chooseReplacement":
-      return [
-        ...pendingDecision.replacementIds.map((replacementId) => ({
-          type: "respondToDecision" as const,
-          decisionId: pendingDecision.id,
-          response: {
-            type: "replacementChoice" as const,
-            replacementId
-          }
-        })),
-        ...(pendingDecision.optional
-          ? [
-              {
-                type: "respondToDecision" as const,
-                decisionId: pendingDecision.id,
-                response: {
-                  type: "replacementChoice" as const,
-                  replacementId: null
-                }
-              }
-            ]
-          : [])
-      ];
-    case "orderCards":
-      requireAllCardRefsHaveInstanceIds(
-        pendingDecision.cards,
-        "Decision response order candidates"
-      );
-      return choosePermutations(pendingDecision.cards).map((ordered) => ({
-        type: "respondToDecision",
-        decisionId: pendingDecision.id,
-        response: {
-          type: "orderCards",
-          ordered: ordered.map((card) => ({
-            instanceId: requireInstanceId(card, "Decision response order cards")
-          }))
-        }
-      }));
-    case "chooseCharacterToTrashForOverflow":
-      requireAllCardRefsHaveInstanceIds(
-        pendingDecision.candidates,
-        "Decision response overflow candidates"
-      );
-      return pendingDecision.candidates.map((candidate) => ({
-        type: "respondToDecision",
-        decisionId: pendingDecision.id,
-        response: {
-          type: "chooseCharacterToTrash",
-          instanceId: requireInstanceId(
-            candidate,
-            "Decision response overflow trash"
-          )
-        }
-      }));
+    default:
+      return [];
   }
 }
 
 function hasLegalResponsesForDecision(
   pendingDecision: PendingDecision
 ): boolean {
-  switch (pendingDecision.type) {
-    case "selectCards": {
-      requireAllCardRefsHaveInstanceIds(
-        pendingDecision.candidates,
-        "Decision response card candidates"
-      );
-      const counts = getSelectableCountRange(
-        pendingDecision.candidates.length,
-        pendingDecision.request.min,
-        pendingDecision.request.max,
-        pendingDecision.request.allowFewerIfUnavailable
-      );
-      return counts.min <= counts.max;
-    }
-    default:
-      return legalResponsesForDecision(pendingDecision).length > 0;
-  }
+  return pendingDecision.type === "mulligan";
 }
 
 export function getLegalActions(
@@ -1450,8 +1194,80 @@ export function resumeDecision(
     throw new Error("No pending decision is active");
   }
 
-  void response;
-  throw new Error("Decision runtime is out of scope for ENG-001 bootstrap");
+  if (state.pendingDecision.type !== "mulligan") {
+    throw new Error(
+      `Unsupported pending decision in ENG-001 bootstrap: ${state.pendingDecision.type}`
+    );
+  }
+
+  if (response.type !== "keepOpeningHand" && response.type !== "mulligan") {
+    throw new Error(
+      "Mulligan decisions only accept keepOpeningHand or mulligan responses"
+    );
+  }
+
+  const nextState = cloneStateForMutation(state);
+  nextState.stateSeq = toStateSeq(Number(nextState.stateSeq) + 1);
+  nextState.actionSeq = toActionSeq(Number(nextState.actionSeq) + 1);
+
+  const pendingDecision = cloneValue(state.pendingDecision);
+  delete nextState.pendingDecision;
+
+  const player = nextState.players[pendingDecision.playerId];
+  if (!player) {
+    throw new Error(`Unknown player ${pendingDecision.playerId} for mulligan`);
+  }
+
+  if (response.type === "mulligan") {
+    applyMulliganRedraw(player, nextState.rng);
+    player.hasMulliganed = true;
+    player.keptOpeningHand = false;
+  } else {
+    player.hasMulliganed = false;
+    player.keptOpeningHand = true;
+  }
+
+  if (state.status === "setup") {
+    const waitingPlayerId = (
+      [state.turn.activePlayer, state.turn.nonActivePlayer] as PlayerId[]
+    ).find((candidateId) => {
+      const candidate = nextState.players[candidateId];
+      return (
+        candidate !== undefined &&
+        !candidate.hasMulliganed &&
+        !candidate.keptOpeningHand
+      );
+    });
+
+    if (waitingPlayerId && waitingPlayerId !== pendingDecision.playerId) {
+      const waitingPlayer = nextState.players[waitingPlayerId];
+      if (!waitingPlayer) {
+        throw new Error(`Unknown setup player ${waitingPlayerId}`);
+      }
+      nextState.pendingDecision = {
+        id: `setup-mulligan-${waitingPlayerId}` as PendingDecision["id"],
+        type: "mulligan",
+        playerId: waitingPlayerId,
+        handCount: waitingPlayer.hand.length,
+        visibility: { type: "private", playerIds: [waitingPlayerId] }
+      };
+    } else {
+      nextState.status = "active";
+    }
+  }
+
+  const event = appendEvent(nextState, {
+    type: "mulliganResolved",
+    actor: pendingDecision.playerId,
+    payload: toJsonValue({
+      playerId: pendingDecision.playerId,
+      choice: response.type
+    }),
+    causedBy: { type: "decision", decisionId: pendingDecision.id },
+    visibility: { type: "private", playerIds: [pendingDecision.playerId] }
+  });
+
+  return finalizeResult(nextState, [event]);
 }
 
 export function computeView(state: GameState): ComputedGameView {
