@@ -504,6 +504,19 @@ describe("engine-core bootstrap surface", () => {
     expect(result.events[0]?.type).toBe("gameOver");
   });
 
+  it("keeps concede legal while the match is frozen", () => {
+    const input = makeBaseInput();
+    input.status = "frozen";
+    const state = createInitialState(input);
+
+    expect(getLegalActions(state, asId("p1"))).toEqual([concedeAction("p1")]);
+    expect(getLegalActions(state, asId("p2"))).toEqual([concedeAction("p2")]);
+
+    const result = applyAction(state, concedeAction("p1"));
+    expect(result.state.status).toBe("completed");
+    expect(result.state.winner).toBe(asId("p2"));
+  });
+
   it("rejects unsupported gameplay actions and invalid mulligan responses", () => {
     const baseState = createInitialState(makeBaseInput());
     const baselineHash = hashGameState(baseState);
@@ -930,6 +943,78 @@ describe("engine-core bootstrap surface", () => {
         applyAction(state, concedeAction("p1"))
       )
     ).not.toThrow();
+  });
+
+  it("allows cancelled mustRemainInSameZone queue entries after the source moves", () => {
+    const state = createInitialState(makeBaseInput());
+    state.effectQueue.push({
+      id: asId("queue-cancelled"),
+      state: "cancelled",
+      timingWindowId: asId("timing-cancelled"),
+      generation: 1,
+      controllerId: asId("p1"),
+      source: {
+        instanceId: asId("p1-char-1"),
+        cardId: asId("char-1"),
+        owner: asId("p1"),
+        controller: asId("p1"),
+        zone: makeZone("trash", "p1", 0)
+      },
+      sourceSnapshot: {
+        instanceId: asId("p1-char-1"),
+        cardId: asId("char-1"),
+        owner: asId("p1"),
+        controller: asId("p1"),
+        zone: makeZone("characterArea", "p1", 0),
+        state: "active",
+        attachedDonCount: 0,
+        name: "char-1",
+        category: "character",
+        colors: ["red"],
+        cost: 1,
+        power: 5000,
+        counter: 1000,
+        attributes: ["slash"],
+        types: ["character"]
+      },
+      effectBlockId: asId("effect-cancelled"),
+      orderingGroup: "turnPlayer",
+      createdAtEventSeq: 1,
+      queuedAtStateSeq: 0 as (typeof state)["stateSeq"],
+      sourcePresencePolicy: "mustRemainInSameZone",
+      causedBy: { type: "rule", rule: "test" }
+    });
+
+    expect(() =>
+      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () =>
+        applyAction(state, concedeAction("p1"))
+      )
+    ).not.toThrow();
+  });
+
+  it("rejects duplicate attached DON references on the same host", () => {
+    const input = makeBaseInput();
+    const p1 = asId<PlayerId>("p1");
+    const attachedCard = makeCard({
+      instanceId: "p1-attached-1",
+      cardId: "don-1",
+      owner: "p1",
+      zone: {
+        zone: "attached",
+        playerId: p1,
+        hostInstanceId: input.players[p1]!.leader.instanceId
+      }
+    });
+    attachedCard.state = "attached";
+    input.players[p1]!.leader.attachedDon = [
+      attachedCard.instanceId,
+      attachedCard.instanceId
+    ];
+    input.players[p1]!.attachedCards = [attachedCard];
+
+    expect(() =>
+      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () => createInitialState(input))
+    ).toThrowError(/duplicate attached card/i);
   });
 
   it("computes a conservative bootstrap view for cards", () => {

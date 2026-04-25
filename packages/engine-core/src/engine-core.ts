@@ -880,6 +880,11 @@ function assertAttachedDonConsistency(state: GameState): void {
 
     for (const host of hosts) {
       for (const attachedId of host.attachedDon) {
+        if (referenced.has(attachedId)) {
+          throw new Error(
+            `Host ${host.instanceId} references duplicate attached card ${attachedId}`
+          );
+        }
         referenced.add(attachedId);
         const attached = attachedById.get(attachedId);
         if (!attached) {
@@ -1040,6 +1045,9 @@ function assertEffectQueueEntriesAreResolvableOrCancelled(
     }
 
     if (entry.sourcePresencePolicy === "mustRemainInSameZone") {
+      if (entry.state === "cancelled") {
+        continue;
+      }
       const expectedZone = entry.source.zone ?? entry.sourceSnapshot.zone;
       if (stableStringify(liveSource.zone) !== stableStringify(expectedZone)) {
         throw new Error(
@@ -1235,12 +1243,12 @@ export function getLegalActions(
     return [];
   }
 
-  if (
-    state.status === "frozen" ||
-    state.status === "completed" ||
-    state.status === "errored"
-  ) {
+  if (state.status === "completed" || state.status === "errored") {
     return [];
+  }
+
+  if (state.status === "frozen") {
+    return [{ type: "concede", playerId }];
   }
 
   if (state.pendingDecision) {
@@ -1266,12 +1274,12 @@ export function getLegalActions(
 }
 
 export function applyAction(state: GameState, action: Action): EngineResult {
-  if (
-    state.status === "frozen" ||
-    state.status === "completed" ||
-    state.status === "errored"
-  ) {
-    throw new Error("Cannot mutate a frozen or terminal match");
+  if (state.status === "completed" || state.status === "errored") {
+    throw new Error("Cannot mutate a terminal match");
+  }
+
+  if (state.status === "frozen" && action.type !== "concede") {
+    throw new Error("Cannot mutate a frozen match except by concession");
   }
 
   if (action.type === "respondToDecision") {
