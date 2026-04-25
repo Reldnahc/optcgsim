@@ -365,10 +365,19 @@ function toPublicDecisionVisibility(
   };
 }
 
+function requireInstanceId(
+  ref: CardRef,
+  context: string
+): NonNullable<CardRef["instanceId"]> {
+  if (ref.instanceId === undefined) {
+    throw new Error(`${context} requires CardRef.instanceId`);
+  }
+  return ref.instanceId;
+}
+
 function toPublicCardRef(ref: CardRef): PublicCardRef {
   return {
-    instanceId:
-      ref.instanceId ?? ("missing-instance" as PublicCardRef["instanceId"]),
+    instanceId: requireInstanceId(ref, "Live public card ref"),
     cardId: ref.cardId,
     owner: ref.owner,
     controller: ref.controller
@@ -377,9 +386,7 @@ function toPublicCardRef(ref: CardRef): PublicCardRef {
 
 function toPublicDecisionCardRef(ref: CardRef): PublicDecisionCardRef {
   return {
-    instanceId:
-      ref.instanceId ??
-      ("missing-instance" as PublicDecisionCardRef["instanceId"]),
+    instanceId: requireInstanceId(ref, "Live public decision card ref"),
     owner: ref.owner,
     controller: ref.controller,
     cardId: ref.cardId
@@ -442,7 +449,6 @@ function toPublicDecision(
 ): PublicDecision | undefined {
   const viewerIsChooser = pendingDecision.playerId === viewerId;
   const viewerCanSeeDecision =
-    viewerIsChooser ||
     pendingDecision.visibility.type === "public" ||
     (pendingDecision.visibility.type === "private" &&
       pendingDecision.visibility.playerIds.includes(viewerId));
@@ -1386,10 +1392,20 @@ export function filterStateForPlayer(
     throw new Error(`Unknown opponent for PlayerView: ${playerId}`);
   }
 
+  const publicDecision = state.pendingDecision
+    ? toPublicDecision(state.pendingDecision, playerId)
+    : undefined;
+
   const legalActions: PublicLegalAction[] = [];
   const seenDecisionIds = new Set<string>();
   for (const action of getLegalActions(state, playerId)) {
     if (action.type === "respondToDecision") {
+      if (
+        publicDecision === undefined ||
+        publicDecision.id !== action.decisionId
+      ) {
+        continue;
+      }
       if (seenDecisionIds.has(action.decisionId)) {
         continue;
       }
@@ -1422,9 +1438,6 @@ export function filterStateForPlayer(
     view.battle = cloneValue(state.battle);
   }
 
-  const publicDecision = state.pendingDecision
-    ? toPublicDecision(state.pendingDecision, playerId)
-    : undefined;
   if (publicDecision) {
     view.pendingDecision = publicDecision;
   }
