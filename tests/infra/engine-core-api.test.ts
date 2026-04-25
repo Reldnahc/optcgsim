@@ -25,6 +25,7 @@ import type {
   PendingDecision,
   PlayerId,
   PlayerState,
+  TimerState,
   ResolvedCard,
   RngState,
   SpectatorPolicy,
@@ -323,6 +324,24 @@ function makeRngState(): RngState {
   };
 }
 
+function makeTimerState(): TimerState {
+  return {
+    drainingPlayerId: asId("p1"),
+    players: {
+      [asId<PlayerId>("p1")]: {
+        playerId: asId("p1"),
+        remainingMs: 120000,
+        isRunning: true
+      },
+      [asId<PlayerId>("p2")]: {
+        playerId: asId("p2"),
+        remainingMs: 118000,
+        isRunning: false
+      }
+    }
+  };
+}
+
 function makePendingDecision(): PendingDecision {
   return {
     id: asId("decision-1"),
@@ -361,6 +380,7 @@ function makeBaseInput(): CreateInitialStateInput {
       [asId<PlayerId>("p1")]: makePlayerState("p1", "leader-1", "char-2"),
       [asId<PlayerId>("p2")]: makePlayerState("p2", "leader-2", "char-1")
     },
+    timers: makeTimerState(),
     turn: makeTurnState(),
     status: "active"
   };
@@ -407,6 +427,9 @@ describe("engine-core bootstrap surface", () => {
     expect(view.opponent.life.count).toBe(2);
     expect(view.opponent.life.faceUpCards).toHaveLength(1);
     expect(view.opponent.life.faceUpCards[0]?.cardId).toBe(asId("life-2"));
+    expect(view.timers.players[asId<PlayerId>("p1")]?.remainingMs).toBe(120000);
+    expect(view.timers.players[asId<PlayerId>("p1")]?.isRunning).toBe(true);
+    expect(view.timers.players[asId<PlayerId>("p2")]?.remainingMs).toBe(118000);
     expect((view as unknown as Record<string, unknown>)["rng"]).toBeUndefined();
     expect(
       (view as unknown as Record<string, unknown>)["effectQueue"]
@@ -611,9 +634,24 @@ describe("engine-core bootstrap surface", () => {
       }
     };
 
-    expect(() =>
-      filterStateForPlayer(createInitialState(input), asId("p1"))
-    ).toThrowError(/instanceId/i);
+    expect(() => createInitialState(input)).toThrowError(/instanceId/i);
+  });
+
+  it("rejects life-trigger decisions whose live public refs cannot render", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = {
+      id: asId("decision-life-trigger-missing-instance"),
+      type: "confirmTriggerFromLife",
+      playerId: asId("p1"),
+      visibility: { type: "private", playerIds: [asId("p1")] },
+      card: {
+        cardId: asId("life-1"),
+        owner: asId("p1"),
+        controller: asId("p1")
+      }
+    };
+
+    expect(() => createInitialState(input)).toThrowError(/instanceId/i);
   });
 
   it("rejects candidate-based decisions without instanceIds in test mode", () => {
@@ -734,26 +772,34 @@ describe("engine-core bootstrap surface", () => {
     ).not.toThrow();
   });
 
-  it("uses a bounded canonical response for large selectCards decisions", () => {
+  it("enumerates all valid selectCards responses in getLegalActions", () => {
     const input = makeBaseInput();
     input.pendingDecision = {
-      id: asId("decision-large-select"),
+      id: asId("decision-all-select-responses"),
       type: "selectCards",
       playerId: asId("p1"),
       visibility: { type: "private", playerIds: [asId("p1")] },
       request: {
         chooser: "self",
-        min: 2,
-        max: 6,
+        min: 1,
+        max: 1,
         allowFewerIfUnavailable: false,
         visibility: "privateToChooser"
       },
-      candidates: Array.from({ length: 8 }, (_, index) => ({
-        instanceId: asId(`candidate-${index + 1}`),
-        cardId: asId("char-2"),
-        owner: asId("p1"),
-        controller: asId("p1")
-      }))
+      candidates: [
+        {
+          instanceId: asId("candidate-1"),
+          cardId: asId("char-1"),
+          owner: asId("p1"),
+          controller: asId("p1")
+        },
+        {
+          instanceId: asId("candidate-2"),
+          cardId: asId("char-2"),
+          owner: asId("p1"),
+          controller: asId("p1")
+        }
+      ]
     };
 
     const actions = getLegalActions(
@@ -761,17 +807,22 @@ describe("engine-core bootstrap surface", () => {
       asId("p1")
     ).filter((action) => action.type === "respondToDecision");
 
-    expect(actions).toHaveLength(1);
-    const [action] = actions;
-    expect(action?.type).toBe("respondToDecision");
-    if (action?.type !== "respondToDecision") {
-      throw new Error("expected canonical selectCards response");
-    }
-    expect(action.response.type).toBe("cardSelection");
-    if (action.response.type !== "cardSelection") {
-      throw new Error("expected cardSelection response");
-    }
-    expect(action.response.selected).toHaveLength(2);
+    expect(actions).toContainEqual({
+      type: "respondToDecision",
+      decisionId: asId("decision-all-select-responses"),
+      response: {
+        type: "cardSelection",
+        selected: [{ instanceId: asId("candidate-1") }]
+      }
+    });
+    expect(actions).toContainEqual({
+      type: "respondToDecision",
+      decisionId: asId("decision-all-select-responses"),
+      response: {
+        type: "cardSelection",
+        selected: [{ instanceId: asId("candidate-2") }]
+      }
+    });
   });
 
   it("does not fabricate impossible payCost responses", () => {

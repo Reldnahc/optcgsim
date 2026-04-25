@@ -10,7 +10,8 @@ import type {
   PlayerState,
   TurnState,
   RngState,
-  CardId
+  CardId,
+  TimerState
 } from "@optcg/types";
 
 export interface CreateInitialStateInput {
@@ -21,6 +22,7 @@ export interface CreateInitialStateInput {
   matchConfig: MatchConfiguration;
   rng: RngState;
   players: Record<PlayerId, PlayerState>;
+  timers: TimerState;
   turn: TurnState;
   status?: GameState["status"];
   pendingDecision?: PendingDecision;

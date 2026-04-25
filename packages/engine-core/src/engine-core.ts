@@ -27,7 +27,6 @@ import type {
   PublicPaymentCardRef,
   PublicPaymentOption,
   PublicReplacementOption,
-  PublicTimerState,
   PublicTargetRequest,
   PublicTriggerOrderOption,
   Sha256,
@@ -339,21 +338,6 @@ function buildOpponentVisibleState(state: GameState, player: PlayerState) {
   }
 
   return visible;
-}
-
-function buildTimerState(state: GameState): PublicTimerState {
-  const players = Object.fromEntries(
-    getPlayerIds(state).map((playerId) => [
-      playerId,
-      {
-        playerId,
-        remainingMs: 0,
-        isRunning: false
-      }
-    ])
-  ) as PublicTimerState["players"];
-
-  return { players };
 }
 
 function toPublicDecisionVisibility(
@@ -995,6 +979,12 @@ function assertPendingDecisionIsValid(state: GameState): void {
   if (!hasLegalResponsesForDecision(state.pendingDecision)) {
     throw new Error("Pending decision has no legal responses");
   }
+
+  for (const playerId of getPlayerIds(state)) {
+    if (canViewerSeePendingDecisionLive(state.pendingDecision, playerId)) {
+      toPublicDecision(state.pendingDecision, playerId);
+    }
+  }
 }
 
 function assertEffectQueueEntriesAreResolvableOrCancelled(
@@ -1110,6 +1100,7 @@ export function createInitialState(input: CreateInitialStateInput): GameState {
     matchConfig: cloneValue(input.matchConfig),
     rng: cloneValue(input.rng),
     players: cloneValue(input.players),
+    timers: cloneValue(input.timers),
     turn: cloneValue(input.turn),
     effectQueue: [],
     continuousEffects: [],
@@ -1240,22 +1231,24 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         return [];
       }
 
-      const selected = pendingDecision.candidates.slice(0, counts.min);
-      return [
-        {
-          type: "respondToDecision",
-          decisionId: pendingDecision.id,
-          response: {
-            type: "cardSelection",
-            selected: selected.map((card) => ({
-              instanceId: requireInstanceId(
-                card,
-                "Decision response card selection"
-              )
-            }))
-          }
+      const combos = chooseCombinationsInRange(
+        pendingDecision.candidates,
+        counts.min,
+        counts.max
+      );
+      return combos.map((selected) => ({
+        type: "respondToDecision",
+        decisionId: pendingDecision.id,
+        response: {
+          type: "cardSelection",
+          selected: selected.map((card) => ({
+            instanceId: requireInstanceId(
+              card,
+              "Decision response card selection"
+            )
+          }))
         }
-      ];
+      }));
     }
     case "chooseEffectOption": {
       const available = pendingDecision.options.filter(
@@ -1549,7 +1542,7 @@ export function filterStateForPlayer(
     legalActions,
     revealedCards: [],
     effectEvents: [],
-    timers: buildTimerState(state)
+    timers: cloneValue(state.timers)
   };
 
   if (state.battle) {
