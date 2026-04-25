@@ -371,6 +371,7 @@ describe("engine-core API skeleton", () => {
     expect(nextTurn.state.turn.phase).toBe("refresh");
     expect(nextTurn.state.turn.activePlayer).toBe(asId("p2"));
     expect(nextTurn.state.turn.nonActivePlayer).toBe(asId("p1"));
+    expect(nextTurn.state.players[asId<PlayerId>("p2")]?.turnCount).toBe(1);
     expect(
       getLegalActions(nextTurn.state, asId("p2")).map((action) => action.type)
     ).toContain("endMainPhase");
@@ -1305,40 +1306,58 @@ describe("engine-core API skeleton", () => {
   });
 
   it("does not advertise respondToDecision when no legal responses exist", () => {
-    const state = createInitialState(
-      makeInput({
-        pendingDecision: {
-          id: asId("decision-no-legal-response"),
-          type: "chooseEffectOption",
-          playerId: asId("p1"),
-          visibility: { type: "private", playerIds: [asId("p1")] },
-          min: 1,
-          max: 1,
-          options: [
-            {
-              id: "unavailable-option",
-              label: "Unavailable",
-              effect: { type: "draw", count: 1, player: "self" },
-              availability: "unavailable"
-            }
-          ]
-        } satisfies PendingDecision
-      })
-    );
+    const originalNodeEnv = process.env["NODE_ENV"];
+    const originalVitest = process.env["VITEST"];
+    process.env["NODE_ENV"] = "development";
+    process.env["VITEST"] = "false";
 
-    expect(getLegalActions(state, asId("p1"))).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
-      }
-    ]);
+    try {
+      const state = createInitialState(
+        makeInput({
+          pendingDecision: {
+            id: asId("decision-no-legal-response"),
+            type: "chooseEffectOption",
+            playerId: asId("p1"),
+            visibility: { type: "private", playerIds: [asId("p1")] },
+            min: 1,
+            max: 1,
+            options: [
+              {
+                id: "unavailable-option",
+                label: "Unavailable",
+                effect: { type: "draw", count: 1, player: "self" },
+                availability: "unavailable"
+              }
+            ]
+          } satisfies PendingDecision
+        })
+      );
 
-    expect(filterStateForPlayer(state, asId("p1")).legalActions).toEqual([
-      {
-        type: "concede",
-        playerId: asId("p1")
+      expect(getLegalActions(state, asId("p1"))).toEqual([
+        {
+          type: "concede",
+          playerId: asId("p1")
+        }
+      ]);
+
+      expect(filterStateForPlayer(state, asId("p1")).legalActions).toEqual([
+        {
+          type: "concede",
+          playerId: asId("p1")
+        }
+      ]);
+    } finally {
+      if (originalNodeEnv === undefined) {
+        delete process.env["NODE_ENV"];
+      } else {
+        process.env["NODE_ENV"] = originalNodeEnv;
       }
-    ]);
+      if (originalVitest === undefined) {
+        delete process.env["VITEST"];
+      } else {
+        process.env["VITEST"] = originalVitest;
+      }
+    }
   });
 
   it("keeps replay-only selectCards decisions visible to the chooser only", () => {
@@ -1447,6 +1466,65 @@ describe("engine-core API skeleton", () => {
     expect(finishedSetup.state.pendingDecision).toBeUndefined();
     expect(finishedSetup.state.status).toBe("active");
     expect(finishedSetup.state.turn.phase).toBe("refresh");
+    expect(finishedSetup.state.players[asId<PlayerId>("p1")]?.turnCount).toBe(
+      1
+    );
+  });
+
+  it("applies mulligan redraws to hand, deck, and rng state", () => {
+    const input = makeInput({
+      status: "setup",
+      pendingDecision: {
+        id: asId("decision-setup-mulligan-redraw"),
+        type: "mulligan",
+        playerId: asId("p1"),
+        handCount: 2,
+        visibility: { type: "private", playerIds: [asId("p1")] }
+      } satisfies PendingDecision
+    });
+    const p1 = input.players[asId<PlayerId>("p1")]!;
+    p1.hand.push(
+      makeCard({
+        instanceId: "p1-hand-2",
+        cardId: "char-3",
+        owner: "p1",
+        zone: makeZone("hand", "p1", 1)
+      })
+    );
+    p1.deck.push(
+      makeCard({
+        instanceId: "p1-deck-3",
+        cardId: "char-4",
+        owner: "p1",
+        zone: makeZone("deck", "p1", 2)
+      })
+    );
+
+    const state = createInitialState(input);
+    const originalHandIds = state.players[asId<PlayerId>("p1")]!.hand.map(
+      (card: CardInstance) => card.instanceId
+    );
+
+    const result = resumeDecision(state, { type: "mulligan" });
+    const player = result.state.players[asId<PlayerId>("p1")]!;
+
+    expect(player.hasMulliganed).toBe(true);
+    expect(player.keptOpeningHand).toBe(false);
+    expect(result.state.rng.callCount).toBe(state.rng.callCount + 1);
+    expect(player.hand).toHaveLength(2);
+    expect(player.deck).toHaveLength(3);
+    expect(player.hand.map((card: CardInstance) => card.zone.zone)).toEqual([
+      "hand",
+      "hand"
+    ]);
+    expect(player.deck.map((card: CardInstance) => card.zone.zone)).toEqual([
+      "deck",
+      "deck",
+      "deck"
+    ]);
+    expect(
+      player.hand.map((card: CardInstance) => card.instanceId)
+    ).not.toEqual(originalHandIds);
   });
 
   it("rejects non-decision actions while a decision is pending", () => {

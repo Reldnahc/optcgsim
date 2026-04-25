@@ -50,6 +50,16 @@ function cloneValue<T>(value: T): T {
   return structuredClone(value);
 }
 
+function compareStrings(left: string, right: string): number {
+  if (left < right) {
+    return -1;
+  }
+  if (left > right) {
+    return 1;
+  }
+  return 0;
+}
+
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value);
@@ -61,15 +71,7 @@ function stableStringify(value: unknown): string {
   const entries = Object.entries(value).filter(
     ([, entry]) => entry !== undefined
   );
-  entries.sort(([left], [right]) => {
-    if (left < right) {
-      return -1;
-    }
-    if (left > right) {
-      return 1;
-    }
-    return 0;
-  });
+  entries.sort(([left], [right]) => compareStrings(left, right));
 
   return `{${entries
     .map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`)
@@ -1450,7 +1452,7 @@ export function createInitialState(input: CreateInitialStateInput): GameState {
     state.winner = cloneValue(input.winner);
   }
 
-  if (process.env["OPTCG_ENGINE_TEST_MODE"] === "true") {
+  if (isTestMode()) {
     runInvariantChecks(state);
   }
 
@@ -1593,6 +1595,67 @@ function createSetupMulliganDecision(
     handCount: player.hand.length,
     visibility: { type: "private", playerIds: [playerId] }
   };
+}
+
+function setIndexedZone(
+  cards: CardInstance[],
+  zone: "deck" | "hand",
+  playerId: PlayerId
+): void {
+  cards.forEach((card, index) => {
+    card.zone = {
+      zone,
+      playerId,
+      index
+    } as ZoneRef;
+  });
+}
+
+function deterministicShuffleCards(
+  cards: CardInstance[],
+  rng: GameState["rng"]
+): CardInstance[] {
+  const shuffleSeed = createHash("sha256")
+    .update(
+      [
+        rng.algorithm,
+        rng.seed ?? "",
+        rng.seedCommitment ?? "",
+        rng.internalState,
+        String(rng.callCount)
+      ].join("|")
+    )
+    .digest("hex");
+
+  const shuffled = [...cards].sort((left, right) => {
+    const leftRank = createHash("sha256")
+      .update(`${shuffleSeed}|${left.instanceId}`)
+      .digest("hex");
+    const rightRank = createHash("sha256")
+      .update(`${shuffleSeed}|${right.instanceId}`)
+      .digest("hex");
+    return (
+      compareStrings(leftRank, rightRank) ||
+      compareStrings(left.instanceId, right.instanceId)
+    );
+  });
+
+  rng.internalState = shuffleSeed;
+  rng.callCount += 1;
+
+  return shuffled;
+}
+
+function applyMulliganRedraw(player: PlayerState, rng: GameState["rng"]): void {
+  const handCount = player.hand.length;
+  const shuffled = deterministicShuffleCards(
+    [...player.deck, ...player.hand],
+    rng
+  );
+  player.hand = shuffled.slice(0, handCount);
+  player.deck = shuffled.slice(handCount);
+  setIndexedZone(player.hand, "hand", player.playerId);
+  setIndexedZone(player.deck, "deck", player.playerId);
 }
 
 function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
@@ -2124,6 +2187,10 @@ export function applyAction(state: GameState, action: Action): EngineResult {
         nextState.turn.globalTurnNumber = (state.turn.globalTurnNumber +
           1) as TurnState["globalTurnNumber"];
         nextState.turn.phase = "refresh";
+        const nextTurnPlayer = nextState.players[nextState.turn.activePlayer];
+        if (nextTurnPlayer) {
+          nextTurnPlayer.turnCount += 1;
+        }
         return finalizeResult(state, nextState, [
           {
             type: "phaseEnded",
@@ -2170,6 +2237,9 @@ export function resumeDecision(
         `Unknown player ${pendingDecision.playerId} for mulligan decision`
       );
     }
+    if (response.type === "mulligan") {
+      applyMulliganRedraw(player, nextState.rng);
+    }
     player.hasMulliganed = response.type === "mulligan";
     player.keptOpeningHand = response.type === "keepOpeningHand";
     if (state.status === "setup") {
@@ -2199,6 +2269,10 @@ export function resumeDecision(
       } else {
         nextState.status = "active";
         nextState.turn.phase = "refresh";
+        const activePlayer = nextState.players[nextState.turn.activePlayer];
+        if (activePlayer) {
+          activePlayer.turnCount += 1;
+        }
       }
     }
     return finalizeResult(state, nextState, [
