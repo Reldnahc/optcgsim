@@ -363,7 +363,7 @@ function toPublicCardSelectionRequest(
 ): PublicCardSelectionRequest {
   if (request.visibility === "replayOnly") {
     throw new Error(
-      "Cannot project replay-only card selection requests into PlayerView"
+      "replayOnly card selection requests must be filtered before public projection"
     );
   }
 
@@ -616,6 +616,9 @@ function toPublicDecision(
           : []
       }) as PublicDecision;
     case "selectCards":
+      if (pendingDecision.request.visibility === "replayOnly") {
+        return undefined;
+      }
       return withOptionalBaseFields({
         ...base,
         type: "selectCards",
@@ -845,6 +848,20 @@ function buildPublicLegalActions(
   state: GameState,
   playerId: PlayerId
 ): PublicLegalAction[] {
+  if (state.pendingDecision) {
+    const legal: PublicLegalAction[] = [{ type: "concede", playerId }];
+    if (
+      state.pendingDecision.playerId === playerId &&
+      hasLegalResponsesForDecision(state.pendingDecision)
+    ) {
+      legal.push({
+        type: "respondToDecision",
+        decisionId: state.pendingDecision.id
+      });
+    }
+    return legal;
+  }
+
   const seen = new Set<string>();
   const result: PublicLegalAction[] = [];
 
@@ -1364,6 +1381,71 @@ function legalPaymentSelections(
   return results;
 }
 
+function hasLegalResponsesForDecision(
+  pendingDecision: PendingDecision
+): boolean {
+  switch (pendingDecision.type) {
+    case "mulligan":
+    case "chooseOptionalActivation":
+    case "confirmTriggerFromLife":
+      return true;
+    case "chooseTriggerOrder":
+      return pendingDecision.triggerIds.length > 0;
+    case "payCost":
+      return pendingDecision.options.some(
+        (option) => legalPaymentSelections(option).length > 0
+      );
+    case "selectTargets":
+      return (
+        chooseCombinationsInRange(
+          pendingDecision.candidates.map((candidate) =>
+            requireInstanceId(candidate)
+          ),
+          minSelectionsRequired(
+            pendingDecision.request.min,
+            pendingDecision.candidates.length,
+            pendingDecision.request.allowFewerIfUnavailable
+          ),
+          pendingDecision.request.max
+        ).length > 0
+      );
+    case "selectCards":
+      return (
+        chooseCombinationsInRange(
+          pendingDecision.candidates.map((candidate) =>
+            requireInstanceId(candidate)
+          ),
+          minSelectionsRequired(
+            pendingDecision.request.min,
+            pendingDecision.candidates.length,
+            pendingDecision.request.allowFewerIfUnavailable
+          ),
+          pendingDecision.request.max
+        ).length > 0
+      );
+    case "chooseEffectOption":
+      return (
+        chooseCombinationsInRange(
+          pendingDecision.options
+            .filter((option) => option.availability !== "unavailable")
+            .map((option) => option.id),
+          pendingDecision.min,
+          pendingDecision.max
+        ).length > 0
+      );
+    case "chooseReplacement":
+      return (
+        pendingDecision.replacementIds.length > 0 || pendingDecision.optional
+      );
+    case "orderCards":
+      return pendingDecision.cards.length > 0;
+    case "chooseCharacterToTrashForOverflow":
+      return pendingDecision.candidates.length > 0;
+    default:
+      return false;
+  }
+}
+
 function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
   const respond = (response: DecisionResponse): Action => ({
     type: "respondToDecision",
@@ -1749,6 +1831,7 @@ export function getLegalActions(
 ): Action[] {
   if (
     !(playerId in state.players) ||
+    state.status === "setup" ||
     state.status === "frozen" ||
     state.status === "completed" ||
     state.status === "errored"
@@ -1776,6 +1859,9 @@ export function getLegalActions(
 }
 
 export function applyAction(state: GameState, action: Action): EngineResult {
+  if (state.status === "setup") {
+    throw new Error("Actions are not allowed while the match is in setup");
+  }
   if (state.status === "completed" || state.status === "errored") {
     throw new Error("Actions are not allowed once the match is terminal");
   }
@@ -1866,6 +1952,9 @@ export function resumeDecision(
   state: GameState,
   response: DecisionResponse
 ): EngineResult {
+  if (state.status === "setup") {
+    throw new Error("Decisions may not resolve while the match is in setup");
+  }
   if (state.status === "frozen") {
     throw new Error("Decisions may not resolve while the match is frozen");
   }

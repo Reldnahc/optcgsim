@@ -407,6 +407,20 @@ describe("engine-core API skeleton", () => {
     expect(() => applyAction(state, concedeAction("p1"))).toThrow(/frozen/);
   });
 
+  it("keeps default setup states non-actionable", () => {
+    const inputWithoutStatus = structuredClone(
+      makeInput()
+    ) as Partial<CreateInitialStateInput>;
+    delete inputWithoutStatus.status;
+    const state = createInitialState(
+      inputWithoutStatus as CreateInitialStateInput
+    );
+
+    expect(state.status).toBe("setup");
+    expect(getLegalActions(state, asId("p1"))).toEqual([]);
+    expect(() => applyAction(state, concedeAction("p1"))).toThrow(/setup/);
+  });
+
   it("rejects actions once the match is completed", () => {
     const state = createInitialState(
       makeInput({
@@ -1151,6 +1165,48 @@ describe("engine-core API skeleton", () => {
         playerId: asId("p1")
       }
     ]);
+  });
+
+  it("hides replay-only selectCards decisions from live player views", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-replay-only-select-cards"),
+          type: "selectCards",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          request: {
+            chooser: "self",
+            zone: "deck",
+            player: "self",
+            min: 1,
+            max: 1,
+            allowFewerIfUnavailable: false,
+            visibility: "replayOnly"
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-deck-1"),
+              cardId: asId("char-3"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "deck",
+                playerId: asId("p1"),
+                index: 0
+              }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    expect(
+      filterStateForPlayer(state, asId("p1")).pendingDecision
+    ).toBeUndefined();
+    expect(
+      filterStateForPlayer(state, asId("p2")).pendingDecision
+    ).toBeUndefined();
   });
 
   it("rejects non-decision actions while a decision is pending", () => {
