@@ -476,6 +476,24 @@ describe("engine-core bootstrap surface", () => {
     expect(hashGameState(stateWithDecision)).toBe(decisionHash);
   });
 
+  it("rejects malformed player rosters at state construction", () => {
+    const onePlayerInput = makeBaseInput();
+    const p2 = asId<PlayerId>("p2");
+    delete onePlayerInput.players[p2];
+
+    expect(() => createInitialState(onePlayerInput)).toThrowError(
+      /exactly two players/i
+    );
+
+    const threePlayerInput = makeBaseInput();
+    const p3 = asId<PlayerId>("p3");
+    threePlayerInput.players[p3] = makePlayerState("p3", "leader-1", "char-2");
+
+    expect(() => createInitialState(threePlayerInput)).toThrowError(
+      /exactly two players/i
+    );
+  });
+
   it("includes the active pendingDecision in chooser PlayerView", () => {
     const input = makeBaseInput();
     input.pendingDecision = makePendingDecision();
@@ -714,6 +732,46 @@ describe("engine-core bootstrap surface", () => {
     expect(() =>
       withEnv("OPTCG_ENGINE_TEST_MODE", "true", () => createInitialState(input))
     ).not.toThrow();
+  });
+
+  it("uses a bounded canonical response for large selectCards decisions", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = {
+      id: asId("decision-large-select"),
+      type: "selectCards",
+      playerId: asId("p1"),
+      visibility: { type: "private", playerIds: [asId("p1")] },
+      request: {
+        chooser: "self",
+        min: 2,
+        max: 6,
+        allowFewerIfUnavailable: false,
+        visibility: "privateToChooser"
+      },
+      candidates: Array.from({ length: 8 }, (_, index) => ({
+        instanceId: asId(`candidate-${index + 1}`),
+        cardId: asId("char-2"),
+        owner: asId("p1"),
+        controller: asId("p1")
+      }))
+    };
+
+    const actions = getLegalActions(
+      createInitialState(input),
+      asId("p1")
+    ).filter((action) => action.type === "respondToDecision");
+
+    expect(actions).toHaveLength(1);
+    const [action] = actions;
+    expect(action?.type).toBe("respondToDecision");
+    if (action?.type !== "respondToDecision") {
+      throw new Error("expected canonical selectCards response");
+    }
+    expect(action.response.type).toBe("cardSelection");
+    if (action.response.type !== "cardSelection") {
+      throw new Error("expected cardSelection response");
+    }
+    expect(action.response.selected).toHaveLength(2);
   });
 
   it("does not fabricate impossible payCost responses", () => {

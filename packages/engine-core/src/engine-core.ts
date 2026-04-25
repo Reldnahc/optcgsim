@@ -208,7 +208,17 @@ function getPlayerIds(state: GameState): PlayerId[] {
   return Object.keys(state.players) as PlayerId[];
 }
 
+function assertExactlyTwoPlayers(state: Pick<GameState, "players">): void {
+  const playerCount = Object.keys(state.players).length;
+  if (playerCount !== 2) {
+    throw new Error(
+      `ENG-001 bootstrap expects exactly two players, received ${playerCount}`
+    );
+  }
+}
+
 function getOpponentId(state: GameState, playerId: PlayerId): PlayerId {
+  assertExactlyTwoPlayers(state);
   return (
     getPlayerIds(state).find((candidate) => candidate !== playerId) ?? playerId
   );
@@ -403,6 +413,15 @@ function requireInstanceId(
     throw new Error(`${context} requires CardRef.instanceId`);
   }
   return ref.instanceId;
+}
+
+function requireAllCardRefsHaveInstanceIds(
+  refs: CardRef[],
+  context: string
+): void {
+  for (const ref of refs) {
+    requireInstanceId(ref, context);
+  }
 }
 
 function toPublicCardRef(ref: CardRef): PublicCardRef {
@@ -973,7 +992,7 @@ function assertPendingDecisionIsValid(state: GameState): void {
     throw new Error("Pending decision chooser cannot answer the live decision");
   }
 
-  if (legalResponsesForDecision(state.pendingDecision).length === 0) {
+  if (!hasLegalResponsesForDecision(state.pendingDecision)) {
     throw new Error("Pending decision has no legal responses");
   }
 }
@@ -1029,6 +1048,7 @@ function assertStateHashStable(state: GameState): void {
 }
 
 function runInvariantChecks(state: GameState): void {
+  assertExactlyTwoPlayers(state);
   assertAllCardsInExactlyOneLocation(state);
   assertNoDuplicateInstanceIds(state);
   assertCharacterAreaSizeAtMostFive(state);
@@ -1098,6 +1118,8 @@ export function createInitialState(input: CreateInitialStateInput): GameState {
     eventJournal: [],
     status: input.status ?? "active"
   };
+
+  assertExactlyTwoPlayers(state);
 
   if (input.battle) {
     state.battle = cloneValue(input.battle);
@@ -1174,6 +1196,10 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         }))
       );
     case "selectTargets": {
+      requireAllCardRefsHaveInstanceIds(
+        pendingDecision.candidates,
+        "Decision response target candidates"
+      );
       const counts = getSelectableCountRange(
         pendingDecision.candidates.length,
         pendingDecision.request.min,
@@ -1200,30 +1226,36 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
       }));
     }
     case "selectCards": {
+      requireAllCardRefsHaveInstanceIds(
+        pendingDecision.candidates,
+        "Decision response card candidates"
+      );
       const counts = getSelectableCountRange(
         pendingDecision.candidates.length,
         pendingDecision.request.min,
         pendingDecision.request.max,
         pendingDecision.request.allowFewerIfUnavailable
       );
-      const combos = chooseCombinationsInRange(
-        pendingDecision.candidates,
-        counts.min,
-        counts.max
-      );
-      return combos.map((selected) => ({
-        type: "respondToDecision",
-        decisionId: pendingDecision.id,
-        response: {
-          type: "cardSelection",
-          selected: selected.map((card) => ({
-            instanceId: requireInstanceId(
-              card,
-              "Decision response card selection"
-            )
-          }))
+      if (counts.min > counts.max) {
+        return [];
+      }
+
+      const selected = pendingDecision.candidates.slice(0, counts.min);
+      return [
+        {
+          type: "respondToDecision",
+          decisionId: pendingDecision.id,
+          response: {
+            type: "cardSelection",
+            selected: selected.map((card) => ({
+              instanceId: requireInstanceId(
+                card,
+                "Decision response card selection"
+              )
+            }))
+          }
         }
-      }));
+      ];
     }
     case "chooseEffectOption": {
       const available = pendingDecision.options.filter(
@@ -1276,6 +1308,10 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
           : [])
       ];
     case "orderCards":
+      requireAllCardRefsHaveInstanceIds(
+        pendingDecision.cards,
+        "Decision response order candidates"
+      );
       return choosePermutations(pendingDecision.cards).map((ordered) => ({
         type: "respondToDecision",
         decisionId: pendingDecision.id,
@@ -1287,6 +1323,10 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
         }
       }));
     case "chooseCharacterToTrashForOverflow":
+      requireAllCardRefsHaveInstanceIds(
+        pendingDecision.candidates,
+        "Decision response overflow candidates"
+      );
       return pendingDecision.candidates.map((candidate) => ({
         type: "respondToDecision",
         decisionId: pendingDecision.id,
@@ -1298,6 +1338,28 @@ function legalResponsesForDecision(pendingDecision: PendingDecision): Action[] {
           )
         }
       }));
+  }
+}
+
+function hasLegalResponsesForDecision(
+  pendingDecision: PendingDecision
+): boolean {
+  switch (pendingDecision.type) {
+    case "selectCards": {
+      requireAllCardRefsHaveInstanceIds(
+        pendingDecision.candidates,
+        "Decision response card candidates"
+      );
+      const counts = getSelectableCountRange(
+        pendingDecision.candidates.length,
+        pendingDecision.request.min,
+        pendingDecision.request.max,
+        pendingDecision.request.allowFewerIfUnavailable
+      );
+      return counts.min <= counts.max;
+    }
+    default:
+      return legalResponsesForDecision(pendingDecision).length > 0;
   }
 }
 
