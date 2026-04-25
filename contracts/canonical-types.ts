@@ -386,6 +386,7 @@ export interface PlayerState {
   characters: CardInstance[];
   stage?: CardInstance;
   costArea: CardInstance[];
+  attachedCards: CardInstance[]; // cards currently stored in attached zone for this player
   life: LifeCard[]; // index 0 is top of Life area, the next card taken for damage
   hasMulliganed: boolean;
   keptOpeningHand: boolean;
