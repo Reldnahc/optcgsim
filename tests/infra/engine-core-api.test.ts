@@ -685,6 +685,36 @@ describe("engine-core bootstrap surface", () => {
     expect(() => createInitialState(input)).toThrowError(/CardRef\.zone/i);
   });
 
+  it("rejects replayOnly selectCards requests from live PlayerView states", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = {
+      id: asId("decision-select-cards-replay-only"),
+      type: "selectCards",
+      playerId: asId("p1"),
+      visibility: { type: "private", playerIds: [asId("p1")] },
+      request: {
+        chooser: "self",
+        min: 1,
+        max: 1,
+        allowFewerIfUnavailable: false,
+        visibility: "replayOnly"
+      },
+      candidates: [
+        {
+          instanceId: asId("p1-hand-1"),
+          cardId: asId("char-2"),
+          owner: asId("p1"),
+          controller: asId("p1"),
+          zone: makeZone("hand", "p1", 0)
+        }
+      ]
+    };
+
+    expect(() => createInitialState(input)).toThrowError(
+      /replayOnly visibility/i
+    );
+  });
+
   it("resolves keepOpeningHand mulligans", () => {
     const input = makeBaseInput();
     input.status = "setup";
@@ -1031,7 +1061,6 @@ describe("engine-core bootstrap surface", () => {
   it("builds @optcg/engine-core to the published dist entrypoint", () => {
     const enginePackageRoot = resolve(process.cwd(), "packages", "engine-core");
     const engineDistDir = resolve(enginePackageRoot, "dist");
-    const typesDistDir = resolve(process.cwd(), "packages", "types", "dist");
 
     try {
       runNpmScript(enginePackageRoot, "build");
@@ -1048,7 +1077,6 @@ describe("engine-core bootstrap surface", () => {
       );
     } finally {
       rmSync(engineDistDir, { recursive: true, force: true });
-      rmSync(typesDistDir, { recursive: true, force: true });
     }
   });
 });

@@ -431,6 +431,12 @@ function toPublicTargetRequest(
 function toPublicCardSelectionRequest(
   request: Extract<PendingDecision, { type: "selectCards" }>["request"]
 ): PublicCardSelectionRequest {
+  if (request.visibility === "replayOnly") {
+    throw new Error(
+      "Live public card selection request cannot use replayOnly visibility"
+    );
+  }
+
   const publicRequest: PublicCardSelectionRequest = {
     chooser: request.chooser,
     min: request.min,
