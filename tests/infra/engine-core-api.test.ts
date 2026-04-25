@@ -656,6 +656,80 @@ describe("engine-core bootstrap surface", () => {
     expect(pendingDecision.options[0]?.selectableDon).toHaveLength(1);
   });
 
+  it("redacts hidden payment refs from public payCost choices", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = {
+      id: asId("decision-public-pay-cost-hidden"),
+      type: "payCost",
+      playerId: asId("p1"),
+      visibility: { type: "public" },
+      cost: { type: "trashFromHand", count: 1, chooser: "self" },
+      options: [
+        {
+          id: "pay-hidden",
+          cost: { type: "trashFromHand", count: 1, chooser: "self" },
+          selectableCards: [
+            {
+              instanceId: asId("p1-hand-1"),
+              cardId: asId("char-2"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: makeZone("hand", "p1", 0)
+            },
+            {
+              instanceId: asId("p1-cost-1"),
+              cardId: asId("don-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: makeZone("costArea", "p1", 0)
+            }
+          ],
+          selectableDon: [
+            {
+              instanceId: asId("p1-attached-1"),
+              cardId: asId("don-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "attached",
+                playerId: asId("p1"),
+                hostInstanceId: asId("p1-leader")
+              } as ZoneRef
+            },
+            {
+              instanceId: asId("p1-cost-1"),
+              cardId: asId("don-1"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: makeZone("costArea", "p1", 0)
+            }
+          ],
+          min: 1,
+          max: 1
+        }
+      ]
+    };
+
+    const opponentView = filterStateForPlayer(
+      createInitialState(input),
+      asId("p2")
+    );
+    const pendingDecision = opponentView.pendingDecision;
+
+    expect(pendingDecision?.type).toBe("payCost");
+    if (pendingDecision?.type !== "payCost") {
+      throw new Error("Expected payCost public decision");
+    }
+    expect(pendingDecision.options[0]?.selectableCards).toHaveLength(1);
+    expect(pendingDecision.options[0]?.selectableCards?.[0]?.instanceId).toBe(
+      asId("p1-cost-1")
+    );
+    expect(pendingDecision.options[0]?.selectableDon).toHaveLength(1);
+    expect(pendingDecision.options[0]?.selectableDon?.[0]?.instanceId).toBe(
+      asId("p1-cost-1")
+    );
+  });
+
   it("shows public order and overflow candidates to non-choosing recipients", () => {
     const orderInput = makeBaseInput();
     orderInput.pendingDecision = {
@@ -665,11 +739,11 @@ describe("engine-core bootstrap surface", () => {
       visibility: { type: "public" },
       cards: [
         {
-          instanceId: asId("p1-hand-1"),
-          cardId: asId("char-2"),
+          instanceId: asId("p1-trash-1"),
+          cardId: asId("trash-1"),
           owner: asId("p1"),
           controller: asId("p1"),
-          zone: makeZone("hand", "p1", 0)
+          zone: makeZone("trash", "p1", 0)
         }
       ],
       destination: "deck"
@@ -716,6 +790,47 @@ describe("engine-core bootstrap surface", () => {
       throw new Error("Expected overflow public decision");
     }
     expect(overflowView.pendingDecision.candidates).toHaveLength(1);
+  });
+
+  it("redacts hidden cards from public orderCards decisions", () => {
+    const input = makeBaseInput();
+    input.pendingDecision = {
+      id: asId("decision-public-order-hidden"),
+      type: "orderCards",
+      playerId: asId("p1"),
+      visibility: { type: "public" },
+      cards: [
+        {
+          instanceId: asId("p1-hand-1"),
+          cardId: asId("char-2"),
+          owner: asId("p1"),
+          controller: asId("p1"),
+          zone: makeZone("hand", "p1", 0)
+        },
+        {
+          instanceId: asId("p1-trash-1"),
+          cardId: asId("trash-1"),
+          owner: asId("p1"),
+          controller: asId("p1"),
+          zone: makeZone("trash", "p1", 0)
+        }
+      ],
+      destination: "deck"
+    };
+
+    const opponentView = filterStateForPlayer(
+      createInitialState(input),
+      asId("p2")
+    );
+
+    expect(opponentView.pendingDecision?.type).toBe("orderCards");
+    if (opponentView.pendingDecision?.type !== "orderCards") {
+      throw new Error("Expected orderCards public decision");
+    }
+    expect(opponentView.pendingDecision.cards).toHaveLength(1);
+    expect(opponentView.pendingDecision.cards[0]?.instanceId).toBe(
+      asId("p1-trash-1")
+    );
   });
 
   it("rejects replayOnly pending decisions from live states", () => {

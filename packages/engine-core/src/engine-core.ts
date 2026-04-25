@@ -281,6 +281,28 @@ function buildOpponentVisibleState(state: GameState, player: PlayerState) {
   return visible;
 }
 
+function isCardRefPubliclyVisibleToViewer(ref: CardRef): boolean {
+  if (ref.zone === undefined) {
+    return false;
+  }
+
+  switch (ref.zone.zone) {
+    case "trash":
+    case "leaderArea":
+    case "characterArea":
+    case "stageArea":
+    case "costArea":
+      return true;
+    case "hand":
+    case "deck":
+    case "donDeck":
+    case "life":
+    case "attached":
+    case "noZone":
+      return false;
+  }
+}
+
 function toPublicDecisionVisibility(
   pendingDecision: PendingDecision
 ): PublicDecisionVisibility {
@@ -529,21 +551,23 @@ function toPublicDecision(
             min: option.min,
             max: option.max
           };
-          if (
-            (viewerIsChooser || decisionIsPublic) &&
-            option.selectableCards !== undefined
-          ) {
+          if (viewerIsChooser && option.selectableCards !== undefined) {
             publicOption.selectableCards = option.selectableCards.map(
               toPublicPaymentCardRef
             );
+          } else if (decisionIsPublic && option.selectableCards !== undefined) {
+            publicOption.selectableCards = option.selectableCards
+              .filter((ref) => isCardRefPubliclyVisibleToViewer(ref))
+              .map(toPublicPaymentCardRef);
           }
-          if (
-            (viewerIsChooser || decisionIsPublic) &&
-            option.selectableDon !== undefined
-          ) {
+          if (viewerIsChooser && option.selectableDon !== undefined) {
             publicOption.selectableDon = option.selectableDon.map(
               toPublicPaymentCardRef
             );
+          } else if (decisionIsPublic && option.selectableDon !== undefined) {
+            publicOption.selectableDon = option.selectableDon
+              .filter((ref) => isCardRefPubliclyVisibleToViewer(ref))
+              .map(toPublicPaymentCardRef);
           }
           return publicOption;
         })
@@ -614,9 +638,12 @@ function toPublicDecision(
       return {
         ...base,
         type: "orderCards",
-        cards:
-          viewerIsChooser || decisionIsPublic
-            ? pendingDecision.cards.map(toPublicDecisionCardRef)
+        cards: viewerIsChooser
+          ? pendingDecision.cards.map(toPublicDecisionCardRef)
+          : decisionIsPublic
+            ? pendingDecision.cards
+                .filter((ref) => isCardRefPubliclyVisibleToViewer(ref))
+                .map(toPublicDecisionCardRef)
             : [],
         destination: pendingDecision.destination
       };
@@ -624,9 +651,12 @@ function toPublicDecision(
       return {
         ...base,
         type: "chooseCharacterToTrashForOverflow",
-        candidates:
-          viewerIsChooser || decisionIsPublic
-            ? pendingDecision.candidates.map(toPublicCardRef)
+        candidates: viewerIsChooser
+          ? pendingDecision.candidates.map(toPublicCardRef)
+          : decisionIsPublic
+            ? pendingDecision.candidates
+                .filter((ref) => isCardRefPubliclyVisibleToViewer(ref))
+                .map(toPublicCardRef)
             : []
       };
   }
