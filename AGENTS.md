@@ -42,6 +42,7 @@ Section Ref: `AGENTS.s003`
 - Preserve explicit non-scope.
 - Prefer section refs such as `07-match-server-protocol.s010` in notes and reviews.
 - For gameplay, visibility, replay, fairness, timer, and persistence ambiguity, fail closed and escalate.
+- For canonical or exported APIs, do not fabricate authoritative placeholder runtime data. Source it from authoritative state, or fail closed and escalate the contract gap on `main` before continuing.
 - For approved stories, start from the approved agent packet when it exists in `agent-packets/approved/`, while treating the approved story file as canonical and the packet as the execution brief.
 - If a story cannot be completed safely because of a missing dependency, unresolved ambiguity, missing approved prerequisite, or contradictory spec/story inputs, stop at the narrowest safe point and return with the blocker plus concrete follow-up questions; do not force an implementation through.
 - If implementation reveals a required change to canonical contracts, shared specs, or repo-wide workflow outside the approved story scope, do not silently mix that change into the story branch. Stop and escalate, or get explicit approval to land the cross-story change separately on `main` first and then merge/rebase it into the story branch.
