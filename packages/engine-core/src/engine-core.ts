@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type {
   Action,
+  CardFilter,
   CardInstance,
   CardRef,
   DecisionResponse,
@@ -187,6 +188,386 @@ function resolveCardMetadata(state: GameState, card: CardInstance) {
   };
 }
 
+type ContinuousEffectRecord = GameState["continuousEffects"][number];
+type NumericFilterLike = Pick<
+  NonNullable<CardFilter["cost"]>,
+  "op" | "value" | "min" | "max"
+>;
+
+function includesAny<T>(left: T[], right: T[]): boolean {
+  return right.some((entry) => left.includes(entry));
+}
+
+function includesAll<T>(left: T[], right: T[]): boolean {
+  return right.every((entry) => left.includes(entry));
+}
+
+function matchesNumericFilter(
+  value: number | undefined,
+  filter: NumericFilterLike | undefined
+): boolean {
+  if (filter === undefined) {
+    return true;
+  }
+  if (value === undefined) {
+    return false;
+  }
+
+  if (filter.value !== undefined) {
+    const comparator = filter.op ?? "eq";
+    switch (comparator) {
+      case "eq":
+        if (value !== filter.value) {
+          return false;
+        }
+        break;
+      case "neq":
+        if (value === filter.value) {
+          return false;
+        }
+        break;
+      case "gt":
+        if (!(value > filter.value)) {
+          return false;
+        }
+        break;
+      case "gte":
+        if (!(value >= filter.value)) {
+          return false;
+        }
+        break;
+      case "lt":
+        if (!(value < filter.value)) {
+          return false;
+        }
+        break;
+      case "lte":
+        if (!(value <= filter.value)) {
+          return false;
+        }
+        break;
+    }
+  }
+
+  if (filter.min !== undefined && value < filter.min) {
+    return false;
+  }
+  if (filter.max !== undefined && value > filter.max) {
+    return false;
+  }
+
+  return true;
+}
+
+function getContinuousEffectSourceInstanceId(
+  effect: ContinuousEffectRecord
+): InstanceId {
+  const instanceId =
+    effect.source.instanceId ?? effect.sourceSnapshot.instanceId;
+  if (instanceId === undefined) {
+    throw new Error("Continuous effect source requires an instanceId");
+  }
+  return instanceId;
+}
+
+function resolveContinuousEffectPlayer(
+  state: GameState,
+  effect: ContinuousEffectRecord,
+  playerRef:
+    | "self"
+    | "opponent"
+    | "turnPlayer"
+    | "nonTurnPlayer"
+    | "owner"
+    | "controller"
+): PlayerId {
+  switch (playerRef) {
+    case "self":
+      return effect.controller;
+    case "opponent":
+      return getOpponentId(state, effect.controller);
+    case "turnPlayer":
+      return state.turn.activePlayer;
+    case "nonTurnPlayer":
+      return getOpponentId(state, state.turn.activePlayer);
+    case "owner":
+      return effect.source.owner ?? effect.sourceSnapshot.owner;
+    case "controller":
+      return effect.source.controller ?? effect.sourceSnapshot.controller;
+  }
+}
+
+function cardMatchesContinuousFilter(
+  state: GameState,
+  effect: ContinuousEffectRecord,
+  card: CardInstance,
+  computedCard: ComputedCardView,
+  filter: CardFilter | undefined
+): boolean {
+  if (filter === undefined) {
+    return true;
+  }
+
+  if (filter.custom !== undefined) {
+    return false;
+  }
+
+  const manifestCard = state.cardManifest.cards[card.cardId];
+  const metadata = resolveCardMetadata(state, card);
+
+  if (
+    filter.excludeSelf &&
+    card.instanceId === getContinuousEffectSourceInstanceId(effect)
+  ) {
+    return false;
+  }
+  if (filter.cardIds !== undefined && !filter.cardIds.includes(card.cardId)) {
+    return false;
+  }
+  if (
+    filter.names !== undefined &&
+    (manifestCard?.name === undefined ||
+      !filter.names.includes(manifestCard.name))
+  ) {
+    return false;
+  }
+  if (
+    filter.nameContains !== undefined &&
+    (manifestCard?.name === undefined ||
+      !manifestCard.name.includes(filter.nameContains))
+  ) {
+    return false;
+  }
+  if (
+    filter.nameNot !== undefined &&
+    manifestCard?.name !== undefined &&
+    filter.nameNot.includes(manifestCard.name)
+  ) {
+    return false;
+  }
+  if (
+    filter.categories !== undefined &&
+    (manifestCard?.category === undefined ||
+      !filter.categories.includes(manifestCard.category))
+  ) {
+    return false;
+  }
+  if (
+    filter.colorsAny !== undefined &&
+    !includesAny(manifestCard?.colors ?? [], filter.colorsAny)
+  ) {
+    return false;
+  }
+  if (
+    filter.colorsAll !== undefined &&
+    !includesAll(manifestCard?.colors ?? [], filter.colorsAll)
+  ) {
+    return false;
+  }
+  if (
+    filter.typesAny !== undefined &&
+    !includesAny(manifestCard?.types ?? [], filter.typesAny)
+  ) {
+    return false;
+  }
+  if (
+    filter.typesAll !== undefined &&
+    !includesAll(manifestCard?.types ?? [], filter.typesAll)
+  ) {
+    return false;
+  }
+  if (
+    filter.attributesAny !== undefined &&
+    !includesAny(manifestCard?.attributes ?? [], filter.attributesAny)
+  ) {
+    return false;
+  }
+  if (
+    filter.attributesAll !== undefined &&
+    !includesAll(manifestCard?.attributes ?? [], filter.attributesAll)
+  ) {
+    return false;
+  }
+  if (
+    !matchesNumericFilter(
+      computedCard.currentCost ?? metadata.cost,
+      filter.cost
+    )
+  ) {
+    return false;
+  }
+  if (
+    !matchesNumericFilter(
+      computedCard.currentPower ?? metadata.power,
+      filter.power
+    )
+  ) {
+    return false;
+  }
+  if (!matchesNumericFilter(manifestCard?.counter, filter.counter)) {
+    return false;
+  }
+  if (
+    filter.hasKeywords !== undefined &&
+    !includesAll(computedCard.keywords, filter.hasKeywords)
+  ) {
+    return false;
+  }
+  if (
+    filter.lacksKeywords !== undefined &&
+    includesAny(computedCard.keywords, filter.lacksKeywords)
+  ) {
+    return false;
+  }
+  if (filter.state !== undefined && card.state !== filter.state) {
+    return false;
+  }
+  if (
+    filter.owner !== undefined &&
+    card.owner !== resolveContinuousEffectPlayer(state, effect, filter.owner)
+  ) {
+    return false;
+  }
+  if (
+    filter.controller !== undefined &&
+    card.controller !==
+      resolveContinuousEffectPlayer(state, effect, filter.controller)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function cardMatchesContinuousEffectTarget(
+  state: GameState,
+  effect: ContinuousEffectRecord,
+  card: CardInstance,
+  computedCard: ComputedCardView
+): boolean {
+  const target = effect.modifier.target.target;
+
+  switch (target.type) {
+    case "self":
+      return card.instanceId === getContinuousEffectSourceInstanceId(effect);
+    case "myLeader":
+      return (
+        card.zone.zone === "leaderArea" &&
+        card.zone.playerId === effect.controller
+      );
+    case "opponentLeader":
+      return (
+        card.zone.zone === "leaderArea" &&
+        card.zone.playerId === getOpponentId(state, effect.controller)
+      );
+    case "all": {
+      if (card.zone.zone === "noZone" || card.zone.zone !== target.zone) {
+        return false;
+      }
+      return (
+        card.zone.playerId ===
+          resolveContinuousEffectPlayer(state, effect, target.player) &&
+        cardMatchesContinuousFilter(
+          state,
+          effect,
+          card,
+          computedCard,
+          target.filter
+        )
+      );
+    }
+    default:
+      return false;
+  }
+}
+
+function addComputedRestriction(
+  restrictions: ComputedGameView["restrictions"],
+  instanceId: InstanceId,
+  restriction: string
+): void {
+  const existing = restrictions[instanceId] ?? [];
+  if (!existing.includes(restriction)) {
+    restrictions[instanceId] = [...existing, restriction];
+  }
+}
+
+function applyContinuousModifier(
+  computedCard: ComputedCardView,
+  restrictions: ComputedGameView["restrictions"],
+  effect: ContinuousEffectRecord
+): void {
+  const { layer, operation } = effect.modifier;
+
+  switch (layer) {
+    case "basePowerSet":
+      if (operation.type === "set" && typeof operation.value === "number") {
+        computedCard.currentPower = operation.value;
+      }
+      return;
+    case "baseCostSet":
+      if (operation.type === "set" && typeof operation.value === "number") {
+        computedCard.currentCost = operation.value;
+      }
+      return;
+    case "powerAdd":
+      if (operation.type === "add") {
+        computedCard.currentPower =
+          (computedCard.currentPower ?? 0) + operation.value;
+      }
+      return;
+    case "costAdd":
+      if (operation.type === "add") {
+        computedCard.currentCost =
+          (computedCard.currentCost ?? 0) + operation.value;
+      }
+      return;
+    case "keywordAdd":
+      if (operation.type === "set" && typeof operation.value === "string") {
+        if (
+          !computedCard.keywords.includes(
+            operation.value as (typeof computedCard.keywords)[number]
+          )
+        ) {
+          computedCard.keywords = [
+            ...computedCard.keywords,
+            operation.value as (typeof computedCard.keywords)[number]
+          ];
+        }
+      }
+      return;
+    case "keywordRemove":
+      if (operation.type === "remove") {
+        computedCard.keywords = computedCard.keywords.filter(
+          (keyword) => keyword !== operation.value
+        );
+      }
+      return;
+    case "restriction":
+      if (typeof operation.value === "string") {
+        addComputedRestriction(
+          restrictions,
+          computedCard.instanceId,
+          operation.value
+        );
+        if (operation.value === "cannotBeAttacked") {
+          computedCard.cannotBeAttacked = true;
+        }
+      }
+      return;
+    case "protection":
+      if (typeof operation.value === "string") {
+        if (!computedCard.protectedFrom.includes(operation.value)) {
+          computedCard.protectedFrom = [
+            ...computedCard.protectedFrom,
+            operation.value
+          ];
+        }
+      }
+      return;
+  }
+}
+
 function toPublicCardView(
   state: GameState,
   card: CardInstance
@@ -292,12 +673,12 @@ function isCardRefPubliclyVisibleToViewer(ref: CardRef): boolean {
     case "characterArea":
     case "stageArea":
     case "costArea":
+    case "attached":
       return true;
     case "hand":
     case "deck":
     case "donDeck":
     case "life":
-    case "attached":
     case "noZone":
       return false;
   }
@@ -1478,6 +1859,7 @@ export function resumeDecision(
 
 export function computeView(state: GameState): ComputedGameView {
   const cards: Record<InstanceId, ComputedCardView> = {};
+  const restrictions: ComputedGameView["restrictions"] = {};
 
   for (const card of collectAllCards(state)) {
     const metadata = resolveCardMetadata(state, card);
@@ -1501,12 +1883,41 @@ export function computeView(state: GameState): ComputedGameView {
     cards[card.instanceId] = computedCard;
   }
 
+  const modifierLayers: ContinuousEffectRecord["modifier"]["layer"][] = [
+    "basePowerSet",
+    "baseCostSet",
+    "powerAdd",
+    "costAdd",
+    "keywordAdd",
+    "keywordRemove",
+    "restriction",
+    "protection"
+  ];
+
+  for (const layer of modifierLayers) {
+    for (const effect of state.continuousEffects) {
+      if (effect.modifier.layer !== layer) {
+        continue;
+      }
+
+      for (const card of collectAllCards(state)) {
+        const computedCard = cards[card.instanceId];
+        if (
+          computedCard &&
+          cardMatchesContinuousEffectTarget(state, effect, card, computedCard)
+        ) {
+          applyContinuousModifier(computedCard, restrictions, effect);
+        }
+      }
+    }
+  }
+
   return {
     seq: state.stateSeq,
     turnPlayerId: state.turn.activePlayer,
     cards,
     legalAttackTargets: {},
-    restrictions: {}
+    restrictions
   };
 }
 

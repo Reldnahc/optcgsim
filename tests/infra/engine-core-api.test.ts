@@ -656,7 +656,7 @@ describe("engine-core bootstrap surface", () => {
     expect(pendingDecision.options[0]?.selectableDon).toHaveLength(1);
   });
 
-  it("redacts hidden payment refs from public payCost choices", () => {
+  it("redacts hidden payment refs but keeps attached DON visible in public payCost choices", () => {
     const input = makeBaseInput();
     input.pendingDecision = {
       id: asId("decision-public-pay-cost-hidden"),
@@ -724,10 +724,10 @@ describe("engine-core bootstrap surface", () => {
     expect(pendingDecision.options[0]?.selectableCards?.[0]?.instanceId).toBe(
       asId("p1-cost-1")
     );
-    expect(pendingDecision.options[0]?.selectableDon).toHaveLength(1);
-    expect(pendingDecision.options[0]?.selectableDon?.[0]?.instanceId).toBe(
-      asId("p1-cost-1")
-    );
+    expect(pendingDecision.options[0]?.selectableDon).toHaveLength(2);
+    expect(
+      pendingDecision.options[0]?.selectableDon?.map((card) => card.instanceId)
+    ).toEqual([asId("p1-attached-1"), asId("p1-cost-1")]);
   });
 
   it("shows public order and overflow candidates to non-choosing recipients", () => {
@@ -1364,6 +1364,172 @@ describe("engine-core bootstrap surface", () => {
     expect(computed.cards[charId]?.canAttack).toBe(false);
     expect(computed.cards[charId]?.canBlock).toBe(false);
     expect(computed.legalAttackTargets).toEqual({});
+  });
+
+  it("applies active continuous-effect modifiers in computeView", () => {
+    const state = createInitialState(makeBaseInput());
+    const p1 = asId<PlayerId>("p1");
+    const source = state.players[p1]!.characters[0]!;
+    const manifestCard = state.cardManifest.cards[source.cardId]!;
+    const sourceSnapshot = {
+      instanceId: source.instanceId,
+      cardId: source.cardId,
+      owner: source.owner,
+      controller: source.controller,
+      zone: source.zone,
+      state: source.state,
+      attachedDonCount: source.attachedDon.length,
+      name: manifestCard.name,
+      category: manifestCard.category,
+      colors: manifestCard.colors,
+      attributes: manifestCard.attributes,
+      types: manifestCard.types,
+      ...(manifestCard.cost !== undefined ? { cost: manifestCard.cost } : {}),
+      ...(manifestCard.power !== undefined
+        ? { power: manifestCard.power }
+        : {}),
+      ...(manifestCard.counter !== undefined
+        ? { counter: manifestCard.counter }
+        : {})
+    };
+
+    state.continuousEffects.push(
+      {
+        id: "effect-power-add",
+        source: {
+          instanceId: source.instanceId,
+          cardId: source.cardId,
+          owner: source.owner,
+          controller: source.controller,
+          zone: source.zone
+        },
+        sourceSnapshot,
+        controller: p1,
+        modifier: {
+          layer: "powerAdd",
+          target: { target: { type: "self" } },
+          operation: { type: "add", value: 1000 }
+        },
+        duration: { type: "permanent" },
+        createdBy: { type: "rule", rule: "test" },
+        createdAtStateSeq: state.stateSeq
+      },
+      {
+        id: "effect-cost-add",
+        source: {
+          instanceId: source.instanceId,
+          cardId: source.cardId,
+          owner: source.owner,
+          controller: source.controller,
+          zone: source.zone
+        },
+        sourceSnapshot,
+        controller: p1,
+        modifier: {
+          layer: "costAdd",
+          target: { target: { type: "self" } },
+          operation: { type: "add", value: 2 }
+        },
+        duration: { type: "permanent" },
+        createdBy: { type: "rule", rule: "test" },
+        createdAtStateSeq: state.stateSeq
+      },
+      {
+        id: "effect-keyword-add",
+        source: {
+          instanceId: source.instanceId,
+          cardId: source.cardId,
+          owner: source.owner,
+          controller: source.controller,
+          zone: source.zone
+        },
+        sourceSnapshot,
+        controller: p1,
+        modifier: {
+          layer: "keywordAdd",
+          target: { target: { type: "self" } },
+          operation: { type: "set", value: "rush" }
+        },
+        duration: { type: "permanent" },
+        createdBy: { type: "rule", rule: "test" },
+        createdAtStateSeq: state.stateSeq
+      },
+      {
+        id: "effect-keyword-remove",
+        source: {
+          instanceId: source.instanceId,
+          cardId: source.cardId,
+          owner: source.owner,
+          controller: source.controller,
+          zone: source.zone
+        },
+        sourceSnapshot,
+        controller: p1,
+        modifier: {
+          layer: "keywordRemove",
+          target: { target: { type: "self" } },
+          operation: { type: "remove", value: "blocker" }
+        },
+        duration: { type: "permanent" },
+        createdBy: { type: "rule", rule: "test" },
+        createdAtStateSeq: state.stateSeq
+      },
+      {
+        id: "effect-restriction",
+        source: {
+          instanceId: source.instanceId,
+          cardId: source.cardId,
+          owner: source.owner,
+          controller: source.controller,
+          zone: source.zone
+        },
+        sourceSnapshot,
+        controller: p1,
+        modifier: {
+          layer: "restriction",
+          target: { target: { type: "self" } },
+          operation: { type: "set", value: "cannotBeAttacked" }
+        },
+        duration: { type: "permanent" },
+        createdBy: { type: "rule", rule: "test" },
+        createdAtStateSeq: state.stateSeq
+      },
+      {
+        id: "effect-protection",
+        source: {
+          instanceId: source.instanceId,
+          cardId: source.cardId,
+          owner: source.owner,
+          controller: source.controller,
+          zone: source.zone
+        },
+        sourceSnapshot,
+        controller: p1,
+        modifier: {
+          layer: "protection",
+          target: { target: { type: "self" } },
+          operation: { type: "set", value: "cannotBeKOd" }
+        },
+        duration: { type: "permanent" },
+        createdBy: { type: "rule", rule: "test" },
+        createdAtStateSeq: state.stateSeq
+      }
+    );
+
+    const computed = computeView(state);
+    const computedCard = computed.cards[source.instanceId];
+
+    expect(computedCard?.basePower).toBe(5000);
+    expect(computedCard?.currentPower).toBe(6000);
+    expect(computedCard?.baseCost).toBe(1);
+    expect(computedCard?.currentCost).toBe(3);
+    expect(computedCard?.keywords).toContain("rush");
+    expect(computedCard?.keywords).not.toContain("blocker");
+    expect(computedCard?.cannotBeAttacked).toBe(true);
+    expect(computedCard?.protectedFrom).toContain("cannotBeKOd");
+    expect(computed.restrictions[source.instanceId]).toContain(
+      "cannotBeAttacked"
+    );
   });
 
   it("builds @optcg/engine-core to the published dist entrypoint", () => {
