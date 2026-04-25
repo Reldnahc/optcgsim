@@ -314,17 +314,19 @@ function canViewerSeePendingDecisionLive(
 function canChooserAnswerPendingDecisionLive(
   pendingDecision: PendingDecision
 ): boolean {
-  if (pendingDecision.type !== "mulligan") {
-    return false;
-  }
+  return (
+    pendingDecision.type === "mulligan" &&
+    canViewerSeePendingDecisionLive(pendingDecision, pendingDecision.playerId)
+  );
+}
 
-  if (
-    !canViewerSeePendingDecisionLive(pendingDecision, pendingDecision.playerId)
-  ) {
-    return false;
-  }
-
-  return true;
+function canChooserSeePendingDecisionLive(
+  pendingDecision: PendingDecision
+): boolean {
+  return canViewerSeePendingDecisionLive(
+    pendingDecision,
+    pendingDecision.playerId
+  );
 }
 
 function requireInstanceId(
@@ -901,11 +903,14 @@ function assertPendingDecisionIsValid(state: GameState): void {
     throw new Error("Pending decision references a missing player");
   }
 
-  if (!canChooserAnswerPendingDecisionLive(state.pendingDecision)) {
-    throw new Error("Pending decision chooser cannot answer the live decision");
+  if (!canChooserSeePendingDecisionLive(state.pendingDecision)) {
+    throw new Error("Pending decision chooser cannot see the live decision");
   }
 
-  if (!hasLegalResponsesForDecision(state.pendingDecision)) {
+  if (
+    canChooserAnswerPendingDecisionLive(state.pendingDecision) &&
+    !hasLegalResponsesForDecision(state.pendingDecision)
+  ) {
     throw new Error("Pending decision has no legal responses");
   }
 

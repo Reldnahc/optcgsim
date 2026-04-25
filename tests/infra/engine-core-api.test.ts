@@ -556,7 +556,7 @@ describe("engine-core bootstrap surface", () => {
       handCount: 1
     };
 
-    expect(() => createInitialState(input)).toThrowError(/cannot answer/i);
+    expect(() => createInitialState(input)).toThrowError(/cannot see/i);
   });
 
   it("rejects chooser-invisible pending decisions from live states", () => {
@@ -569,22 +569,29 @@ describe("engine-core bootstrap surface", () => {
       handCount: 1
     };
 
-    expect(() => createInitialState(invalidInput)).toThrowError(
-      /cannot answer/i
-    );
+    expect(() => createInitialState(invalidInput)).toThrowError(/cannot see/i);
   });
 
-  it("rejects non-mulligan pending decisions from live states", () => {
+  it("accepts canonical non-mulligan paused states for hashing and filtering", () => {
     const input = makeBaseInput();
     input.pendingDecision = {
       id: asId("decision-non-mulligan"),
       type: "chooseTriggerOrder",
       playerId: asId("p1"),
-      visibility: { type: "private", playerIds: [asId("p1")] },
+      visibility: { type: "public" },
       triggerIds: [asId("trigger-1"), asId("trigger-2")]
     };
 
-    expect(() => createInitialState(input)).toThrowError(/cannot answer/i);
+    const state = createInitialState(input);
+
+    expect(hashGameState(state)).toMatch(/^[a-f0-9]{64}$/);
+    expect(getLegalActions(state, asId("p1"))).toEqual([concedeAction("p1")]);
+    expect(filterStateForPlayer(state, asId("p1")).pendingDecision?.type).toBe(
+      "chooseTriggerOrder"
+    );
+    expect(filterStateForPlayer(state, asId("p2")).pendingDecision?.type).toBe(
+      "chooseTriggerOrder"
+    );
   });
 
   it("resolves keepOpeningHand mulligans", () => {
