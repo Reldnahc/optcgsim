@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -399,6 +399,26 @@ describe("engine-core bootstrap surface", () => {
     );
   });
 
+  it("excludes live disconnect timer timestamps from deterministic state hashing", () => {
+    const inputA = makeBaseInput();
+    const inputB = makeBaseInput();
+
+    inputA.timers.disconnect = {
+      playerId: asId("p1"),
+      startedAt: "2026-04-25T10:00:00Z",
+      expiresAt: "2026-04-25T10:00:30Z"
+    };
+    inputB.timers.disconnect = {
+      playerId: asId("p1"),
+      startedAt: "2026-04-25T11:15:00Z",
+      expiresAt: "2026-04-25T11:15:30Z"
+    };
+
+    expect(hashGameState(createInitialState(inputA))).toBe(
+      hashGameState(createInitialState(inputB))
+    );
+  });
+
   it("filters hidden information out of PlayerView", () => {
     const state = createInitialState(makeBaseInput());
     const view = filterStateForPlayer(state, asId("p1"));
@@ -737,7 +757,6 @@ describe("engine-core bootstrap surface", () => {
     const p1 = asId<PlayerId>("p1");
     const p2 = asId<PlayerId>("p2");
     const handCard = invalidInput.players[p1]!.hand[0]!;
-    handCard.owner = p2;
     handCard.controller = p2;
 
     expect(() =>
@@ -745,6 +764,18 @@ describe("engine-core bootstrap surface", () => {
         createInitialState(invalidInput)
       )
     ).toThrowError(/stored under player/i);
+  });
+
+  it("allows owner divergence when controller matches the player bucket", () => {
+    const input = makeBaseInput();
+    const p1 = asId<PlayerId>("p1");
+    const p2 = asId<PlayerId>("p2");
+    const character = input.players[p1]!.characters[0]!;
+    character.owner = p2;
+
+    expect(() =>
+      withEnv("OPTCG_ENGINE_TEST_MODE", "true", () => createInitialState(input))
+    ).not.toThrow();
   });
 
   it("rejects broken effect-queue sources in test mode post-action checks", () => {
@@ -855,15 +886,25 @@ describe("engine-core bootstrap surface", () => {
 
   it("builds @optcg/engine-core to the published dist entrypoint", () => {
     const enginePackageRoot = resolve(process.cwd(), "packages", "engine-core");
-    runNpmScript(enginePackageRoot, "build");
+    const engineDistDir = resolve(enginePackageRoot, "dist");
+    const typesDistDir = resolve(process.cwd(), "packages", "types", "dist");
 
-    const packageJson = JSON.parse(
-      readFileSync(resolve(enginePackageRoot, "package.json"), "utf8")
-    ) as { main: string; types: string };
+    try {
+      runNpmScript(enginePackageRoot, "build");
 
-    expect(existsSync(resolve(enginePackageRoot, packageJson.main))).toBe(true);
-    expect(existsSync(resolve(enginePackageRoot, packageJson.types))).toBe(
-      true
-    );
+      const packageJson = JSON.parse(
+        readFileSync(resolve(enginePackageRoot, "package.json"), "utf8")
+      ) as { main: string; types: string };
+
+      expect(existsSync(resolve(enginePackageRoot, packageJson.main))).toBe(
+        true
+      );
+      expect(existsSync(resolve(enginePackageRoot, packageJson.types))).toBe(
+        true
+      );
+    } finally {
+      rmSync(engineDistDir, { recursive: true, force: true });
+      rmSync(typesDistDir, { recursive: true, force: true });
+    }
   });
 });

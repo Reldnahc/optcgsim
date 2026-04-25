@@ -758,11 +758,6 @@ function assertAllCardsInExactlyOneLocation(state: GameState): void {
 
 function assertCardsRespectZoneOwnership(state: GameState): void {
   for (const entry of collectRawCards(state)) {
-    if (entry.card.owner !== entry.playerId) {
-      throw new Error(
-        `Card ${entry.card.instanceId} has owner ${entry.card.owner} but is stored under player ${entry.playerId}`
-      );
-    }
     if (entry.card.controller !== entry.playerId) {
       throw new Error(
         `Card ${entry.card.instanceId} has controller ${entry.card.controller} but is stored under player ${entry.playerId}`
@@ -1142,6 +1137,13 @@ export function hashGameState(state: GameState): Sha256 {
     ...sanitizedState.cardManifest,
     createdAt: ""
   };
+  if (sanitizedState.timers.disconnect) {
+    sanitizedState.timers.disconnect = {
+      ...sanitizedState.timers.disconnect,
+      startedAt: "",
+      expiresAt: ""
+    };
+  }
 
   return toSha256(
     createHash("sha256")
