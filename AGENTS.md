@@ -56,6 +56,7 @@ Section Ref: `AGENTS.s003`
 - For authoritative exported APIs, projections must consume authoritative computed state when it exists. Do not rebuild printed or placeholder values in `PlayerView` or other DTOs when `computeView` or another canonical derivation already owns that truth.
 - Before sending a story for human or product review, run a local non-interactive Codex review against the intended base branch and treat its findings as required triage input, not optional advice.
 - When local Codex review finds a bug in a contract-heavy subsystem, do the subsystem sweep and sibling regression expansion before requesting external review again.
+- After any local Codex review that returns actionable findings, post a PR comment summary of those findings before the next external review request. When the findings are resolved, update that thread or post a short follow-up note so the PR preserves the review trail.
 - Prefer repo-owned workflow entrypoints under `npm run stories:*` and `npm run stories:verify` over invoking individual tool files directly, unless a story or review task explicitly requires the lower-level tool.
 - Use one branch and one pull request per story by default. Review should happen on the PR diff against the approved story and packet, not only on the issue.
 - Story execution lifecycle is: `approved` -> `in_progress` -> `in_review` -> `done`, with `changes_requested` and `blocked` as valid side states when review or execution finds real blockers.
