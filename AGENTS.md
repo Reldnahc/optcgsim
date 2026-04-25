@@ -53,6 +53,8 @@ Section Ref: `AGENTS.s003`
 - If the same subsystem is flagged twice in one story, stop doing comment-by-comment patches. Write down the shared rule, identify every call site, tighten the helper ownership, expand the regression matrix, and only then resume implementation.
 - When a bug appears in one member of a serializer family, add the sibling regression matrix before review. Prefer one matrix that covers chooser/opponent, public/private, visible/hidden zone, and setup/active status combinations over one-off regressions.
 - For authoritative exported APIs, projections must consume authoritative computed state when it exists. Do not rebuild printed or placeholder values in `PlayerView` or other DTOs when `computeView` or another canonical derivation already owns that truth.
+- Before sending a story for human or product review, run a local non-interactive Codex review against the intended base branch and treat its findings as required triage input, not optional advice.
+- When local Codex review finds a bug in a contract-heavy subsystem, do the subsystem sweep and sibling regression expansion before requesting external review again.
 - Prefer repo-owned workflow entrypoints under `npm run stories:*` and `npm run stories:verify` over invoking individual tool files directly, unless a story or review task explicitly requires the lower-level tool.
 - Use one branch and one pull request per story by default. Review should happen on the PR diff against the approved story and packet, not only on the issue.
 - Story execution lifecycle is: `approved` -> `in_progress` -> `in_review` -> `done`, with `changes_requested` and `blocked` as valid side states when review or execution finds real blockers.
@@ -61,12 +63,13 @@ Section Ref: `AGENTS.s003`
   - `npm run stories:branch -- --id STORY-ID`
   - `npm run stories:start -- --id STORY-ID`
   - implement on the story branch
-  - `npm run stories:verify`
-  - for `area: contracts`, run `npm run stories:contract-audit -- --id STORY-ID` on a clean worktree after the implementation commit that is intended for review
-  - `npm run stories:pr -- --id STORY-ID --push`
-  - `npm run stories:request-review -- --id STORY-ID`
-  - Codex review on the PR diff
-  - `npm run stories:changes-requested -- --id STORY-ID` or `npm run stories:complete -- --id STORY-ID`
+- `npm run stories:verify`
+- for `area: contracts`, run `npm run stories:contract-audit -- --id STORY-ID` on a clean worktree after the implementation commit that is intended for review
+- `npm run stories:pr -- --id STORY-ID --push`
+- `codex exec review --base main "Review this PR against the approved story and packet. Focus on correctness, hidden-information leaks, invariant gaps, deterministic behavior, and scope violations."`
+- `npm run stories:request-review -- --id STORY-ID`
+- Codex review on the PR diff
+- `npm run stories:changes-requested -- --id STORY-ID` or `npm run stories:complete -- --id STORY-ID`
 - Contract stories must not move to `in_review` until the contract audit artifact exists for the current `HEAD`, `stories:verify` passed during that audit, and the worktree is clean. This is a hard gate, not a convention.
 - When a story is approved through the workflow, the expected automation path is: promote story -> build approved packet -> sync issue/project. Do not treat local story approval as complete until packet and board state are also updated.
 - Before moving a story to `in_review` or `done`, ensure the story has PR metadata in `stories/.sync/<STORY-ID>.github.json`.
