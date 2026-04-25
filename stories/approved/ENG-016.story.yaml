@@ -1,0 +1,47 @@
+spec_version: v6
+spec_package_name: optcg-md-specs-v6
+story_schema_version: 1.0.0
+id: ENG-016
+title: Modularize engine-core bootstrap internals and contract tests
+type: implementation
+area: engine
+priority: medium
+status: approved
+summary: >
+  Refactor the post-bootstrap engine-core implementation into focused internal modules
+  and split the monolithic contract test file, without changing the canonical public
+  engine-core API or widening gameplay scope.
+spec_refs:
+  - 15-implementation-kickoff.s006 (Step 2 - `@optcg/engine-core`)
+  - 01-system-architecture.s005 (`@optcg/engine-core`)
+  - 03-game-state-events-decisions.s020 (State hashing)
+  - 03-game-state-events-decisions.s021 (Invariant hooks)
+  - 11-testing-quality.s008 (Invariant tests)
+scope:
+  - "Split packages/engine-core/src/engine-core.ts into focused internal modules for invariants, visibility filtering, pending-decision handling, legal-action generation, state hashing, and state mutation while preserving the existing package entrypoint exports."
+  - "Split tests/infra/engine-core-api.test.ts into focused engine-core contract test files organized by surface area, while preserving equivalent bootstrap coverage."
+  - "Keep the public engine-core package API, canonical type contracts, and approved ENG-001 behavior unchanged."
+  - "Add or retain regression coverage needed to prove the refactor is behavior-preserving for bootstrap hashing, filtering, legal actions, paused-state handling, and invariants."
+non_scope:
+  - New gameplay actions, combat flow, setup/runtime expansion, or pending-decision progression beyond already approved stories.
+  - Canonical type, protocol, or story-scope changes.
+  - Package renames, dependency graph redesign, or cross-repo architecture work outside `@optcg/engine-core` and its direct infra tests.
+dependencies:
+  - ENG-001
+acceptance_criteria:
+  - "The `@optcg/engine-core` public entrypoint exports and import paths remain stable for canonical consumers."
+  - "`engine-core.ts` becomes a thin orchestration/export layer with responsibility-specific logic moved into focused internal modules."
+  - "The current monolithic engine-core API contract test file is split into focused test files without loss of bootstrap coverage."
+  - "pnpm verify passes with no behavior drift in the approved bootstrap engine-core surface."
+required_tests:
+  - "Contract regression coverage for hashGameState, filterStateForPlayer, getLegalActions/applyAction, resumeDecision, and invariant/test-mode behavior after the refactor."
+  - "A package-entrypoint smoke test proving the published `@optcg/engine-core` surface still builds and resolves."
+repo_rules:
+  - Refactor only; do not invent or widen runtime behavior.
+  - Preserve hidden-information safety and deterministic behavior across the extracted modules.
+  - Keep module ownership boundaries clear enough that future gameplay work does not need to edit one monolithic file for unrelated concerns.
+ambiguity_policy: fail_and_escalate
+agent:
+  packet_path: agent-packets/approved/ENG-016.packet.md
+  implementation_skill: spec-story-implementation
+  review_skill: spec-story-review
