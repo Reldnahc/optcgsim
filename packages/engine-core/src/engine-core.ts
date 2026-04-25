@@ -424,7 +424,7 @@ function toPublicDefaultResponse(
   }
 
   if (viewerId === pendingDecision.playerId) {
-    return response;
+    return cloneValue(response);
   }
 
   switch (response.type) {
@@ -436,7 +436,7 @@ function toPublicDefaultResponse(
     case "effectOptionSelection":
     case "replacementChoice":
     case "pass":
-      return response;
+      return cloneValue(response);
     case "payment":
     case "targetSelection":
     case "cardSelection":
@@ -614,6 +614,7 @@ function toPublicDecision(
           viewerId
         )
           ? pendingDecision.candidates.flatMap((candidate) =>
+              viewerId === pendingDecision.playerId ||
               shouldExposeDecisionCandidateToViewer(candidate, viewerId)
                 ? [{ card: toPublicDecisionCardRef(candidate, viewerId) }]
                 : []
@@ -819,6 +820,17 @@ function buildPublicLegalActions(
   state: GameState,
   playerId: PlayerId
 ): PublicLegalAction[] {
+  if (state.pendingDecision) {
+    if (state.pendingDecision.playerId === playerId) {
+      return [
+        { type: "concede", playerId },
+        { type: "respondToDecision", decisionId: state.pendingDecision.id }
+      ];
+    }
+
+    return [{ type: "concede", playerId }];
+  }
+
   const seen = new Set<string>();
   const result: PublicLegalAction[] = [];
 
@@ -1902,6 +1914,7 @@ export function computeView(state: GameState): ComputedGameView {
         canAttack: inPlay && card.state === "active",
         canBlock:
           card.zone.zone === "characterArea" &&
+          card.state === "active" &&
           metadata.keywords.includes("blocker"),
         cannotBeAttacked: false,
         protectedFrom: []

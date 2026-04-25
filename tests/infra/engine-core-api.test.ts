@@ -541,6 +541,63 @@ describe("engine-core API skeleton", () => {
     expect(opponentView.pendingDecision?.defaultResponse).toBeUndefined();
   });
 
+  it("returns a cloned defaultResponse in chooser views", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-cloned-default"),
+          type: "selectCards",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          request: {
+            chooser: "self",
+            zone: "deck",
+            player: "self",
+            min: 1,
+            max: 1,
+            allowFewerIfUnavailable: false,
+            visibility: "privateToChooser"
+          },
+          defaultResponse: {
+            type: "cardSelection",
+            selected: [{ instanceId: asId("p1-deck-1") }]
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-deck-1"),
+              cardId: asId("char-3"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "deck",
+                playerId: asId("p1"),
+                index: 0
+              }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    expect(chooserView.pendingDecision?.defaultResponse).toEqual({
+      type: "cardSelection",
+      selected: [{ instanceId: asId("p1-deck-1") }]
+    });
+
+    if (
+      chooserView.pendingDecision?.defaultResponse?.type === "cardSelection"
+    ) {
+      chooserView.pendingDecision.defaultResponse.selected[0]!.instanceId =
+        asId("mutated");
+    }
+
+    expect(state.pendingDecision?.defaultResponse).toEqual({
+      type: "cardSelection",
+      selected: [{ instanceId: asId("p1-deck-1") }]
+    });
+  });
+
   it("does not expose hidden hand cards in public pay-cost decisions", () => {
     const state = createInitialState(
       makeInput({
@@ -676,6 +733,69 @@ describe("engine-core API skeleton", () => {
     expect(view.cards[handId]?.canBlock).toBe(false);
     expect(view.cards[deckId]?.canAttack).toBe(false);
     expect(view.cards[deckId]?.canBlock).toBe(false);
+  });
+
+  it("requires blockers to be active before reporting canBlock", () => {
+    const input = makeInput();
+    input.players[asId<PlayerId>("p1")]!.characters[0]!.state = "rested";
+
+    const view = computeView(createInitialState(input));
+    const inPlayId = asId<CardInstance["instanceId"]>("p1-char-1");
+    expect(view.cards[inPlayId]?.canBlock).toBe(false);
+  });
+
+  it("preserves chooser-visible hidden-zone candidates in selectCards decisions", () => {
+    const state = createInitialState(
+      makeInput({
+        pendingDecision: {
+          id: asId("decision-hidden-chooser-candidates"),
+          type: "selectCards",
+          playerId: asId("p1"),
+          visibility: { type: "private", playerIds: [asId("p1")] },
+          request: {
+            chooser: "self",
+            zone: "deck",
+            player: "self",
+            min: 1,
+            max: 2,
+            allowFewerIfUnavailable: false,
+            visibility: "privateToChooser"
+          },
+          candidates: [
+            {
+              instanceId: asId("p1-deck-1"),
+              cardId: asId("char-3"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "deck",
+                playerId: asId("p1"),
+                index: 0
+              }
+            },
+            {
+              instanceId: asId("p1-deck-2"),
+              cardId: asId("char-4"),
+              owner: asId("p1"),
+              controller: asId("p1"),
+              zone: {
+                zone: "deck",
+                playerId: asId("p1"),
+                index: 1
+              }
+            }
+          ]
+        } satisfies PendingDecision
+      })
+    );
+
+    const chooserView = filterStateForPlayer(state, asId("p1"));
+    expect(chooserView.pendingDecision?.type).toBe("selectCards");
+    expect(
+      chooserView.pendingDecision?.type === "selectCards"
+        ? chooserView.pendingDecision.candidates
+        : []
+    ).toHaveLength(2);
   });
 
   it("redacts hidden public decision candidates for non-choosers", () => {
