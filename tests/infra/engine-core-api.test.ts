@@ -389,8 +389,30 @@ describe("engine-core API skeleton", () => {
 
     const toMain = applyAction(toDon.state, { type: "endMainPhase" });
     expect(toMain.state.turn.phase).toBe("main");
-    expect(toMain.state.players[asId<PlayerId>("p2")]?.donDeck).toHaveLength(1);
+    expect(toMain.state.players[asId<PlayerId>("p2")]?.donDeck).toHaveLength(0);
     expect(toMain.state.players[asId<PlayerId>("p2")]?.costArea).toHaveLength(
+      3
+    );
+  });
+
+  it("skips the opening player's first draw and grants only one DON", () => {
+    const state = createInitialState(makeInput({ status: "active" }));
+    const activePlayer = state.players[asId<PlayerId>("p1")]!;
+    activePlayer.turnCount = 1;
+    state.turn.phase = "draw";
+
+    const toDon = applyAction(state, { type: "endMainPhase" });
+    expect(toDon.state.turn.phase).toBe("don");
+    expect(toDon.state.players[asId<PlayerId>("p1")]?.hand).toHaveLength(1);
+    expect(toDon.state.players[asId<PlayerId>("p1")]?.deck).toHaveLength(2);
+    expect(toDon.events.some((event) => event.type === "cardDrawn")).toBe(
+      false
+    );
+
+    const toMain = applyAction(toDon.state, { type: "endMainPhase" });
+    expect(toMain.state.turn.phase).toBe("main");
+    expect(toMain.state.players[asId<PlayerId>("p1")]?.donDeck).toHaveLength(1);
+    expect(toMain.state.players[asId<PlayerId>("p1")]?.costArea).toHaveLength(
       2
     );
   });
@@ -412,7 +434,7 @@ describe("engine-core API skeleton", () => {
         hostInstanceId: activePlayer.leader.instanceId,
         index: 0
       },
-      state: "none"
+      state: "attached"
     });
     activePlayer.leader.attachedDon = [attachedCard.instanceId];
     activePlayer.attachedCards = [attachedCard];
@@ -432,6 +454,7 @@ describe("engine-core API skeleton", () => {
     expect(refreshedPlayer.costArea[1]!.instanceId).toBe(
       attachedCard.instanceId
     );
+    expect(refreshedPlayer.costArea[1]!.state).toBe("active");
     expect(refreshedPlayer.costArea[1]!.zone).toEqual(
       makeZone("costArea", "p1", 1)
     );

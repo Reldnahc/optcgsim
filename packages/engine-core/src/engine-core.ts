@@ -1690,6 +1690,17 @@ function moveTopDonDeckCardToCostArea(
   return donCard;
 }
 
+function isOpeningTurnDraw(state: GameState): boolean {
+  return (
+    state.turn.globalTurnNumber === (1 as TurnState["globalTurnNumber"]) &&
+    state.turn.activePlayer === state.turn.firstPlayer
+  );
+}
+
+function donCardsToAddThisTurn(state: GameState): number {
+  return isOpeningTurnDraw(state) ? 1 : 2;
+}
+
 function readyCard(card: CardInstance | undefined): void {
   if (!card || card.state !== "rested") {
     return;
@@ -1725,6 +1736,9 @@ function returnAttachedDonToCostArea(player: PlayerState): CardInstance[] {
     return [];
   }
 
+  returnedCards.forEach((card) => {
+    card.state = "active";
+  });
   player.attachedCards = player.attachedCards.filter(
     (card) => !returnedIds.has(card.instanceId)
   );
@@ -2232,6 +2246,19 @@ export function applyAction(state: GameState, action: Action): EngineResult {
         if (!activePlayer) {
           throw new Error(`Unknown player ${state.turn.activePlayer}`);
         }
+        if (isOpeningTurnDraw(state)) {
+          nextState.turn.phase = "don";
+          return finalizeResult(state, nextState, [
+            {
+              type: "phaseEnded",
+              payload: { phase: "draw", playerId: state.turn.activePlayer }
+            },
+            {
+              type: "phaseStarted",
+              payload: { phase: "don", playerId: state.turn.activePlayer }
+            }
+          ]);
+        }
         const drawResult = moveTopDeckCardToHand(nextState, activePlayer);
         if (drawResult.state === "deckOut") {
           nextState.status = "completed";
@@ -2279,26 +2306,29 @@ export function applyAction(state: GameState, action: Action): EngineResult {
         if (!activePlayer) {
           throw new Error(`Unknown player ${state.turn.activePlayer}`);
         }
-        const donCard = moveTopDonDeckCardToCostArea(activePlayer);
+        const donCards: CardInstance[] = [];
+        for (let index = 0; index < donCardsToAddThisTurn(state); index += 1) {
+          const donCard = moveTopDonDeckCardToCostArea(activePlayer);
+          if (!donCard) {
+            break;
+          }
+          donCards.push(donCard);
+        }
         nextState.turn.phase = "main";
         return finalizeResult(state, nextState, [
           {
             type: "phaseEnded",
             payload: { phase: "don", playerId: state.turn.activePlayer }
           },
-          ...(donCard
-            ? [
-                {
-                  type: "cardMoved" as const,
-                  payload: {
-                    instanceId: donCard.instanceId,
-                    from: "donDeck",
-                    to: "costArea",
-                    playerId: state.turn.activePlayer
-                  }
-                }
-              ]
-            : []),
+          ...donCards.map((donCard) => ({
+            type: "cardMoved" as const,
+            payload: {
+              instanceId: donCard.instanceId,
+              from: "donDeck",
+              to: "costArea",
+              playerId: state.turn.activePlayer
+            }
+          })),
           {
             type: "phaseStarted",
             payload: { phase: "main", playerId: state.turn.activePlayer }
