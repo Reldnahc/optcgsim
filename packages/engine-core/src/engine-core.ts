@@ -61,7 +61,15 @@ function stableStringify(value: unknown): string {
   const entries = Object.entries(value).filter(
     ([, entry]) => entry !== undefined
   );
-  entries.sort(([left], [right]) => left.localeCompare(right));
+  entries.sort(([left], [right]) => {
+    if (left < right) {
+      return -1;
+    }
+    if (left > right) {
+      return 1;
+    }
+    return 0;
+  });
 
   return `{${entries
     .map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`)
@@ -1144,6 +1152,21 @@ function assertAttachedDonConsistency(state: GameState): void {
           `Attached DON ${attachedDonId} is not in attached zone`
         );
       }
+      if (attachedDon.zone.playerId !== card.controller) {
+        throw new Error(
+          `Attached DON ${attachedDonId} has inconsistent attached-zone player`
+        );
+      }
+      if (attachedDon.zone.hostInstanceId !== card.instanceId) {
+        throw new Error(
+          `Attached DON ${attachedDonId} references the wrong host instance`
+        );
+      }
+      if (attachedDon.zone.index !== card.attachedDon.indexOf(attachedDonId)) {
+        throw new Error(
+          `Attached DON ${attachedDonId} has inconsistent attached-zone index`
+        );
+      }
     }
   }
 }
@@ -1155,6 +1178,11 @@ function assertPendingDecisionIsValid(state: GameState): void {
   if (!(state.pendingDecision.playerId in state.players)) {
     throw new Error(
       `Pending decision references unknown player ${state.pendingDecision.playerId}`
+    );
+  }
+  if (!hasLegalResponsesForDecision(state.pendingDecision)) {
+    throw new Error(
+      `Pending decision ${state.pendingDecision.id} has no legal responses`
     );
   }
 }
@@ -1386,6 +1414,10 @@ export function createInitialState(input: CreateInitialStateInput): GameState {
   }
   if (input.winner) {
     state.winner = cloneValue(input.winner);
+  }
+
+  if (process.env["OPTCG_ENGINE_TEST_MODE"] === "true") {
+    runInvariantChecks(state);
   }
 
   return state;

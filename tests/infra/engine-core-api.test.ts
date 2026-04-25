@@ -943,10 +943,7 @@ describe("engine-core API skeleton", () => {
     p1.hand[0]!.instanceId = p1.deck[0]!.instanceId;
 
     try {
-      const state = createInitialState(input);
-      expect(() => applyAction(state, concedeAction("p1"))).toThrow(
-        /multiple locations/
-      );
+      expect(() => createInitialState(input)).toThrow(/multiple locations/);
     } finally {
       if (originalFlag === undefined) {
         delete process.env["OPTCG_ENGINE_TEST_MODE"];
@@ -973,10 +970,7 @@ describe("engine-core API skeleton", () => {
     p1.hand[0]!.instanceId = p1.deck[0]!.instanceId;
 
     try {
-      const state = createInitialState(input);
-      expect(() => resumeDecision(state, { type: "keepOpeningHand" })).toThrow(
-        /multiple locations/
-      );
+      expect(() => createInitialState(input)).toThrow(/multiple locations/);
     } finally {
       if (originalFlag === undefined) {
         delete process.env["OPTCG_ENGINE_TEST_MODE"];
@@ -995,10 +989,81 @@ describe("engine-core API skeleton", () => {
     p1.costArea[0]!.zone = makeZone("deck", "p1", 0);
 
     try {
-      const state = createInitialState(input);
-      expect(() => applyAction(state, concedeAction("p1"))).toThrow(
+      expect(() => createInitialState(input)).toThrow(
         /Cost-area card .* inconsistent zone metadata/
       );
+    } finally {
+      if (originalFlag === undefined) {
+        delete process.env["OPTCG_ENGINE_TEST_MODE"];
+      } else {
+        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
+      }
+    }
+  });
+
+  it("rejects pending decisions with no legal responses in test mode", () => {
+    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
+    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
+
+    try {
+      expect(() =>
+        createInitialState(
+          makeInput({
+            pendingDecision: {
+              id: asId("decision-deadlocked"),
+              type: "chooseEffectOption",
+              playerId: asId("p1"),
+              visibility: { type: "private", playerIds: [asId("p1")] },
+              min: 1,
+              max: 1,
+              options: [
+                {
+                  id: "unavailable-option",
+                  label: "Unavailable",
+                  effect: { type: "draw", count: 1, player: "self" },
+                  availability: "unavailable"
+                }
+              ]
+            } satisfies PendingDecision
+          })
+        )
+      ).toThrow(/has no legal responses/);
+    } finally {
+      if (originalFlag === undefined) {
+        delete process.env["OPTCG_ENGINE_TEST_MODE"];
+      } else {
+        process.env["OPTCG_ENGINE_TEST_MODE"] = originalFlag;
+      }
+    }
+  });
+
+  it("validates attached DON host metadata in test mode", () => {
+    const originalFlag = process.env["OPTCG_ENGINE_TEST_MODE"];
+    process.env["OPTCG_ENGINE_TEST_MODE"] = "true";
+
+    const input = makeInput();
+    const host = input.players[asId<PlayerId>("p1")]!.leader;
+    const attachedCard = makeCard({
+      instanceId: "p1-attached-don-bad-host",
+      cardId: "don-1",
+      owner: "p1",
+      zone: {
+        zone: "attached",
+        playerId: asId("p1"),
+        hostInstanceId: asId("wrong-host"),
+        index: 0
+      },
+      state: "none"
+    });
+    host.attachedDon = [attachedCard.instanceId];
+    (
+      input.players[asId<PlayerId>("p1")] as PlayerState & {
+        attachedCards?: CardInstance[];
+      }
+    ).attachedCards = [attachedCard];
+
+    try {
+      expect(() => createInitialState(input)).toThrow(/wrong host instance/);
     } finally {
       if (originalFlag === undefined) {
         delete process.env["OPTCG_ENGINE_TEST_MODE"];
